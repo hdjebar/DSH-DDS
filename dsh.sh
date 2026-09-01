@@ -68,6 +68,11 @@ case "$COMMAND" in
     node config/persona.mjs "$@"
     ;;
 
+  sessions|session)
+    shift || true
+    node config/persona.mjs sessions "$@"
+    ;;
+
   status)
     echo "📊 Container Status:"
     docker compose ps

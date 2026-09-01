@@ -13,6 +13,8 @@ const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
 const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
 const TEMPLATES_DIR = path.resolve(process.cwd(), 'config/templates/personas');
 const SETTINGS_FILE = path.resolve(process.cwd(), 'config/settings.yaml');
+const CONFIG_DIR = path.resolve(process.cwd(), 'config');
+const SESSIONS_DIR = path.resolve(process.cwd(), 'config/sessions');
 
 function ensureDirs() {
   if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true });
@@ -252,20 +254,79 @@ function runWorkflow(name, workflowKey) {
   runPersona(name, wf.command.replace(new RegExp(`^Using the ${name} skill,\\s*`), ''), tier);
 }
 
+function listSessions() {
+  const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
+  console.log('========================================================================');
+  console.log('📜 DeepSeek Harness Interactive Web & CLI Sessions');
+  console.log('========================================================================');
+  if (!fs.existsSync(SESSIONS_DIR)) {
+    console.log('  No sessions recorded yet.');
+    return;
+  }
+
+  const workspaces = fs.readdirSync(SESSIONS_DIR);
+  let totalSessions = 0;
+
+  for (const ws of workspaces) {
+    const wsPath = path.join(SESSIONS_DIR, ws);
+    if (!fs.statSync(wsPath).isDirectory()) continue;
+    const sessionFiles = fs.readdirSync(wsPath);
+    console.log(`\n📁 Workspace / Project: \x1b[35m${ws}\x1b[0m (${sessionFiles.length} sessions)`);
+    for (const sf of sessionFiles.slice(-10)) {
+      totalSessions++;
+      const sFile = path.join(wsPath, sf);
+      const stat = fs.statSync(sFile);
+      let title = sf;
+      try {
+        const raw = fs.readFileSync(sFile, 'utf8');
+        const lines = raw.split('\n');
+        for (const line of lines) {
+          if (line.includes('"title"') || line.includes('"prompt"') || line.includes('"text"')) {
+            const m = line.match(/"(?:title|prompt|text)"\s*:\s*"([^"]{5,60})"/);
+            if (m) {
+              title = m[1];
+              break;
+            }
+          }
+        }
+      } catch {}
+      console.log(`  🔹 \x1b[36m${sf.padEnd(46)}\x1b[0m — ${title} \x1b[90m(${stat.mtime.toLocaleTimeString()})\x1b[0m`);
+    }
+  }
+  console.log('\n========================================================================');
+  console.log('💡 Distill any session into a Persona package:');
+  console.log('   ./dsh.sh persona distill <name> --session <session-id>');
+  console.log('========================================================================');
+}
+
 function distillPersona(name, options = {}) {
   ensureDirs();
   if (!name) {
-    console.error('❌ Error: Persona name required. Usage: ./dsh.sh persona distill <name>');
+    console.error('❌ Error: Persona name is required. Usage: ./dsh.sh persona distill <name> [--session <id>]');
     process.exit(1);
   }
 
   console.log('========================================================================');
-  console.log(`🧪 Distilling Interactive Session into Persona Package: '\x1b[32m${name}\x1b[0m'`);
+  console.log(`🧪 Distilling Workflow & Telemetry into Persona Package '${name}'`);
   console.log('========================================================================');
 
-  // 1. Inspect recent sessions & memory notes
-  const memoryFile = path.resolve(process.cwd(), 'config/MEMORY.md');
+  let sessionNotes = '';
+  const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
+
+  if (options.sessionId && fs.existsSync(SESSIONS_DIR)) {
+    for (const ws of fs.readdirSync(SESSIONS_DIR)) {
+      const sFile = path.join(SESSIONS_DIR, ws, options.sessionId);
+      if (fs.existsSync(sFile)) {
+        sessionNotes = fs.readFileSync(sFile, 'utf8');
+        console.log(`📖 Ingested transcript from target session: ${options.sessionId}`);
+        break;
+      }
+    }
+  }
+
+  // 1. Ingest session memories if available
   let memoryNotes = '';
+  const memoryFile = path.join(CONFIG_DIR, 'MEMORY.md');
   if (fs.existsSync(memoryFile)) {
     memoryNotes = fs.readFileSync(memoryFile, 'utf8');
     console.log('📖 Ingested long-term session memories from config/MEMORY.md');
@@ -310,7 +371,7 @@ models:
 plugins:
   - "@liustack/modsearch"
   - "dsh-mnemon"
-  - "dsh-persona-memory"
+  - "dshmarket"
   - "dsh-find-plugin"
 
 mcpServers:
@@ -430,10 +491,19 @@ switch (command) {
     break;
   }
 
-  case 'distill':
-  case 'record':
-    distillPersona(filteredArgs[0]);
+  case 'sessions':
+  case 'history':
+    listSessions();
     break;
+
+  case 'distill':
+  case 'record': {
+    let sessionId = null;
+    const sIdx = rawArgs.indexOf('--session');
+    if (sIdx !== -1 && rawArgs[sIdx + 1]) sessionId = rawArgs[sIdx + 1];
+    distillPersona(filteredArgs[0], { sessionId });
+    break;
+  }
 
   case 'apply':
   case 'activate':
@@ -455,5 +525,5 @@ switch (command) {
     break;
 
   default:
-    console.log('Usage: ./dsh.sh persona [list | create <name> --template <tmpl> | distill <name> | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
+    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> --template <tmpl> | distill <name> [--session <id>] | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
 }

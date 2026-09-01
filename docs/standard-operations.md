@@ -14,6 +14,8 @@ This document provides a reference for everyday operations, CLI commands, headle
 | **`./dsh.sh logs`** | Streams unified real-time logs from all containers. |
 | **`./dsh.sh doctor`** | Runs full health check on APIs, plugins, and endpoints. |
 | **`./dsh.sh sync-models`** | Fetches and syncs latest OpenRouter & Google models. |
+| **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
+| **`./dsh.sh persona [cmd]`** | Manages AI Personas (`list`, `create`, `distill`, `run`, `workflow`). |
 | **`./dsh.sh cli`** | Opens an interactive terminal session inside the container. |
 | **`./dsh.sh run "<prompt>"`** | Runs a one-shot autonomous task in headless mode. |
 | **`./dsh.sh reset`** | Clears session caches and restarts the stack cleanly. |

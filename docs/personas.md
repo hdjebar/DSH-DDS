@@ -187,51 +187,86 @@ flowchart TD
 
 ---
 
-### Step-by-Step Workflow:
+---
 
-#### 1. Draft & Iterate in Chat (`http://localhost:3080` or `./dsh.sh cli`)
-* Interact with the agent on your specific problem.
-* Correct mistakes, test MCP tools (e.g. SQLite, GitHub, Fetch), and discover what prompt constraints work best.
-* **`dsh-mnemon`** and **Arize Phoenix** automatically record your execution spans, memory spaces, and learned guidelines.
+## 🛠️ The Decoupled Developer Workflow
 
-#### 2. Distill into a 5-Layer Persona Package
-Once you have refined the workflow, run the distiller CLI:
+The recommended engineering pattern separates **interactive execution & experimentation (inside Web UI & Phoenix)** from **persona building, version control, and automation (outside Web UI via CLI & Git)**:
 
-```bash
-./dsh.sh persona distill my-specialist-name
+```mermaid
+flowchart TD
+    START["1. Start Named Session in Web UI (:3080)\ne.g. 'SDMX-LU1-DRAFT' or 'K8S-MIGRATION'"] --> RUN["2. Interact, Test Tools & Refine Prompt\n(Agent uses tools, memory, and models)"]
+    RUN --> OTEL["3. Audit Live Traces in Arize Phoenix (:6006)\n(Inspect model latency, tool waterfalls, token cost)"]
+    OTEL --> LIST["4. Inspect Session Transcripts\n./dsh.sh sessions"]
+    LIST --> DISTILL["5. Distill Outside Web UI into Persona Package\n./dsh.sh persona distill <name> --session <id>"]
+    DISTILL --> GIT["6. Git Commit & IDE Review (VS Code / Antigravity)\nconfig/personas/<name>/ (persona.yaml, SKILL.md, workflow.sh)"]
+    GIT --> AUTO["7. Re-use & Automate Headless\n./config/personas/<name>/workflow.sh or Web UI Dropdown"]
 ```
 
-What the distiller automatically generates:
-* 🧠 **`SKILL.md`**: Synthesizes the domain instructions, operational constraints, and session memories into crisp markdown.
-* ⚙️ **`persona.yaml`**: Configures the **Multi-Model Task Matrix** (Default, Reasoning, Audit, Fast) and required MCP servers.
-* 🤖 **`workflow.sh`**: Converts successful interaction prompts into repeatable automation recipes.
-* 📁 **Instant Registration**: Registers `config/skills/my-specialist-name/SKILL.md` so it appears immediately in the Web UI dropdown.
+### 📋 Detailed Step-by-Step Guide:
 
-#### 4. Run & Automate
+#### 1. Start a Session in Web UI (`http://localhost:3080`)
+* Open **[http://localhost:3080](http://localhost:3080)** and start a new conversation.
+* Give the session a descriptive name in the UI history list (e.g. `ESTAT-LU1-SDMX-DRAFT`).
+
+#### 2. Interact, Correct Mistakes, and Test Models
+* Prompt the agent to accomplish your domain goal.
+* Test tool calls (e.g. `@mzxrai/mcp-webresearch`, GitHub MCP, or Python `uv` execution).
+* Correct any missteps directly in chat.
+
+#### 3. Audit Observability & Telemetry in Arize Phoenix (`http://localhost:6006`)
+* Open **[http://localhost:6006](http://localhost:6006)**.
+* Filter by your session trace to view:
+  * ⏱️ **Model Latency**: Compare DeepSeek Chat vs DeepSeek R1 vs Gemini 3.7 Flash.
+  * 🌊 **Tool Waterfall**: Verify tool call arguments and response payloads.
+  * 💰 **Token Attribution**: Track prompt vs completion token consumption.
+
+#### 4. Distill Externally via CLI
+Open your terminal and distill the refined session into a permanent 5-layer Persona package:
+
 ```bash
-./dsh.sh persona run my-specialist-name "execute task on new dataset"
-./dsh.sh persona workflow my-specialist-name default
+# List all recorded sessions across workspaces:
+./dsh.sh sessions
+
+# Distill the specific session into a permanent persona package:
+./dsh.sh persona distill sdmx-engineer --session session-75c132db-aaf8-47be-87a4-0229667f99fb
 ```
+
+#### 5. Review & Git Commit in Your IDE
+Open the generated package in your editor:
+```bash
+# Inspect the 5-layer persona package
+tree config/personas/sdmx-engineer/
+# ├── persona.yaml   # Multi-Model Task Routing Matrix & MCP tools
+# ├── SKILL.md       # Operational rules, guidelines & schemas
+# └── workflow.sh    # Executable repeatable automation recipes
+
+# Commit to version control
+git add config/personas/sdmx-engineer/
+git commit -m "feat(persona): add sdmx-engineer distilled from ESTAT/LUSTAT interactive session"
+```
+
+#### 6. Run & Automate
+* **In Web UI**: The skill is automatically available in the Skills dropdown at `http://localhost:3080`.
+* **In Terminal CLI**:
+  ```bash
+  # Execute using calibrated model tier
+  ./dsh.sh persona run sdmx-engineer --tier reasoning "Calculate core inflation breaks"
+  # Run batch workflow recipe
+  ./config/personas/sdmx-engineer/workflow.sh reasoning
+  ```
 
 ---
 
-## ⌨️ CLI Persona Management (`./dsh.sh persona`)
+## ⌨️ CLI Persona & Session Commands (`./dsh.sh`)
 
 | Command | Action |
 | :--- | :--- |
+| **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
 | **`./dsh.sh persona list`** | Lists all personas with their full **Task-to-Model Matrix** and starter templates. |
 | **`./dsh.sh persona create <name> --template <template>`** | Scaffolds a complete persona package from a pre-built template. |
-| **`./dsh.sh persona distill <name>`** | Distills recent interactive chat sessions and learned memories into a persona package. |
+| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
 | **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets the persona's specified model tier as the active workspace default. |
 | **`./dsh.sh persona run <name> [--tier <tier>] "<prompt>"`** | Executes a one-shot task using the persona's designated model tier (e.g. `reasoning`, `coding`, `fast`). |
 | **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a pre-configured automation recipe using its calibrated model tier. |
 | **`./dsh.sh persona show <name>`** | Displays the complete persona manifest and skill instructions. |
-
----
-
-## 🌐 Customizing Inside the Web UI (`http://localhost:3080`)
-
-1. **Instant Dropdown Discovery**: All skills are automatically mounted into `/root/.dsh/skills/` and appear in the UI chat dropdown.
-2. **Conversational Scaffolding**: Instruct the agent in chat:
-   > 💬 *"Create a new persona named `fastapi-architect` with a Multi-Model Matrix: `default` with DeepSeek V3, `reasoning` with DeepSeek R1, SQLite MCP tool, and async SQLAlchemy rules. Save it into `config/personas/fastapi-architect/`."*
-3. **Trace Observability**: Every persona action (tool invocations, token costs, model latency) is tracked in real-time on **Arize Phoenix** at `http://localhost:6006`.
