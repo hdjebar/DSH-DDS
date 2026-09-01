@@ -24,6 +24,7 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel pipelines.
 * 🎭 **[AI Agent Personas](docs/personas.md)** — Multi-Model Task Matrix, session recording, and automated persona distillation.
+* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature (Stanford, Google, Anthropic), and industry framework comparisons.
 * 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 * ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 10 plugins and 3 MCP servers.

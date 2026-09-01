@@ -1,5 +1,7 @@
 # 🎭 AI Agent Personas & Multi-Model Task Routing
 
+> 🔬 **Academic & Industry Research**: For the theoretical foundations, empirical evidence, and comparative analysis of AI personas across Stanford, Google, and Anthropic literature, read the **[AI Personas Research Note](research-notes-ai-personas.md)**.
+
 A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **6 specialized layers**:
 1. **Domain Skill (`SKILL.md`)**: Operational guidelines, domain rules, code patterns, and structured output schemas.
 2. **Provider & Calibrated Models (`models`)**: A **Multi-Model Task-Routing Matrix** assigning optimal models per task type (e.g. Default, Deep Reasoning, Precision Coding/Audit, Fast Indexing, Multimodal).
