@@ -36,13 +36,22 @@ function parsePersonaYaml(filePath) {
   const descM = content.match(/^description:\s*["']?(.+?)["']?$/m);
   if (descM) result.description = descM[1].trim();
 
-  // Parse Execution Context Profiles
+  // Parse Execution Context Profiles (supports both list and dictionary formats)
   const profilesMatch = content.match(/profiles:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
   if (profilesMatch) {
     const lines = profilesMatch[1].split('\n');
     for (const line of lines) {
-      const pM = line.match(/^\s*-\s*([a-zA-Z0-9_-]+)/);
-      if (pM) result.profiles.push(pM[1].trim());
+      // List format: - web
+      const listM = line.match(/^\s*-\s*([a-zA-Z0-9_-]+)/);
+      if (listM) {
+        result.profiles.push(listM[1].trim());
+        continue;
+      }
+      // Dict format: web: or sandbox:
+      const dictM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
+      if (dictM && dictM[1] !== 'models' && dictM[1] !== 'plugins') {
+        result.profiles.push(dictM[1].trim());
+      }
     }
   }
   if (result.profiles.length === 0) {

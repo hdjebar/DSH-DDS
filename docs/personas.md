@@ -38,15 +38,70 @@ flowchart TD
 
 ## 🌐 Persona Execution Context Profiles (`profiles`)
 
-A Persona can operate across different execution contexts depending on the task requirements:
+A Persona defines **who the agent is** (rules, models, tools), while the **Execution Context Profile** defines **where and how the agent executes**.
 
-| Execution Context Profile | Runtime Environment | Best Suited For |
-| :--- | :--- | :--- |
-| **`web`** | Full browser workbench with `deepseek-flow` visual canvas, plugin market, and memory widgets. | Interactive domain exploration, visual workflow design, and human-in-the-loop debugging. |
-| **`headless`** | Autonomous, zero-GUI CLI runner executing one-shot tasks and printing clean results to `stdout`. | CI/CD pipelines, automated cron scripts, and background agent swarms. |
-| **`cli`** | Interactive terminal Text-User-Interface (TUI) with low memory overhead. | Terminal-first developers and remote SSH server environments. |
+Personas can define both **standard built-in profiles** and **custom user-defined profile configurations**:
+
+```mermaid
+flowchart LR
+    PERSONA["📦 Persona Manifest\n(sdmx-expert / persona-creator)"]
+    
+    subgraph Execution_Contexts ["🌐 Supported Execution Contexts (profiles)"]
+        WEB["🌐 web Profile\n(Interactive Web Workbench + deepseek-flow Canvas)"]
+        HEADLESS["⚡ headless Profile\n(Zero-GUI Autonomous Runner for CI/CD & Batch)"]
+        CLI["⌨️ cli Profile\n(Interactive Terminal Text UI)"]
+        SANDBOX["🔒 sandbox Profile\n(User-Defined Isolated Read-Only Execution)"]
+    end
+    
+    PERSONA --> WEB
+    PERSONA --> HEADLESS
+    PERSONA --> CLI
+    PERSONA --> SANDBOX
+```
+
+### 📋 Profile Specifications & Capabilities:
+
+| Profile Type | Runtime Environment | Best Suited For | Key Capabilities |
+| :--- | :--- | :--- | :--- |
+| **`web`** | Full browser workbench on port `3080`. | Interactive domain exploration, visual workflow design, and human-in-the-loop debugging. | • `deepseek-flow` visual canvas<br>• `dshmarket` & MCP marketplace<br>• `dsh-mnemon` memory manager |
+| **`headless`** | Autonomous, zero-GUI CLI runner. | CI/CD automation pipelines, automated cron scripts, and background agent swarms. | • Executes single task to completion<br>• Machine-parsable JSON/stdout<br>• Zero browser/memory overhead |
+| **`cli`** | Interactive terminal Text-User-Interface (TUI). | Terminal-first developers and remote SSH server environments. | • Full interactive multi-turn chat<br>• Terminal streaming tokens<br>• Low resource consumption |
+| **`sandbox`** *(User-Defined)* | Restricted isolated container profile. | Security audits, untrusted code evaluation, and policy enforcement. | • Read-only filesystem boundaries<br>• Network lockdown (no egress)<br>• Scoped non-destructive tools |
 
 ---
+
+### 📝 Defining Profiles in `persona.yaml`:
+
+You can specify execution contexts using either a simple list or a structured dictionary with per-context settings:
+
+#### Option A: Simple Profile List
+```yaml
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web
+  - headless
+  - cli
+```
+
+#### Option B: User-Defined Structured Profile Overrides
+```yaml
+# 🌐 User-Defined Execution Context Profiles with Scoped Configs
+profiles:
+  web:
+    description: "Interactive Web Workbench with visual flow designer"
+    plugins:
+      - deepseek-flow
+      - dsh-mnemon
+      - dshmarket
+  headless:
+    description: "Autonomous batch runner for background data pipelines"
+    timeout: "300s"
+    outputFormat: "json"
+  sandbox:
+    description: "Restricted container isolation without network egress"
+    network: false
+    fsMode: "read-only"
+```
 
 ## 🎯 Multi-Model Task-Routing Matrix
 
