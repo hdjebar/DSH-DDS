@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 🚀 DSH Universal CLI Control Script
+# Provides intuitive commands for managing DeepSeek Harness, Phoenix, and agents.
+
+COMMAND="${1:-help}"
+
+case "$COMMAND" in
+  up|start)
+    echo "🚀 Starting DeepSeek Harness and Phoenix stack..."
+    docker compose up -d
+    echo "👉 Web UI: http://localhost:3080"
+    echo "👉 Phoenix Telemetry: http://localhost:6006"
+    ;;
+
+  down|stop)
+    echo "🛑 Stopping containers..."
+    docker compose down
+    ;;
+
+  restart)
+    echo "🔄 Restarting containers..."
+    docker compose restart
+    ;;
+
+  build)
+    echo "🔨 Rebuilding container images..."
+    docker compose up -d --build
+    ;;
+
+  logs)
+    shift || true
+    docker compose logs -f "$@"
+    ;;
+
+  doctor)
+    echo "🩺 Running DeepSeek Harness Diagnostics..."
+    docker compose exec dsh node /root/.dsh/doctor.mjs
+    ;;
+
+  sync-models)
+    echo "🔄 Running Dynamic Model Synchronizer..."
+    docker compose exec dsh node /root/.dsh/sync_models.mjs
+    ;;
+
+  cli)
+    echo "⌨️ Launching interactive terminal CLI..."
+    docker compose exec -it dsh dsh --profile cli
+    ;;
+
+  run|headless)
+    shift || true
+    if [ $# -eq 0 ]; then
+      echo "❌ Error: Please provide a prompt. Example: ./dsh.sh run 'summarize files'"
+      exit 1
+    fi
+    docker compose exec dsh dsh --profile headless "$@"
+    ;;
+
+  reset)
+    shift || true
+    ./reset.sh "$@"
+    ;;
+
+  status)
+    echo "📊 Container Status:"
+    docker compose ps
+    ;;
+
+  help|--help|-h|*)
+    echo "========================================================"
+    echo "⚡ DeepSeek Harness (DSH) CLI Controller"
+    echo "========================================================"
+    echo "Usage: ./dsh.sh [command] [options]"
+    echo ""
+    echo "Available Commands:"
+    echo "  up / start        Start DSH and Arize Phoenix containers"
+    echo "  down / stop       Stop all containers"
+    echo "  restart           Restart all containers"
+    echo "  build             Rebuild container image with latest plugins"
+    echo "  logs [service]    View real-time logs (e.g. ./dsh.sh logs dsh)"
+    echo "  doctor            Run ecosystem health check & diagnostics"
+    echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
+    echo "  cli               Launch interactive terminal matrix"
+    echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
+    echo "  reset             Safely clear caches & restart stack"
+    echo "  status            Show container health status"
+    echo "========================================================"
+    ;;
+esac

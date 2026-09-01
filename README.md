@@ -18,6 +18,16 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
 * **🧩 9 Pre-Packaged Plugins & 3 MCP Servers**: Pre-baked with Web Search, Context7 Docs, GitHub MCP operations, visual MCP marketplace, and persistent multi-workspace memory.
 
+## 📚 Documentation Suite
+
+For comprehensive deep dives, architectural guides, and troubleshooting:
+
+* 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel pipelines.
+* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
+* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 9 plugins and 3 MCP servers.
+* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
+* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` CLI matrix.
+
 ---
 
 ## 📦 Pre-Packaged Plugins & MCP Servers
