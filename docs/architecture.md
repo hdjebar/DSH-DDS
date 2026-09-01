@@ -14,16 +14,17 @@ flowchart TD
         PROXY["🛡️ Reverse Proxy Gateway (Port 3080)\n0.0.0.0:3080 -> 127.0.0.1:3079"]
         CORE["⚡ DeepSeek Harness Kernel (Port 3079)\n@deepseek-ai/dsh"]
         
-        subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (9 Plugins)"]
-            PLUG_MKT["dshmarket"]
+        subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (15 Plugins)"]
+            PLUG_MKT["dshmarket & dsh-mcp-market"]
             PLUG_SRC["@liustack/modsearch"]
-            PLUG_SIDE["dsh-better-sidebar"]
+            PLUG_SIDE["dsh-better-sidebar & dsh-ui-better-sidebar-skill"]
             PLUG_FIND["dsh-find-plugin"]
-            PLUG_MCP_MKT["dsh-mcp-market"]
             PLUG_MCP_PNL["dsh-mcp-panel"]
             PLUG_CFG["dsh-provider-model-configurator"]
             PLUG_SYNC["dsh-model-sync"]
-            PLUG_MNEM["dsh-mnemon"]
+            PLUG_MNEM["dsh-mnemon & dsh-persona-memory"]
+            PLUG_DISTILL["dsh-run2skill & dsh-session-reader"]
+            PLUG_PROMPT["dsh-prompt-library & dsh-prompt-customizer"]
         end
 
         subgraph MCP_Servers ["🔌 Integrated MCP Servers"]

@@ -16,17 +16,17 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 * **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
 * **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (419+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
-* **🧩 9 Pre-Packaged Plugins & 3 MCP Servers**: Pre-baked with Web Search, Context7 Docs, GitHub MCP operations, visual MCP marketplace, and persistent multi-workspace memory.
+* **🧩 15 Pre-Packaged Plugins & 3 MCP Servers**: Pre-baked with Web Search, Skill Studio, Session-to-Skill Distiller, Prompt Vault, Context7 Docs, GitHub MCP operations, visual MCP marketplace, and persistent multi-workspace memory.
 
 ## 📚 Documentation Suite
 
 For comprehensive deep dives, architectural guides, and troubleshooting:
 
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel pipelines.
-* 🎭 **[AI Agent Personas](docs/personas.md)** — Specialized agent roles (Data Analyst, Security Auditor, DevOps, SDMX).
+* 🎭 **[AI Agent Personas](docs/personas.md)** — Multi-Model Task Matrix, session recording, and automated persona distillation.
 * 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 * ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
-* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 9 plugins and 3 MCP servers.
+* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 15 plugins and 3 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
 * 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` CLI matrix.
 
@@ -34,19 +34,25 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 
 ## 📦 Pre-Packaged Plugins & MCP Servers
 
-### 1. DSH Plugins (9 Pre-Installed)
+### 1. DSH Plugins (15 Pre-Installed)
 
-| Plugin | Service ID | Purpose |
-| :--- | :--- | :--- |
-| **`dshmarket`** | `dsh-market` | Plugin Marketplace & Extensions Hub |
-| **`@liustack/modsearch`** | `modsearch` | Integrated web search provider |
-| **`dsh-better-sidebar`** | `better-sidebar` | VS Code-style sidebar with persistent terminal |
-| **`dsh-find-plugin`** | `find-dsh-plugin` | Workspace file and symbol finder |
-| **`dsh-mcp-market`** | `dsh-mcp-market` | Visual MCP Server Marketplace with 1-click install |
-| **`dsh-mcp-panel`** | `mcp-panel` | Model Context Protocol (MCP) management panel |
-| **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Visual LLM provider and model manager |
-| **`dsh-model-sync`** | `model-sync` | Automated model sync and quota monitor widget |
-| **`dsh-mnemon`** | `mnemon` | Multi-workspace memory persistence & indexing |
+| Plugin | Service ID | Category | Purpose |
+| :--- | :--- | :--- | :--- |
+| **`dshmarket`** | `dsh-market` | Marketplace | Plugin Marketplace & Extensions Hub |
+| **`@liustack/modsearch`** | `modsearch` | Search | Free integrated web search provider |
+| **`dsh-better-sidebar`** | `better-sidebar` | Layout | VS Code-style sidebar with persistent terminal |
+| **`dsh-find-plugin`** | `find-dsh-plugin` | Navigation | Workspace file and symbol finder |
+| **`dsh-mcp-market`** | `dsh-mcp-market` | Marketplace | Visual MCP Server Marketplace with 1-click install |
+| **`dsh-mcp-panel`** | `mcp-panel` | Tools | Model Context Protocol (MCP) management panel |
+| **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Models | Visual LLM provider and model manager |
+| **`dsh-model-sync`** | `model-sync` | Telemetry | Automated model sync and quota monitor widget |
+| **`dsh-mnemon`** | `mnemon` | Memory | Multi-workspace memory persistence & indexing |
+| **`dsh-run2skill`** | `dsh-run2skill` | Distillation | Turns interactive session runs into reviewable native skills |
+| **`@mhw12138/dsh-ui-better-sidebar-skill`** | `dsh-ui-better-sidebar-skill` | Studio | Visual Skill & Persona Studio in the right sidebar |
+| **`dsh-persona-memory`** | `dsh-persona-memory` | Memory | Long-term persona memory (`MEMORY.md` & `USER.md`) |
+| **`@sunjuntao/dsh-prompt-library`** | `dsh-prompt-library` | Workflows | Prompt vault & 1-click text clipper from chat |
+| **`dsh-prompt-customizer`** | `dsh-prompt-customizer` | Workflows | System prompt & tool roster customizer panel |
+| **`dsh-session-reader`** | `dsh-session-reader` | Inspection | Cross-session log and tool call inspector |
 
 ### 2. Pre-Configured MCP Servers
 
