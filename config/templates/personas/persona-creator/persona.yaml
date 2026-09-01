@@ -1,0 +1,54 @@
+name: persona-creator
+title: "AI Persona & Workflow Architect"
+description: "Meta-architect persona specializing in interactive workflow design with deepseek-flow visual canvas, multi-model matrix calibration, and 5-layer persona package generation."
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "Interactive requirement gathering, persona interviewing, and prompt drafting"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Deep workflow dependency analysis, Boolean condition gates, and DAG validation"
+  audit:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "Precision YAML manifest verification and tool signature auditing"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "Rapid session log parsing, repository indexing, and documentation ingestion"
+
+plugins:
+  - "deepseek-flow"
+  - "dsh-mnemon"
+  - "dshmarket"
+  - "dsh-find-plugin"
+
+mcpServers:
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+  context7:
+    command: "npx"
+    args: ["-y", "@upstash/context7-mcp"]
+  github:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-github"]
+
+workflows:
+  design-workflow:
+    modelTier: reasoning
+    command: "Design an interactive visual workflow canvas (WORKFLOW.md and STEP.md) with deepseek-flow."
+  build-persona:
+    modelTier: audit
+    command: "Synthesize and write a complete 5-layer persona package into config/personas/<name>/."
+  benchmark:
+    modelTier: fast
+    command: "Evaluate persona token performance and trace latency via Arize Phoenix."

@@ -14,8 +14,9 @@ flowchart TD
         PROXY["🛡️ Reverse Proxy Gateway (Port 3080)\n0.0.0.0:3080 -> 127.0.0.1:3079"]
         CORE["⚡ DeepSeek Harness Kernel (Port 3079)\n@deepseek-ai/dsh"]
         
-        subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (9 Plugins)"]
+        subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (10 Plugins)"]
             PLUG_SRC["@liustack/modsearch (Web Search)"]
+            PLUG_FLOW["deepseek-flow (Visual Workflow Canvas)"]
             PLUG_MKT["dshmarket (Plugin Market)"]
             PLUG_FIND["dsh-find-plugin (File Finder)"]
             PLUG_MCP_PNL["dsh-mcp-panel & dsh-mcp-market"]

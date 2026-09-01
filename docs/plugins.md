@@ -42,6 +42,10 @@ This repository comes pre-packaged with **9 essential, pure English DSH plugins*
 * **ID**: `dsh-session-reader`
 * **Purpose**: Allows agents and personas to read prior session contents, thinking processes, and tool responses to synthesize workflows.
 
+### 10. `deepseek-flow` (Visual Canvas Workflow Designer)
+* **ID**: `deepseek-flow`
+* **Purpose**: Interactive visual drag-and-drop workflow canvas for Web UI with Boolean condition gates, DAG execution, and bi-directional `WORKFLOW.md` / `STEP.md` synchronization.
+
 ---
 
 ## 🔌 Pre-Configured MCP Servers

@@ -158,7 +158,8 @@ async function checkPlugins() {
     'dsh-mnemon',
     'dsh-mcp-market',
     'dshmarket',
-    'dsh-session-reader'
+    'dsh-session-reader',
+    'deepseek-flow'
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';

@@ -3,6 +3,7 @@
   "private": true,
   "dependencies": {
     "@liustack/modsearch": "^5.10.0",
+    "deepseek-flow": "^0.4.0",
     "dsh-find-plugin": "^0.3.7",
     "dsh-mcp-market": "^0.1.2",
     "dsh-mcp-panel": "^0.6.3",
@@ -25,7 +26,8 @@
         "dsh-mnemon",
         "dsh-model-sync",
         "dsh-mcp-market",
-        "dsh-session-reader"
+        "dsh-session-reader",
+        "deepseek-flow"
       ]
     }
   }
