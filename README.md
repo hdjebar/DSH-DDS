@@ -58,16 +58,33 @@ OPENROUTER_API_KEY=your_openrouter_api_key
 ```
 
 ### 3. Deploy Stack
-You can either run the automated installer or launch directly with Docker Compose:
 
-#### Option A: Turnkey Script
-```bash
-chmod +x install_dsh.sh
-./install_dsh.sh
-docker compose up -d --build
-```
+#### Option A: Turnkey Script (Supports Separating Boot & Target Directories)
 
-#### Option B: Docker Compose
+You can choose where DeepSeek Harness should be installed:
+
+- **Separate Installation Directory** (e.g. `$HOME/dsh` or `/opt/dsh`):
+  ```bash
+  # 1. Set your target installation path
+  export DSH_INSTALL="$HOME/dsh"
+
+  # 2. Run installer from this repository (boot folder)
+  chmod +x install_dsh.sh
+  ./install_dsh.sh
+
+  # 3. Move to your installation folder and boot
+  cd "$DSH_INSTALL"
+  docker compose up -d --build
+  ```
+
+- **In-Place Deployment** (Default — installs in current repository folder):
+  ```bash
+  chmod +x install_dsh.sh
+  ./install_dsh.sh
+  docker compose up -d --build
+  ```
+
+#### Option B: Direct Docker Compose
 ```bash
 docker compose up -d --build
 ```

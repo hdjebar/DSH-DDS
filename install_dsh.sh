@@ -2,26 +2,33 @@
 # Ultimate Single-File DeepSeek Harness Deployment Script (Automated .env Reader)
 set -e
 
-# 1. Smart Path & Variable Injection Layer
-if [ -f ".env" ]; then
-  echo "📝 Found existing local .env file. Injecting variables..."
-  # Export variables from .env safely without breaking strings
+# 1. Target Directory & Path Setup
+export DSH_INSTALL="${DSH_INSTALL:-$(pwd)}"
+echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
+
+mkdir -p "$DSH_INSTALL/config/profiles/web" \
+         "$DSH_INSTALL/workspaces"
+
+# 2. Smart Path & Variable Injection Layer
+if [ -f "$DSH_INSTALL/.env" ]; then
+  echo "📝 Found existing .env file in target folder. Injecting variables..."
+  export $(grep -v '^#' "$DSH_INSTALL/.env" | xargs)
+elif [ -f ".env" ]; then
+  echo "📝 Found existing local .env file. Copying to target and injecting variables..."
+  cp .env "$DSH_INSTALL/.env"
   export $(grep -v '^#' .env | xargs)
 else
-  echo "⚠️  No local .env file found in this folder."
+  echo "⚠️  No .env file found in current directory or target folder."
   echo "👉 Please create a .env file with your GEMINI_API_KEY first."
   exit 1
 fi
 
-# Dynamically bind to current working directory if not pre-set
-export DSH_INSTALL="${DSH_INSTALL:-$(pwd)}"
-echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
+# Copy profile lockfiles if installing to an external directory
+if [ "$DSH_INSTALL" != "$(pwd)" ] && [ -d "config/profiles/web" ]; then
+  cp -r config/profiles/web/* "$DSH_INSTALL/config/profiles/web/" 2>/dev/null || true
+fi
 
-echo "📦 Setting up directory tree structure..."
-mkdir -p "$DSH_INSTALL/config" \
-         "$DSH_INSTALL/workspaces"
-
-# 2. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
+# 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
 cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
 - id: llm-deepseek
   disabled: true
@@ -159,7 +166,12 @@ services:
 EOF
 
 echo "=========================================================="
-echo "✅ Architecture built cleanly inside your current folder!"
+echo "✅ Architecture built cleanly at: $DSH_INSTALL"
 echo "🛠️  Execution Steps:"
-echo "  1. Build & boot up the environment: docker compose up -d --build"
+if [ "$DSH_INSTALL" != "$(pwd)" ]; then
+  echo "  1. Navigate to your installation folder: cd $DSH_INSTALL"
+  echo "  2. Build & boot up the environment: docker compose up -d --build"
+else
+  echo "  1. Build & boot up the environment: docker compose up -d --build"
+fi
 echo "=========================================================="
