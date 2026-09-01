@@ -219,6 +219,19 @@ if (fs.existsSync(file)) {\
   }\
 }'
 
+# Patch entrypoint.sh to automatically synchronize models on container boot
+RUN node -e '\
+const fs = require("fs");\
+const file = "/app/entrypoint.sh";\
+if (fs.existsSync(file)) {\
+  let content = fs.readFileSync(file, "utf8");\
+  if (!content.includes("sync_models.mjs")) {\
+    const syncHook = "# ── 2.8 动态多模型自动同步 ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] 自动同步多提供商模型 (OpenRouter & Google AI Studio) ...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
+    content = content.replace("echo \"[proxy] 启动代理", syncHook + "echo \"[proxy] 启动代理");\
+    fs.writeFileSync(file, content, "utf8");\
+  }\
+}'
+
 # Copy pre-compiled and pre-built plugins
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/

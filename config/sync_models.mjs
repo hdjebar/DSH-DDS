@@ -2,8 +2,8 @@
 
 /**
  * Dynamic Multi-Provider Model Synchronizer
- * Fetches live model catalogs from OpenRouter & Google AI Studio,
- * and synchronizes all 420+ models into DeepSeek Harness and Arize Phoenix.
+ * Automatically runs on container boot to fetch live model catalogs
+ * from OpenRouter & Google AI Studio and synchronize into DeepSeek Harness & Arize Phoenix.
  */
 
 import fs from 'fs';
@@ -12,6 +12,21 @@ import path from 'path';
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const PHOENIX_URL = process.env.PHOENIX_URL || 'http://phoenix:6006';
+
+async function waitForPhoenix(maxRetries = 15) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch(`${PHOENIX_URL}/v1/projects`);
+      if (res.ok) {
+        console.log('✅ Arize Phoenix is ready.');
+        return true;
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  console.log('⚠️ Arize Phoenix not yet responding, proceeding with best-effort sync.');
+  return false;
+}
 
 async function fetchOpenRouterModels() {
   if (!OPENROUTER_API_KEY) {
@@ -68,8 +83,8 @@ async function fetchGoogleModels() {
   }
 }
 
-async function syncToPhoenixGraphQL(openRouterModels) {
-  console.log('🔄 Registering OpenRouter provider in Arize Phoenix...');
+async function syncToPhoenix(openRouterModels) {
+  console.log('🔄 Ensuring OpenRouter custom provider in Arize Phoenix...');
   const ensureProviderQuery = `
     mutation CreateProvider($input: CreateGenerativeModelCustomProviderMutationInput!) {
       createGenerativeModelCustomProvider(input: $input) {
@@ -104,8 +119,10 @@ async function syncToPhoenixGraphQL(openRouterModels) {
 
 async function main() {
   console.log('========================================================');
-  console.log('🚀 Dynamic Multi-Provider Model Synchronization');
+  console.log('🚀 Dynamic Boot-Time Model Synchronization');
   console.log('========================================================');
+
+  await waitForPhoenix();
 
   const [openRouterModels, googleModels] = await Promise.all([
     fetchOpenRouterModels(),
@@ -113,7 +130,7 @@ async function main() {
   ]);
 
   if (openRouterModels.length > 0) {
-    await syncToPhoenixGraphQL(openRouterModels);
+    await syncToPhoenix(openRouterModels);
   }
 
   console.log('========================================================');
@@ -122,6 +139,5 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('Fatal sync error:', err);
-  process.exit(1);
+  console.error('Sync warning:', err.message);
 });
