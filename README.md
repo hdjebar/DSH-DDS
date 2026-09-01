@@ -66,6 +66,8 @@ Edit `.env`:
 DSH_PORT=3080
 GEMINI_API_KEY=your_google_ai_studio_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token
+PHOENIX_API_KEY=your_optional_phoenix_key
 ```
 
 ### 3. Deploy Stack

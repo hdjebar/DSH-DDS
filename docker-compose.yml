@@ -18,6 +18,7 @@ services:
       - GITHUB_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - DSH_TELEMETRY_MODE=FULL
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
+      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
     depends_on:
       - phoenix
     logging:
