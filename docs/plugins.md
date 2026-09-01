@@ -67,6 +67,14 @@ This repository comes pre-packaged with 9 essential DSH plugins and 3 pre-config
 * **ID**: `dsh-session-reader`
 * **Purpose**: Allows agents and personas to read prior session contents, thinking processes, and tool responses to synthesize workflows.
 
+### 16. `@mimateinn/dsh-i18n` (Multi-Language Internationalization)
+* **ID**: `dsh-i18n`
+* **Purpose**: Comprehensive 20-locale internationalization engine providing automatic UI translation and English localization for all workbench components.
+
+### 17. `@huanlin/dsh-plugin-better-locale` (Extended Locale Dictionary Pack)
+* **ID**: `dsh-plugin-better-locale`
+* **Purpose**: Registers 19 bundled locale dictionaries with clean fallback to English for sidebars, tabs, and modals.
+
 ---
 
 ## 🔌 Pre-Configured MCP Servers

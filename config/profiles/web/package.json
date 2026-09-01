@@ -2,8 +2,10 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
+    "@huanlin/dsh-plugin-better-locale": "^0.3.0",
     "@liustack/modsearch": "^5.10.0",
     "@mhw12138/dsh-ui-better-sidebar-skill": "^0.1.4",
+    "@mimateinn/dsh-i18n": "^0.2.1",
     "@pakiknowledge/dsh-client-ui-skin-claude": "^0.2.0",
     "@sunjuntao/dsh-prompt-library": "^0.10.0",
     "dsh-better-sidebar": "^0.17.1",
@@ -38,7 +40,9 @@
         "@sunjuntao/dsh-prompt-library",
         "dsh-run2skill",
         "@mhw12138/dsh-ui-better-sidebar-skill",
-        "dsh-session-reader"
+        "dsh-session-reader",
+        "@mimateinn/dsh-i18n",
+        "@huanlin/dsh-plugin-better-locale"
       ]
     }
   }

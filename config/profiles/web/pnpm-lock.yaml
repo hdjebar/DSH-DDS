@@ -8,12 +8,18 @@ importers:
 
   .:
     dependencies:
+      '@huanlin/dsh-plugin-better-locale':
+        specifier: ^0.3.0
+        version: 0.3.0
       '@liustack/modsearch':
         specifier: ^5.10.0
         version: 5.10.0
       '@mhw12138/dsh-ui-better-sidebar-skill':
         specifier: ^0.1.4
         version: 0.1.4(react@18.3.1)
+      '@mimateinn/dsh-i18n':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@pakiknowledge/dsh-client-ui-skin-claude':
         specifier: ^0.2.0
         version: 0.2.0(react@18.3.1)
@@ -22,7 +28,7 @@ importers:
         version: 0.10.0(react@18.3.1)
       dsh-better-sidebar:
         specifier: ^0.17.1
-        version: 0.17.1(react@18.3.1)
+        version: 0.17.1(@huanlin/dsh-plugin-better-locale@0.3.0)(react@18.3.1)
       dsh-find-plugin:
         specifier: ^0.3.7
         version: 0.3.7
@@ -152,6 +158,21 @@ packages:
   '@deepseek-ai/schemastery@3.18.2':
     resolution: {integrity: sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ==}
 
+  '@huanlin/dsh-plugin-better-locale@0.3.0':
+    resolution: {integrity: sha512-RpZVteQeFyNsPviGSrba/G+gdy/3fBrJdLh2BLgsBGP45EtBH1t6OiWOjawDtMjT9EtYdODiAo5Z83nfpFKTRA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      '@deepseek-ai/dsh-client-locale': ^0.1.2-alpha.1
+      '@deepseek-ai/dsh-invariants': ^0.1.2-alpha.1
+    peerDependenciesMeta:
+      '@deepseek-ai/cordis':
+        optional: true
+      '@deepseek-ai/dsh-client-locale':
+        optional: true
+      '@deepseek-ai/dsh-invariants':
+        optional: true
+
   '@huggingface/jinja@0.2.2':
     resolution: {integrity: sha512-/KPde26khDUIPkTGU82jdtTW9UAuvUTumCAbFs/7giR0SxsvZC4hru51PBvpijH6BVkHcROcvZM/lpy5h1jRRA==}
     engines: {node: '>=18'}
@@ -225,6 +246,13 @@ packages:
     resolution: {integrity: sha512-DYYSUqxuzNAClJNJTPE3f6wKc0FepW/jBpQfwC5h8bkbd+Si8KuCXQ1VLgFGiJPkEM/RTYkvSe5H6Gj5RPG4oQ==}
     peerDependencies:
       react: ^18.2.0
+
+  '@mimateinn/dsh-i18n@0.2.1':
+    resolution: {integrity: sha512-CuiOyl7EsnO18cEoLHKu/1Dkium6dYdqNkZyYXV3/Qv3YOsxkNce8iDh7rT0+4rFcUwNsUO42vlJSyh7yntLJw==}
+    peerDependencies:
+      '@deepseek-ai/dsh-client-locale': '>=0.1.0-rc.6'
+      '@deepseek-ai/dsh-llm': '>=0.1.0-rc.2'
+      cordis: '>=4.0.0-rc.8 <5.0.0'
 
   '@oxc-project/types@0.147.0':
     resolution: {integrity: sha512-IJ3s6ltHLp45S0bh7phkX+gJO7A1Wuz2EaqpAhb8WjqDwbzMiWKHhyyT42tskaWjEYXtHtVCPpnBJVT9+dcRLg==}
@@ -1852,6 +1880,8 @@ snapshots:
       '@deepseek-ai/cosmokit': 1.8.3
       '@standard-schema/spec': 1.1.0
 
+  '@huanlin/dsh-plugin-better-locale@0.3.0': {}
+
   '@huggingface/jinja@0.2.2': {}
 
   '@iconify/types@2.0.0': {}
@@ -1963,6 +1993,8 @@ snapshots:
   '@mhw12138/dsh-ui-better-sidebar-skill@0.1.4(react@18.3.1)':
     dependencies:
       react: 18.3.1
+
+  '@mimateinn/dsh-i18n@0.2.1': {}
 
   '@oxc-project/types@0.147.0': {}
 
@@ -2621,7 +2653,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  dsh-better-sidebar@0.17.1(react@18.3.1):
+  dsh-better-sidebar@0.17.1(@huanlin/dsh-plugin-better-locale@0.3.0)(react@18.3.1):
     dependencies:
       '@codemirror/commands': 6.11.0
       '@codemirror/lang-cpp': 6.0.3
@@ -2654,6 +2686,8 @@ snapshots:
       rxjs: 7.8.2
       schemastery: 3.18.0
       ws: 8.21.3
+    optionalDependencies:
+      '@huanlin/dsh-plugin-better-locale': 0.3.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
