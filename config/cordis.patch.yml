@@ -35,23 +35,17 @@
         displayName: "Google AI Studio (Gemini)"
         api: openai-completions
         baseURL: "https://generativelanguage.googleapis.com/v1beta/openai"
-        compat:
-          supportsStore: false
         models:
-          - id: "gemini-3.7-flash"
-            name: "Google: Gemini 3.7 Flash"
+          - id: "gemini-2.0-flash"
+            name: "Google: Gemini 2.0 Flash"
             contextWindow: 1048576
             maxTokens: 8192
             input: ["text", "image"]
-            compat:
-              supportsStore: false
-          - id: "gemini-3.1-pro"
-            name: "Google: Gemini 3.1 Pro"
+          - id: "gemini-2.5-flash"
+            name: "Google: Gemini 2.5 Flash"
             contextWindow: 1048576
             maxTokens: 8192
             input: ["text", "image"]
-            compat:
-              supportsStore: false
       openrouter:
         apiKeyEnv: OPENROUTER_API_KEY
         displayName: "OpenRouter"
@@ -60,11 +54,22 @@
         models:
           - id: "deepseek/deepseek-chat"
             name: "DeepSeek: DeepSeek V3"
+            contextWindow: 65536
+            maxTokens: 8192
+          - id: "google/gemini-2.5-flash"
+            name: "OpenRouter: Gemini 2.5 Flash"
+            contextWindow: 1048576
+            maxTokens: 8192
           - id: "openai/gpt-4o"
             name: "OpenAI: GPT-4o"
+            contextWindow: 128000
+            maxTokens: 4096
           - id: "anthropic/claude-3.5-sonnet"
             name: "Anthropic: Claude 3.5 Sonnet"
+            contextWindow: 200000
+            maxTokens: 8192
 - id: agent-default-model
   config:
-    provider: gemini
-    model: gemini-3.7-flash
+    provider: openrouter
+    model: deepseek/deepseek-chat
+
