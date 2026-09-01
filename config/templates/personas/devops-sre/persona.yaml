@@ -1,0 +1,20 @@
+name: devops-sre
+title: "DevOps & Site Reliability Engineer"
+description: "Specialized in Docker container lifecycle, health diagnostics, CI/CD automation, and Phoenix observability."
+model:
+  provider: openrouter
+  model: deepseek/deepseek-chat
+  temperature: 0.1
+plugins:
+  - "dsh-mcp-panel"
+  - "dsh-provider-model-configurator"
+mcpServers:
+  github:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-github"]
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+workflows:
+  health-audit: "Using the devops-sre skill, run ./dsh.sh doctor and verify container health, ports, and OTel ingest."
+  inspect-logs: "Using the devops-sre skill, inspect container logs for warnings or network resets."

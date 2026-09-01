@@ -1,177 +1,120 @@
-# 🎭 AI Agent Personas & Profile Specialization
+# 🎭 AI Agent Personas & Full Package Customization
 
-A **Persona** in DeepSeek Harness is a tailored, domain-specific AI worker configured with specialized **domain skills**, **scoped MCP tools**, a **calibrated default model**, and **automated headless recipes**.
+A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **5 specialized layers**:
+1. **Domain Skill (`SKILL.md`)**: Operational guidelines, rules, and output schemas.
+2. **Provider & Calibrated Model (`model`)**: Optimal model routing (e.g. DeepSeek V3, Claude 3.5 Sonnet, Gemini 3.7 Flash) and temperature.
+3. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
+4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
+5. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
 
 ---
 
-## 🧭 Anatomy of a Persona
+## 🧭 Anatomy of a Complete Persona Package
 
 ```mermaid
-flowchart LR
-    subgraph Persona ["🎭 Tailored AI Persona"]
-        SKILL["🧠 Domain Skill\n(config/skills/<name>/SKILL.md)"]
-        TOOLS["🔌 Scoped MCP Tools\n(Database, GitHub, Web Search)"]
-        MODEL["⚙️ Calibrated Model\n(Cost/Speed/Reasoning fit)"]
-        RECIPE["🤖 Headless Recipe\n(./dsh.sh run '...')"]
+flowchart TD
+    subgraph Package ["📦 Persona Package (config/personas/<name>/)"]
+        MANIFEST["📋 persona.yaml\n(Model Routing, Plugins, MCPs, Workflows)"]
+        SKILL["🧠 SKILL.md\n(Domain Guidelines & Output Schemas)"]
+        WORKFLOW["🤖 workflow.sh\n(Automated CLI Recipes)"]
+        MCPS["🔌 Scoped MCP Servers\n(SQLite, GitHub, Web Fetch)"]
+        PLUGS["🧩 Custom Plugins\n(Marketplace, Search, Memory)"]
     end
-    Persona --> TASK["🚀 Specialized Autonomous Execution"]
+
+    MANIFEST --> SKILL
+    MANIFEST --> MCPS
+    MANIFEST --> PLUGS
+    MANIFEST --> WORKFLOW
+    
+    Package --> WEB["🌐 Web Workbench (Port 3080)"]
+    Package --> CLI["⌨️ CLI / Headless Runner"]
+    Package --> PHOENIX["📊 Arize Phoenix Tracing (Port 6006)"]
 ```
 
-A well-designed persona brings together four components:
-1. **Domain Skill (`SKILL.md`)**: Reusable rules, constraints, and examples governing agent behavior.
-2. **Curated Tools & MCP Servers**: Scoped tools relevant to the domain (e.g. SQLite, GitHub, Context7).
-3. **Model Routing**: Selecting the optimal model for the domain (e.g. DeepSeek R1 for logic, Gemini 3.7 Flash for speed/multimodal, DeepSeek V3 for cost-effective coding).
-4. **Automated Headless Recipe**: A repeatable CLI command for recurring background execution.
-
 ---
 
-## 🛠️ Worked Persona Examples
+## 🧰 Persona Package Structure (`config/personas/<name>/`)
 
----
+Every persona is organized as an isolated, self-contained bundle:
 
-### 1. 📊 The "Data Analyst & SDMX Engineer" Persona
+```text
+config/personas/<name>/
+├── persona.yaml       # Master manifest (Model, plugins, MCP tools, workflows)
+├── SKILL.md           # Reusable domain rules and operational constraints
+└── workflow.sh        # Executable bash recipes for recurring tasks
+```
 
-Specialized in querying SQL databases, analyzing statistical datasets (e.g., LUSTAT, Eurostat), and generating executive summaries.
-
-#### Step 1: The Domain Skill (`config/skills/data-analyst/SKILL.md`)
-```markdown
----
+### Example Manifest (`persona.yaml`):
+```yaml
 name: data-analyst
-description: Use when querying, cleaning, or summarizing tabular/SQL data and statistical datasets.
----
-
-# Data Analyst & Statistical Engineer
-
-## Guidelines & Rules
-1. Always run read-only queries (`SELECT`) first; never perform `DROP` or destructive operations.
-2. Summarize result sets over 20 rows into clean markdown tables with key takeaways.
-3. Flag columns with >15% NULL or missing values before aggregating.
-4. For statistical API endpoints (SDMX/LUSTAT/Eurostat), format dimensions cleanly.
-
-## Output Format
-* 📈 **Executive Summary** (2-3 sentences)
-* 📊 **Structured Data Table**
-* 💡 **Key Insights & Anomalies**
-```
-
-#### Step 2: Optimal Model Selection
-* **Model**: `deepseek/deepseek-chat` (DeepSeek V3) or `gemini-3.7-flash` for fast, cost-effective data extraction.
-
-#### Step 3: Headless Execution Recipe
-```bash
-./dsh.sh run "Using the data-analyst skill, analyze sales trends in /workspaces/data.csv and write an executive summary to reports/sales_q3.md"
+title: "Data Analyst & Insights Specialist"
+description: "Specialized in querying SQL databases, analyzing tabular datasets, and computing distribution metrics."
+model:
+  provider: openrouter
+  model: deepseek/deepseek-chat
+  temperature: 0.2
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-mnemon"
+  - "dsh-find-plugin"
+mcpServers:
+  sqlite-db:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/workspaces/data.db"]
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+workflows:
+  summarize-data: "Using the data-analyst skill, analyze /workspaces/data.csv and produce a summary table with distribution stats."
+  audit-schema: "Using the data-analyst skill, inspect table schemas in /workspaces/data.db and report missing indexes."
 ```
 
 ---
 
-### 2. 🛡️ The "Security & Code Review Auditor" Persona
+## 🛠️ Pre-Packaged Starter Personas
 
-Specialized in auditing pull requests, identifying vulnerabilities, and verifying secret sanitization.
+### 1. 📊 `data-analyst` (Data Analyst & Insights Specialist)
+* **Default Model**: `openrouter/deepseek/deepseek-chat`
+* **MCP Tools**: `sqlite-db` (`@modelcontextprotocol/server-sqlite`), `fetch` (`@mzxrai/mcp-webresearch`)
+* **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
+* **Workflows**: Table distribution summaries, database schema audits.
 
-#### Step 1: The Domain Skill (`config/skills/security-auditor/SKILL.md`)
-```markdown
----
-name: security-auditor
-description: Use when conducting security audits, code reviews, and dependency checks.
----
+### 2. 🛡️ `security-auditor` (Security Auditor & AppSec Specialist)
+* **Default Model**: `openrouter/anthropic/claude-3.5-sonnet` (high-accuracy vulnerability reasoning)
+* **MCP Tools**: `github` (`@modelcontextprotocol/server-github`), `fetch`
+* **Plugins**: `dsh-better-sidebar`, `dsh-find-plugin`
+* **Workflows**: Git diff security reviews, hardcoded secret and token leak detection.
 
-# Security Auditor
+### 3. 🌐 `sdmx-expert` (SDMX 2.1 & Statistical Data Specialist)
+* **Default Model**: `openrouter/deepseek/deepseek-chat` or `gemini/gemini-3.7-flash`
+* **MCP Tools**: `fetch`, `context7` (`@upstash/context7-mcp`)
+* **Plugins**: `@liustack/modsearch`, `dsh-model-sync`
+* **Workflows**: LUSTAT (STATEC LU1) and Eurostat (ESTAT) dataflow queries and Python `uv` scripts.
 
-## Guidelines & Rules
-1. Audit for OWASP Top 10 vulnerabilities (Injection, Broken Auth, SSRF, XSS).
-2. Scan for hardcoded secrets, unencrypted tokens, and insecure environment defaults.
-3. Check package manifests (`package.json`, `requirements.txt`) for outdated or high-severity CVEs.
-4. Every finding must include: Severity (Critical/High/Medium/Low), Vulnerable Line, and Remediation Diff.
-```
-
-#### Step 2: Optimal Model Selection
-* **Model**: `anthropic/claude-3.5-sonnet` or `deepseek/deepseek-r1` for rigorous vulnerability reasoning.
-
-#### Step 3: Headless Execution Recipe
-```bash
-./dsh.sh run "Using the security-auditor skill, audit all modified files in git diff HEAD~1 and generate a security report in /workspaces/security_audit.md"
-```
+### 4. 🚀 `devops-sre` (DevOps & Site Reliability Engineer)
+* **Default Model**: `openrouter/deepseek/deepseek-chat`
+* **MCP Tools**: `github`, `fetch`
+* **Plugins**: `dsh-mcp-panel`, `dsh-provider-model-configurator`
+* **Workflows**: `./dsh.sh doctor` ecosystem diagnostics and container log inspection.
 
 ---
 
-### 3. 🚀 The "DevOps & SRE" Persona
+## ⌨️ CLI Persona Management (`./dsh.sh persona`)
 
-Specialized in Docker container lifecycle, health diagnostics, and CI/CD pipelines.
-
-#### Step 1: The Domain Skill (`config/skills/devops-sre/SKILL.md`)
-```markdown
----
-name: devops-sre
-description: Use when managing Docker services, debugging container failures, and optimizing deployments.
----
-
-# DevOps & SRE Engineer
-
-## Guidelines & Rules
-1. Run `./dsh.sh doctor` and inspect container logs before suggesting infrastructure fixes.
-2. Ensure all container changes maintain non-root execution and health checks.
-3. Keep Docker layers minimal and multi-stage builds clean ($< 1\text{ MB}$ writable layer).
-```
-
-#### Step 2: Headless Execution Recipe
-```bash
-./dsh.sh run "Using the devops-sre skill, inspect the current docker compose status and verify all health checks"
-```
+| Command | Action |
+| :--- | :--- |
+| **`./dsh.sh persona list`** | Lists all installed persona packages, their calibrated models, and available starter templates. |
+| **`./dsh.sh persona create <name> --template <template>`** | Scaffolds a complete 3-file persona package and registers the skill for instant DSH discovery. |
+| **`./dsh.sh persona apply <name>`** | Sets the persona's model and settings as the active workspace default. |
+| **`./dsh.sh persona run <name> "<prompt>"`** | Executes a one-shot headless task using the persona's specific model, MCP tools, and skill. |
+| **`./dsh.sh persona workflow <name> [action]`** | Runs a pre-configured automation recipe defined in the persona's `workflow.sh`. |
+| **`./dsh.sh persona show <name>`** | Displays the complete persona manifest and skill instructions. |
 
 ---
 
-## 🧰 Fast Persona Customization & Scaffolding
+## 🌐 Customizing Inside the Web UI (`http://localhost:3080`)
 
-DSH-DDS includes a built-in **Persona Template Scaffolder** that makes creating and customizing personas effortless both via the **CLI** and inside the **Web UI**.
-
----
-
-### Method A: Scaffold via CLI (`./dsh.sh persona`)
-
-You can list available templates and generate a new persona with 1 command:
-
-```bash
-# 1. List active personas and available starter templates
-./dsh.sh persona list
-
-# 2. Create a new persona from a pre-built template
-./dsh.sh persona create my-analyst --template data-analyst
-./dsh.sh persona create my-auditor --template security-auditor
-./dsh.sh persona create stats-bot  --template sdmx-expert
-./dsh.sh persona create custom-bot --template base-template
-
-# 3. View the generated persona
-./dsh.sh persona show my-analyst
-```
-
-#### Available Starter Templates (`config/templates/personas/`):
-* `base-template.md`: Universal boilerplate with standard frontmatter, rules, and output schemas.
-* `data-analyst.md`: SQL, CSV, metric summaries, and data quality checks.
-* `security-auditor.md`: AppSec, OWASP top 10, secret leak verification, and code diffs.
-* `sdmx-expert.md`: SDMX 2.1 dataflows, LUSTAT/STATEC, Eurostat, and Python `uv` extraction.
-
----
-
-### Method B: Customize Inside the Web UI
-
-Because `config/skills/` is mounted to `/root/.dsh/skills/`, every persona you create is **immediately discovered** in the Web UI:
-
-1. **Via Built-in Editor**: Open the Web UI at `http://localhost:3080` $\rightarrow$ Open the File Explorer $\rightarrow$ Edit `config/skills/<name>/SKILL.md` directly.
-2. **Via Conversational Prompts**: You can prompt the agent to create or modify a persona:
-   > 💬 *"Create a new persona named `fastapi-architect` using the persona template format with rules for async SQLAlchemy 2.0 and Pydantic v2. Save it into `config/skills/fastapi-architect/SKILL.md`."*
-
----
-
-## 🔄 Running Personas
-
-### 1. In the Web UI (`http://localhost:3080`)
-* In the chat prompt, select the skill or instruct the agent:  
-  > 💬 *"Using the `data-analyst` skill, summarize the user churn dataset in `/workspaces/churn.csv`."*
-
-### 2. In Headless CLI Mode
-```bash
-./dsh.sh run "Using the sdmx-expert skill, query the latest inflation dataflows from LUSTAT"
-```
-
-### 3. Trace Observability in Phoenix
-Every persona execution automatically logs its reasoning traces, tools, and token metrics to **Arize Phoenix** at `http://localhost:6006`.
+1. **Immediate Discovery**: Because `config/skills/` is mounted to `/root/.dsh/skills/`, every persona you create is immediately available in the chat dropdown.
+2. **Conversational Scaffolding**: Instruct the agent in chat:
+   > 💬 *"Create a new persona named `fastapi-architect` using the persona template format with model `deepseek-chat`, SQLite MCP server, and rules for async SQLAlchemy 2.0. Save it to `config/personas/fastapi-architect/`."*
+3. **Trace Observability**: Every persona action (tool invocations, token costs, model latency) is tracked in real-time on **Arize Phoenix** at `http://localhost:6006`.

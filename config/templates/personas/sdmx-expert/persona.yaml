@@ -1,0 +1,20 @@
+name: sdmx-expert
+title: "SDMX 2.1 & Statistical Data Specialist"
+description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
+model:
+  provider: openrouter
+  model: deepseek/deepseek-chat
+  temperature: 0.1
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-model-sync"
+mcpServers:
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+  context7:
+    command: "npx"
+    args: ["-y", "@upstash/context7-mcp"]
+workflows:
+  dataflow-discovery: "Using the sdmx-expert skill, discover latest available dataflows for inflation and employment in LUSTAT."
+  eurostat-query: "Using the sdmx-expert skill, generate a Python snippet using uv to download Eurostat GDP time series."

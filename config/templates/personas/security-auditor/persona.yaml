@@ -1,0 +1,20 @@
+name: security-auditor
+title: "Security Auditor & AppSec Specialist"
+description: "Specialized in code security reviews, OWASP vulnerability detection, token leak auditing, and dependency scans."
+model:
+  provider: openrouter
+  model: anthropic/claude-3.5-sonnet
+  temperature: 0.1
+plugins:
+  - "dsh-better-sidebar"
+  - "dsh-find-plugin"
+mcpServers:
+  github:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-github"]
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+workflows:
+  audit-diff: "Using the security-auditor skill, audit all modified files in git diff HEAD~1 and report security risks with diff patches."
+  audit-secrets: "Using the security-auditor skill, scan the entire repository for hardcoded API keys, secrets, or insecure defaults."

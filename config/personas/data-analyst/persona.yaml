@@ -1,0 +1,21 @@
+name: data-analyst
+title: "Data Analyst & Insights Specialist"
+description: "Specialized in querying SQL databases, analyzing tabular datasets, and computing distribution metrics."
+model:
+  provider: openrouter
+  model: deepseek/deepseek-chat
+  temperature: 0.2
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-mnemon"
+  - "dsh-find-plugin"
+mcpServers:
+  sqlite-db:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/workspaces/data.db"]
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+workflows:
+  summarize-data: "Using the data-analyst skill, analyze /workspaces/data.csv and produce a summary table with distribution stats."
+  audit-schema: "Using the data-analyst skill, inspect table schemas in /workspaces/data.db and report missing indexes."
