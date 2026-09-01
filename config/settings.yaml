@@ -1,3 +1,5 @@
+locale:
+  preference: en
 ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
@@ -8,32 +10,32 @@ llm-pi-ai:
     openrouter:
       models:
         - id: deepseek/deepseek-chat
-          name: "DeepSeek: DeepSeek V3"
+          name: 'DeepSeek: DeepSeek V3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o
-          name: "OpenAI: GPT-4o"
+          name: 'OpenAI: GPT-4o'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-3.5-sonnet
-          name: "Anthropic: Claude 3.5 Sonnet"
+          name: 'Anthropic: Claude 3.5 Sonnet'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: inception/mercury-2.5-preview
-          name: "Inception: Mercury 2.5 Preview"
+          name: 'Inception: Mercury 2.5 Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ibm-granite/granite-4.2-8b
-          name: "IBM: Granite 4.2 8B"
+          name: 'IBM: Granite 4.2 8B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy4-preview
-          name: "Tencent: Hy4 preview"
+          name: 'Tencent: Hy4 preview'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -43,152 +45,152 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.8-flash
-          name: "Qwen: Qwen3.8 Flash"
+          name: 'Qwen: Qwen3.8 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.3-flash
-          name: "Z.ai: GLM 5.3 Flash"
+          name: 'Z.ai: GLM 5.3 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.3-flash:batch
-          name: "Z.ai: GLM 5.3 Flash (batch)"
+          name: 'Z.ai: GLM 5.3 Flash (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta/muse-spark-1.2-contributor
-          name: "Meta: Muse Spark 1.2 Contributor"
+          name: 'Meta: Muse Spark 1.2 Contributor'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-flash-vision-exp
-          name: "DeepSeek: DeepSeek V4 Flash Vision Exp"
+          name: 'DeepSeek: DeepSeek V4 Flash Vision Exp'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy-mt2-1.8b
-          name: "Tencent: Hy-MT2-1.8B"
+          name: 'Tencent: Hy-MT2-1.8B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy-mt2-30b-a3b
-          name: "Tencent: Hy-MT2-30B-A3B"
+          name: 'Tencent: Hy-MT2-30B-A3B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ~z-ai/glm-latest
-          name: "Z.ai: GLM Latest"
+          name: 'Z.ai: GLM Latest'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy-mt2-7b
-          name: "Tencent: Hy-MT2-7B"
+          name: 'Tencent: Hy-MT2-7B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.3
-          name: "Z.ai: GLM 5.3"
+          name: 'Z.ai: GLM 5.3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.8-27b
-          name: "Qwen: Qwen3.8 27B"
+          name: 'Qwen: Qwen3.8 27B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: dots-studio/dots-3-note-preview:free
-          name: "Dots Studio: Dots3-Note Preview (free)"
+          name: 'Dots Studio: Dots3-Note Preview (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.7-flash
-          name: "Google: Gemini 3.7 Flash"
+          name: 'Google: Gemini 3.7 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.7-flash:batch
-          name: "Google: Gemini 3.7 Flash (batch)"
+          name: 'Google: Gemini 3.7 Flash (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-2-1-turbo
-          name: "ByteDance Seed: Seed 2.1 Turbo"
+          name: 'ByteDance Seed: Seed 2.1 Turbo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.8-2.4t-a95b
-          name: "Qwen: Qwen3.8 2.4T A95B"
+          name: 'Qwen: Qwen3.8 2.4T A95B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.8-2.4t-a95b:batch
-          name: "Qwen: Qwen3.8 2.4T A95B (batch)"
+          name: 'Qwen: Qwen3.8 2.4T A95B (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-2.0-code
-          name: "ByteDance Seed: Seed-2.0-Code"
+          name: 'ByteDance Seed: Seed-2.0-Code'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-pro-0813
-          name: "DeepSeek: DeepSeek V4 Pro 0813"
+          name: 'DeepSeek: DeepSeek V4 Pro 0813'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-pro-0813:batch
-          name: "DeepSeek: DeepSeek V4 Pro 0813 (batch)"
+          name: 'DeepSeek: DeepSeek V4 Pro 0813 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-4.6
-          name: "SpaceXAI: Grok 4.6"
+          name: 'SpaceXAI: Grok 4.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: liquid/lfm-2.5-2.6b:free
-          name: "LiquidAI: LFM2.5-2.6B (free)"
+          name: 'LiquidAI: LFM2.5-2.6B (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3.5-lightning
-          name: "NVIDIA: Nemotron 3.5 Lightning"
+          name: 'NVIDIA: Nemotron 3.5 Lightning'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3.5-lightning:free
-          name: "NVIDIA: Nemotron 3.5 Lightning (free)"
+          name: 'NVIDIA: Nemotron 3.5 Lightning (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: sakana/sakana-namazu
-          name: "Sakana: Sakana Namazu"
+          name: 'Sakana: Sakana Namazu'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: upstage/solar-pro4
-          name: "Upstage: Solar Pro 4"
+          name: 'Upstage: Solar Pro 4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta/muse-glimmer-30b
-          name: "Meta: Muse Glimmer 30B"
+          name: 'Meta: Muse Glimmer 30B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta/muse-glimmer-30b:batch
-          name: "Meta: Muse Glimmer 30B (batch)"
+          name: 'Meta: Muse Glimmer 30B (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta/muse-spark-1.2
-          name: "Meta: Muse Spark 1.2"
+          name: 'Meta: Muse Spark 1.2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.8-max
-          name: "Qwen: Qwen3.8 Max"
+          name: 'Qwen: Qwen3.8 Max'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -198,32 +200,32 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-flash-0731
-          name: "DeepSeek: DeepSeek V4 Flash 0731"
+          name: 'DeepSeek: DeepSeek V4 Flash 0731'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-flash-0731:batch
-          name: "DeepSeek: DeepSeek V4 Flash 0731 (batch)"
+          name: 'DeepSeek: DeepSeek V4 Flash 0731 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling-small
-          name: "Thinking Machines: Inkling Small"
+          name: 'Thinking Machines: Inkling Small'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling-small:batch
-          name: "Thinking Machines: Inkling Small (batch)"
+          name: 'Thinking Machines: Inkling Small (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling-small:free
-          name: "Thinking Machines: Inkling Small (free)"
+          name: 'Thinking Machines: Inkling Small (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.7-flash
-          name: "Qwen: Qwen3.7 Flash"
+          name: 'Qwen: Qwen3.7 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -243,52 +245,52 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: poolside/laguna-s-2.1
-          name: "Poolside: Laguna S 2.1"
+          name: 'Poolside: Laguna S 2.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: poolside/laguna-s-2.1:free
-          name: "Poolside: Laguna S 2.1 (free)"
+          name: 'Poolside: Laguna S 2.1 (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.6-flash
-          name: "Google: Gemini 3.6 Flash"
+          name: 'Google: Gemini 3.6 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.6-flash:batch
-          name: "Google: Gemini 3.6 Flash (batch)"
+          name: 'Google: Gemini 3.6 Flash (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.5-flash-lite
-          name: "Google: Gemini 3.5 Flash Lite"
+          name: 'Google: Gemini 3.5 Flash Lite'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.5-flash-lite:batch
-          name: "Google: Gemini 3.5 Flash Lite (batch)"
+          name: 'Google: Gemini 3.5 Flash Lite (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meituan/longcat-2.0
-          name: "Meituan: LongCat 2.0"
+          name: 'Meituan: LongCat 2.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling
-          name: "Thinking Machines: Inkling"
+          name: 'Thinking Machines: Inkling'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling:batch
-          name: "Thinking Machines: Inkling (batch)"
+          name: 'Thinking Machines: Inkling (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thinkingmachines/inkling:free
-          name: "Thinking Machines: Inkling (free)"
+          name: 'Thinking Machines: Inkling (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -298,317 +300,317 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k3
-          name: "MoonshotAI: Kimi K3"
+          name: 'MoonshotAI: Kimi K3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k3:batch
-          name: "MoonshotAI: Kimi K3 (batch)"
+          name: 'MoonshotAI: Kimi K3 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta/muse-spark-1.1
-          name: "Meta: Muse Spark 1.1"
+          name: 'Meta: Muse Spark 1.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: kwaipilot/kat-coder-pro-v2.5
-          name: "Kwaipilot: KAT-Coder-Pro V2.5"
+          name: 'Kwaipilot: KAT-Coder-Pro V2.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-luna-pro
-          name: "OpenAI: GPT-5.6 Luna Pro"
+          name: 'OpenAI: GPT-5.6 Luna Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-luna-pro:batch
-          name: "OpenAI: GPT-5.6 Luna Pro (batch)"
+          name: 'OpenAI: GPT-5.6 Luna Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-luna
-          name: "OpenAI: GPT-5.6 Luna"
+          name: 'OpenAI: GPT-5.6 Luna'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-luna:batch
-          name: "OpenAI: GPT-5.6 Luna (batch)"
+          name: 'OpenAI: GPT-5.6 Luna (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-terra-pro
-          name: "OpenAI: GPT-5.6 Terra Pro"
+          name: 'OpenAI: GPT-5.6 Terra Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-terra-pro:batch
-          name: "OpenAI: GPT-5.6 Terra Pro (batch)"
+          name: 'OpenAI: GPT-5.6 Terra Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-terra
-          name: "OpenAI: GPT-5.6 Terra"
+          name: 'OpenAI: GPT-5.6 Terra'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-terra:batch
-          name: "OpenAI: GPT-5.6 Terra (batch)"
+          name: 'OpenAI: GPT-5.6 Terra (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-sol-pro
-          name: "OpenAI: GPT-5.6 Sol Pro"
+          name: 'OpenAI: GPT-5.6 Sol Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-sol-pro:batch
-          name: "OpenAI: GPT-5.6 Sol Pro (batch)"
+          name: 'OpenAI: GPT-5.6 Sol Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-sol
-          name: "OpenAI: GPT-5.6 Sol"
+          name: 'OpenAI: GPT-5.6 Sol'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.6-sol:batch
-          name: "OpenAI: GPT-5.6 Sol (batch)"
+          name: 'OpenAI: GPT-5.6 Sol (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-4.5
-          name: "SpaceXAI: Grok 4.5"
+          name: 'SpaceXAI: Grok 4.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ~x-ai/grok-latest
-          name: "xAI: Grok Latest"
+          name: 'xAI: Grok Latest'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: aion-labs/aion-3.0-mini
-          name: "AionLabs: Aion-3.0-Mini"
+          name: 'AionLabs: Aion-3.0-Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: aion-labs/aion-3.0
-          name: "AionLabs: Aion-3.0"
+          name: 'AionLabs: Aion-3.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy3
-          name: "Tencent: Hy3"
+          name: 'Tencent: Hy3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: poolside/laguna-xs-2.1
-          name: "Poolside: Laguna XS 2.1"
+          name: 'Poolside: Laguna XS 2.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: poolside/laguna-xs-2.1:free
-          name: "Poolside: Laguna XS 2.1 (free)"
+          name: 'Poolside: Laguna XS 2.1 (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-5
-          name: "Anthropic: Claude Sonnet 5"
+          name: 'Anthropic: Claude Sonnet 5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-5:batch
-          name: "Anthropic: Claude Sonnet 5 (batch)"
+          name: 'Anthropic: Claude Sonnet 5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-lite-image
-          name: "Google: Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)"
+          name: 'Google: Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nex-agi/nex-n2-mini
-          name: "Nex AGI: Nex-N2-Mini"
+          name: 'Nex AGI: Nex-N2-Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: sakana/fugu-ultra
-          name: "Sakana: Fugu Ultra"
+          name: 'Sakana: Fugu Ultra'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-image
-          name: "Google: Nano Banana 2 (Gemini 3.1 Flash Image)"
+          name: 'Google: Nano Banana 2 (Gemini 3.1 Flash Image)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3-pro-image
-          name: "Google: Nano Banana Pro (Gemini 3 Pro Image)"
+          name: 'Google: Nano Banana Pro (Gemini 3 Pro Image)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: cohere/north-mini-code:free
-          name: "Cohere: North Mini Code (free)"
+          name: 'Cohere: North Mini Code (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.2
-          name: "Z.ai: GLM 5.2"
+          name: 'Z.ai: GLM 5.2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.2:free
-          name: "Z.ai: GLM 5.2 (free)"
+          name: 'Z.ai: GLM 5.2 (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openrouter/fusion
-          name: "OpenRouter: Fusion"
+          name: 'OpenRouter: Fusion'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2.7-code
-          name: "MoonshotAI: Kimi K2.7 Code"
+          name: 'MoonshotAI: Kimi K2.7 Code'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ~anthropic/claude-fable-latest
-          name: "Anthropic: Claude Fable Latest"
+          name: 'Anthropic: Claude Fable Latest'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-fable-5
-          name: "Anthropic: Claude Fable 5"
+          name: 'Anthropic: Claude Fable 5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-fable-5:batch
-          name: "Anthropic: Claude Fable 5 (batch)"
+          name: 'Anthropic: Claude Fable 5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nex-agi/nex-n2-pro
-          name: "Nex AGI: Nex-N2-Pro"
+          name: 'Nex AGI: Nex-N2-Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3.5-content-safety:free
-          name: "NVIDIA: Nemotron 3.5 Content Safety (free)"
+          name: 'NVIDIA: Nemotron 3.5 Content Safety (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-ultra-550b-a55b
-          name: "NVIDIA: Nemotron 3 Ultra"
+          name: 'NVIDIA: Nemotron 3 Ultra'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-ultra-550b-a55b:batch
-          name: "NVIDIA: Nemotron 3 Ultra (batch)"
+          name: 'NVIDIA: Nemotron 3 Ultra (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-ultra-550b-a55b:free
-          name: "NVIDIA: Nemotron 3 Ultra (free)"
+          name: 'NVIDIA: Nemotron 3 Ultra (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.7-plus
-          name: "Qwen: Qwen3.7 Plus"
+          name: 'Qwen: Qwen3.7 Plus'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m3
-          name: "MiniMax: MiniMax M3"
+          name: 'MiniMax: MiniMax M3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m3:batch
-          name: "MiniMax: MiniMax M3 (batch)"
+          name: 'MiniMax: MiniMax M3 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m3:free
-          name: "MiniMax: MiniMax M3 (free)"
+          name: 'MiniMax: MiniMax M3 (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: stepfun/step-3.7-flash
-          name: "StepFun: Step 3.7 Flash"
+          name: 'StepFun: Step 3.7 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.8
-          name: "Anthropic: Claude Opus 4.8"
+          name: 'Anthropic: Claude Opus 4.8'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.8:batch
-          name: "Anthropic: Claude Opus 4.8 (batch)"
+          name: 'Anthropic: Claude Opus 4.8 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.7-max
-          name: "Qwen: Qwen3.7 Max"
+          name: 'Qwen: Qwen3.7 Max'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-build-0.1
-          name: "SpaceXAI: Grok Build 0.1"
+          name: 'SpaceXAI: Grok Build 0.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.5-flash
-          name: "Google: Gemini 3.5 Flash"
+          name: 'Google: Gemini 3.5 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.5-flash:batch
-          name: "Google: Gemini 3.5 Flash (batch)"
+          name: 'Google: Gemini 3.5 Flash (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perceptron/perceptron-mk1
-          name: "Perceptron: Perceptron Mk1"
+          name: 'Perceptron: Perceptron Mk1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-lite
-          name: "Google: Gemini 3.1 Flash Lite"
+          name: 'Google: Gemini 3.1 Flash Lite'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-lite:batch
-          name: "Google: Gemini 3.1 Flash Lite (batch)"
+          name: 'Google: Gemini 3.1 Flash Lite (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-chat-latest
-          name: "OpenAI: GPT Chat Latest"
+          name: 'OpenAI: GPT Chat Latest'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-4.3
-          name: "SpaceXAI: Grok 4.3"
+          name: 'SpaceXAI: Grok 4.3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ibm-granite/granite-4.1-8b
-          name: "IBM: Granite 4.1 8B"
+          name: 'IBM: Granite 4.1 8B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-medium-3-5
-          name: "Mistral: Mistral Medium 3.5"
+          name: 'Mistral: Mistral Medium 3.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-medium-3-5:batch
-          name: "Mistral: Mistral Medium 3.5 (batch)"
+          name: 'Mistral: Mistral Medium 3.5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
-          name: "NVIDIA: Nemotron 3 Nano Omni (free)"
+          name: 'NVIDIA: Nemotron 3 Nano Omni (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -648,82 +650,82 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-plus-20260420
-          name: "Qwen: Qwen3.5 Plus 2026-04-20"
+          name: 'Qwen: Qwen3.5 Plus 2026-04-20'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.6-flash
-          name: "Qwen: Qwen3.6 Flash"
+          name: 'Qwen: Qwen3.6 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.6-35b-a3b
-          name: "Qwen: Qwen3.6 35B A3B"
+          name: 'Qwen: Qwen3.6 35B A3B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.6-max-preview
-          name: "Qwen: Qwen3.6 Max Preview"
+          name: 'Qwen: Qwen3.6 Max Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.6-27b
-          name: "Qwen: Qwen3.6 27B"
+          name: 'Qwen: Qwen3.6 27B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.5-pro
-          name: "OpenAI: GPT-5.5 Pro"
+          name: 'OpenAI: GPT-5.5 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.5-pro:batch
-          name: "OpenAI: GPT-5.5 Pro (batch)"
+          name: 'OpenAI: GPT-5.5 Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.5
-          name: "OpenAI: GPT-5.5"
+          name: 'OpenAI: GPT-5.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.5:batch
-          name: "OpenAI: GPT-5.5 (batch)"
+          name: 'OpenAI: GPT-5.5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-pro
-          name: "DeepSeek: DeepSeek V4 Pro 0423"
+          name: 'DeepSeek: DeepSeek V4 Pro 0423'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v4-flash
-          name: "DeepSeek: DeepSeek V4 Flash 0423"
+          name: 'DeepSeek: DeepSeek V4 Flash 0423'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hy3-preview
-          name: "Tencent: Hy3 preview"
+          name: 'Tencent: Hy3 preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: xiaomi/mimo-v2.5-pro
-          name: "Xiaomi: MiMo-V2.5-Pro"
+          name: 'Xiaomi: MiMo-V2.5-Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: xiaomi/mimo-v2.5
-          name: "Xiaomi: MiMo-V2.5"
+          name: 'Xiaomi: MiMo-V2.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-image-2
-          name: "OpenAI: GPT-5.4 Image 2"
+          name: 'OpenAI: GPT-5.4 Image 2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ~anthropic/claude-opus-latest
-          name: "Anthropic: Claude Opus Latest"
+          name: 'Anthropic: Claude Opus Latest'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -733,87 +735,87 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2.6
-          name: "MoonshotAI: Kimi K2.6"
+          name: 'MoonshotAI: Kimi K2.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.7
-          name: "Anthropic: Claude Opus 4.7"
+          name: 'Anthropic: Claude Opus 4.7'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.7:batch
-          name: "Anthropic: Claude Opus 4.7 (batch)"
+          name: 'Anthropic: Claude Opus 4.7 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5.1
-          name: "Z.ai: GLM 5.1"
+          name: 'Z.ai: GLM 5.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-4-26b-a4b-it
-          name: "Google: Gemma 4 26B A4B "
+          name: 'Google: Gemma 4 26B A4B '
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-4-26b-a4b-it:free
-          name: "Google: Gemma 4 26B A4B  (free)"
+          name: 'Google: Gemma 4 26B A4B  (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-4-31b-it
-          name: "Google: Gemma 4 31B"
+          name: 'Google: Gemma 4 31B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-4-31b-it:batch
-          name: "Google: Gemma 4 31B (batch)"
+          name: 'Google: Gemma 4 31B (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-4-31b-it:free
-          name: "Google: Gemma 4 31B (free)"
+          name: 'Google: Gemma 4 31B (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.6-plus
-          name: "Qwen: Qwen3.6 Plus"
+          name: 'Qwen: Qwen3.6 Plus'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5v-turbo
-          name: "Z.ai: GLM 5V Turbo"
+          name: 'Z.ai: GLM 5V Turbo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: arcee-ai/trinity-large-thinking
-          name: "Arcee AI: Trinity Large Thinking"
+          name: 'Arcee AI: Trinity Large Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-4.20-multi-agent
-          name: "SpaceXAI: Grok 4.20 Multi-Agent"
+          name: 'SpaceXAI: Grok 4.20 Multi-Agent'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: x-ai/grok-4.20
-          name: "SpaceXAI: Grok 4.20"
+          name: 'SpaceXAI: Grok 4.20'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/lyria-3-pro-preview
-          name: "Google: Lyria 3 Pro Preview"
+          name: 'Google: Lyria 3 Pro Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/lyria-3-clip-preview
-          name: "Google: Lyria 3 Clip Preview"
+          name: 'Google: Lyria 3 Clip Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: kwaipilot/kat-coder-pro-v2
-          name: "Kwaipilot: KAT-Coder-Pro V2"
+          name: 'Kwaipilot: KAT-Coder-Pro V2'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -823,202 +825,202 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2.7
-          name: "MiniMax: MiniMax M2.7"
+          name: 'MiniMax: MiniMax M2.7'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2.7:free
-          name: "MiniMax: MiniMax M2.7 (free)"
+          name: 'MiniMax: MiniMax M2.7 (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-nano
-          name: "OpenAI: GPT-5.4 Nano"
+          name: 'OpenAI: GPT-5.4 Nano'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-nano:batch
-          name: "OpenAI: GPT-5.4 Nano (batch)"
+          name: 'OpenAI: GPT-5.4 Nano (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-mini
-          name: "OpenAI: GPT-5.4 Mini"
+          name: 'OpenAI: GPT-5.4 Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-mini:batch
-          name: "OpenAI: GPT-5.4 Mini (batch)"
+          name: 'OpenAI: GPT-5.4 Mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-small-2603
-          name: "Mistral: Mistral Small 4"
+          name: 'Mistral: Mistral Small 4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5-turbo
-          name: "Z.ai: GLM 5 Turbo"
+          name: 'Z.ai: GLM 5 Turbo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-super-120b-a12b
-          name: "NVIDIA: Nemotron 3 Super"
+          name: 'NVIDIA: Nemotron 3 Super'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-super-120b-a12b:free
-          name: "NVIDIA: Nemotron 3 Super (free)"
+          name: 'NVIDIA: Nemotron 3 Super (free)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-2.0-lite
-          name: "ByteDance Seed: Seed-2.0-Lite"
+          name: 'ByteDance Seed: Seed-2.0-Lite'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-9b
-          name: "Qwen: Qwen3.5-9B"
+          name: 'Qwen: Qwen3.5-9B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-9b:batch
-          name: "Qwen: Qwen3.5-9B (batch)"
+          name: 'Qwen: Qwen3.5-9B (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-pro
-          name: "OpenAI: GPT-5.4 Pro"
+          name: 'OpenAI: GPT-5.4 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4-pro:batch
-          name: "OpenAI: GPT-5.4 Pro (batch)"
+          name: 'OpenAI: GPT-5.4 Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4
-          name: "OpenAI: GPT-5.4"
+          name: 'OpenAI: GPT-5.4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.4:batch
-          name: "OpenAI: GPT-5.4 (batch)"
+          name: 'OpenAI: GPT-5.4 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: inception/mercury-2
-          name: "Inception: Mercury 2"
+          name: 'Inception: Mercury 2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-lite-preview
-          name: "Google: Gemini 3.1 Flash Lite Preview"
+          name: 'Google: Gemini 3.1 Flash Lite Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-2.0-mini
-          name: "ByteDance Seed: Seed-2.0-Mini"
+          name: 'ByteDance Seed: Seed-2.0-Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-flash-image-preview
-          name: "Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)"
+          name: 'Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-35b-a3b
-          name: "Qwen: Qwen3.5-35B-A3B"
+          name: 'Qwen: Qwen3.5-35B-A3B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-27b
-          name: "Qwen: Qwen3.5-27B"
+          name: 'Qwen: Qwen3.5-27B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-122b-a10b
-          name: "Qwen: Qwen3.5-122B-A10B"
+          name: 'Qwen: Qwen3.5-122B-A10B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-flash-02-23
-          name: "Qwen: Qwen3.5-Flash"
+          name: 'Qwen: Qwen3.5-Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-pro-preview-customtools
-          name: "Google: Gemini 3.1 Pro Preview Custom Tools"
+          name: 'Google: Gemini 3.1 Pro Preview Custom Tools'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.3-codex
-          name: "OpenAI: GPT-5.3-Codex"
+          name: 'OpenAI: GPT-5.3-Codex'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: aion-labs/aion-2.0
-          name: "AionLabs: Aion-2.0"
+          name: 'AionLabs: Aion-2.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-pro-preview
-          name: "Google: Gemini 3.1 Pro Preview"
+          name: 'Google: Gemini 3.1 Pro Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3.1-pro-preview:batch
-          name: "Google: Gemini 3.1 Pro Preview (batch)"
+          name: 'Google: Gemini 3.1 Pro Preview (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-4.6
-          name: "Anthropic: Claude Sonnet 4.6"
+          name: 'Anthropic: Claude Sonnet 4.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-4.6:batch
-          name: "Anthropic: Claude Sonnet 4.6 (batch)"
+          name: 'Anthropic: Claude Sonnet 4.6 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-plus-02-15
-          name: "Qwen: Qwen3.5 Plus 2026-02-15"
+          name: 'Qwen: Qwen3.5 Plus 2026-02-15'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3.5-397b-a17b
-          name: "Qwen: Qwen3.5 397B A17B"
+          name: 'Qwen: Qwen3.5 397B A17B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2.5
-          name: "MiniMax: MiniMax M2.5"
+          name: 'MiniMax: MiniMax M2.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-5
-          name: "Z.ai: GLM 5"
+          name: 'Z.ai: GLM 5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-max-thinking
-          name: "Qwen: Qwen3 Max Thinking"
+          name: 'Qwen: Qwen3 Max Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.6
-          name: "Anthropic: Claude Opus 4.6"
+          name: 'Anthropic: Claude Opus 4.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.6:batch
-          name: "Anthropic: Claude Opus 4.6 (batch)"
+          name: 'Anthropic: Claude Opus 4.6 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-coder-next
-          name: "Qwen: Qwen3 Coder Next"
+          name: 'Qwen: Qwen3 Coder Next'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1028,122 +1030,122 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: stepfun/step-3.5-flash
-          name: "StepFun: Step 3.5 Flash"
+          name: 'StepFun: Step 3.5 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2.5
-          name: "MoonshotAI: Kimi K2.5"
+          name: 'MoonshotAI: Kimi K2.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: upstage/solar-pro-3
-          name: "Upstage: Solar Pro 3"
+          name: 'Upstage: Solar Pro 3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2-her
-          name: "MiniMax: MiniMax M2-her"
+          name: 'MiniMax: MiniMax M2-her'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: writer/palmyra-x5
-          name: "Writer: Palmyra X5"
+          name: 'Writer: Palmyra X5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-audio
-          name: "OpenAI: GPT Audio"
+          name: 'OpenAI: GPT Audio'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-audio-mini
-          name: "OpenAI: GPT Audio Mini"
+          name: 'OpenAI: GPT Audio Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.7-flash
-          name: "Z.ai: GLM 4.7 Flash"
+          name: 'Z.ai: GLM 4.7 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2-codex
-          name: "OpenAI: GPT-5.2-Codex"
+          name: 'OpenAI: GPT-5.2-Codex'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-1.6-flash
-          name: "ByteDance Seed: Seed 1.6 Flash"
+          name: 'ByteDance Seed: Seed 1.6 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance-seed/seed-1.6
-          name: "ByteDance Seed: Seed 1.6"
+          name: 'ByteDance Seed: Seed 1.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2.1
-          name: "MiniMax: MiniMax M2.1"
+          name: 'MiniMax: MiniMax M2.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.7
-          name: "Z.ai: GLM 4.7"
+          name: 'Z.ai: GLM 4.7'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3-flash-preview
-          name: "Google: Gemini 3 Flash Preview"
+          name: 'Google: Gemini 3 Flash Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3-flash-preview:batch
-          name: "Google: Gemini 3 Flash Preview (batch)"
+          name: 'Google: Gemini 3 Flash Preview (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nvidia/nemotron-3-nano-30b-a3b
-          name: "NVIDIA: Nemotron 3 Nano 30B A3B"
+          name: 'NVIDIA: Nemotron 3 Nano 30B A3B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2-chat
-          name: "OpenAI: GPT-5.2 Chat"
+          name: 'OpenAI: GPT-5.2 Chat'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2-pro
-          name: "OpenAI: GPT-5.2 Pro"
+          name: 'OpenAI: GPT-5.2 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2-pro:batch
-          name: "OpenAI: GPT-5.2 Pro (batch)"
+          name: 'OpenAI: GPT-5.2 Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2
-          name: "OpenAI: GPT-5.2"
+          name: 'OpenAI: GPT-5.2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.2:batch
-          name: "OpenAI: GPT-5.2 (batch)"
+          name: 'OpenAI: GPT-5.2 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/devstral-2512
-          name: "Mistral: Devstral 2 2512"
+          name: 'Mistral: Devstral 2 2512'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: relace/relace-search
-          name: "Relace: Relace Search"
+          name: 'Relace: Relace Search'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.6v
-          name: "Z.ai: GLM 4.6V"
+          name: 'Z.ai: GLM 4.6V'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1153,612 +1155,612 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.1-codex-max
-          name: "OpenAI: GPT-5.1-Codex-Max"
+          name: 'OpenAI: GPT-5.1-Codex-Max'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: amazon/nova-2-lite-v1
-          name: "Amazon: Nova 2 Lite"
+          name: 'Amazon: Nova 2 Lite'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/ministral-14b-2512
-          name: "Mistral: Ministral 3 14B 2512"
+          name: 'Mistral: Ministral 3 14B 2512'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/ministral-8b-2512
-          name: "Mistral: Ministral 3 8B 2512"
+          name: 'Mistral: Ministral 3 8B 2512'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/ministral-3b-2512
-          name: "Mistral: Ministral 3 3B 2512"
+          name: 'Mistral: Ministral 3 3B 2512'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-large-2512
-          name: "Mistral: Mistral Large 3 2512"
+          name: 'Mistral: Mistral Large 3 2512'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v3.2
-          name: "DeepSeek: DeepSeek V3.2"
+          name: 'DeepSeek: DeepSeek V3.2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.5
-          name: "Anthropic: Claude Opus 4.5"
+          name: 'Anthropic: Claude Opus 4.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.5:batch
-          name: "Anthropic: Claude Opus 4.5 (batch)"
+          name: 'Anthropic: Claude Opus 4.5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-3-pro-image-preview
-          name: "Google: Nano Banana Pro (Gemini 3 Pro Image Preview)"
+          name: 'Google: Nano Banana Pro (Gemini 3 Pro Image Preview)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.1
-          name: "OpenAI: GPT-5.1"
+          name: 'OpenAI: GPT-5.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.1:batch
-          name: "OpenAI: GPT-5.1 (batch)"
+          name: 'OpenAI: GPT-5.1 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.1-codex
-          name: "OpenAI: GPT-5.1-Codex"
+          name: 'OpenAI: GPT-5.1-Codex'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5.1-codex-mini
-          name: "OpenAI: GPT-5.1-Codex-Mini"
+          name: 'OpenAI: GPT-5.1-Codex-Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2-thinking
-          name: "MoonshotAI: Kimi K2 Thinking"
+          name: 'MoonshotAI: Kimi K2 Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: amazon/nova-premier-v1
-          name: "Amazon: Nova Premier 1.0"
+          name: 'Amazon: Nova Premier 1.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perplexity/sonar-pro-search
-          name: "Perplexity: Sonar Pro Search"
+          name: 'Perplexity: Sonar Pro Search'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/voxtral-small-24b-2507
-          name: "Mistral: Voxtral Small 24B 2507"
+          name: 'Mistral: Voxtral Small 24B 2507'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-oss-safeguard-20b
-          name: "OpenAI: gpt-oss-safeguard-20b"
+          name: 'OpenAI: gpt-oss-safeguard-20b'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m2
-          name: "MiniMax: MiniMax M2"
+          name: 'MiniMax: MiniMax M2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-32b-instruct
-          name: "Qwen: Qwen3 VL 32B Instruct"
+          name: 'Qwen: Qwen3 VL 32B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: ibm-granite/granite-4.0-h-micro
-          name: "IBM: Granite 4.0 Micro"
+          name: 'IBM: Granite 4.0 Micro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-image-mini
-          name: "OpenAI: GPT-5 Image Mini"
+          name: 'OpenAI: GPT-5 Image Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-haiku-4.5
-          name: "Anthropic: Claude Haiku 4.5"
+          name: 'Anthropic: Claude Haiku 4.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-haiku-4.5:batch
-          name: "Anthropic: Claude Haiku 4.5 (batch)"
+          name: 'Anthropic: Claude Haiku 4.5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-8b-thinking
-          name: "Qwen: Qwen3 VL 8B Thinking"
+          name: 'Qwen: Qwen3 VL 8B Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-8b-instruct
-          name: "Qwen: Qwen3 VL 8B Instruct"
+          name: 'Qwen: Qwen3 VL 8B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-image
-          name: "OpenAI: GPT-5 Image"
+          name: 'OpenAI: GPT-5 Image'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-flash-image
-          name: "Google: Nano Banana (Gemini 2.5 Flash Image)"
+          name: 'Google: Nano Banana (Gemini 2.5 Flash Image)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-30b-a3b-thinking
-          name: "Qwen: Qwen3 VL 30B A3B Thinking"
+          name: 'Qwen: Qwen3 VL 30B A3B Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-30b-a3b-instruct
-          name: "Qwen: Qwen3 VL 30B A3B Instruct"
+          name: 'Qwen: Qwen3 VL 30B A3B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-pro
-          name: "OpenAI: GPT-5 Pro"
+          name: 'OpenAI: GPT-5 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-pro:batch
-          name: "OpenAI: GPT-5 Pro (batch)"
+          name: 'OpenAI: GPT-5 Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.6
-          name: "Z.ai: GLM 4.6"
+          name: 'Z.ai: GLM 4.6'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-4.5
-          name: "Anthropic: Claude Sonnet 4.5"
+          name: 'Anthropic: Claude Sonnet 4.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-4.5:batch
-          name: "Anthropic: Claude Sonnet 4.5 (batch)"
+          name: 'Anthropic: Claude Sonnet 4.5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v3.2-exp
-          name: "DeepSeek: DeepSeek V3.2 Exp"
+          name: 'DeepSeek: DeepSeek V3.2 Exp'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thedrummer/cydonia-24b-v4.1
-          name: "TheDrummer: Cydonia 24B V4.1"
+          name: 'TheDrummer: Cydonia 24B V4.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: relace/relace-apply-3
-          name: "Relace: Relace Apply 3"
+          name: 'Relace: Relace Apply 3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-235b-a22b-thinking
-          name: "Qwen: Qwen3 VL 235B A22B Thinking"
+          name: 'Qwen: Qwen3 VL 235B A22B Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-vl-235b-a22b-instruct
-          name: "Qwen: Qwen3 VL 235B A22B Instruct"
+          name: 'Qwen: Qwen3 VL 235B A22B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-max
-          name: "Qwen: Qwen3 Max"
+          name: 'Qwen: Qwen3 Max'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-coder-plus
-          name: "Qwen: Qwen3 Coder Plus"
+          name: 'Qwen: Qwen3 Coder Plus'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-v3.1-terminus
-          name: "DeepSeek: DeepSeek V3.1 Terminus"
+          name: 'DeepSeek: DeepSeek V3.1 Terminus'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-coder-flash
-          name: "Qwen: Qwen3 Coder Flash"
+          name: 'Qwen: Qwen3 Coder Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-next-80b-a3b-thinking
-          name: "Qwen: Qwen3 Next 80B A3B Thinking"
+          name: 'Qwen: Qwen3 Next 80B A3B Thinking'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-next-80b-a3b-instruct
-          name: "Qwen: Qwen3 Next 80B A3B Instruct"
+          name: 'Qwen: Qwen3 Next 80B A3B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen-plus-2025-07-28
-          name: "Qwen: Qwen Plus 0728"
+          name: 'Qwen: Qwen Plus 0728'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2-0905
-          name: "MoonshotAI: Kimi K2 0905"
+          name: 'MoonshotAI: Kimi K2 0905'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-30b-a3b-thinking-2507
-          name: "Qwen: Qwen3 30B A3B Thinking 2507"
+          name: 'Qwen: Qwen3 30B A3B Thinking 2507'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nousresearch/hermes-4-70b
-          name: "Nous: Hermes 4 70B"
+          name: 'Nous: Hermes 4 70B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nousresearch/hermes-4-405b
-          name: "Nous: Hermes 4 405B"
+          name: 'Nous: Hermes 4 405B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-chat-v3.1
-          name: "DeepSeek: DeepSeek V3.1"
+          name: 'DeepSeek: DeepSeek V3.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-medium-3.1
-          name: "Mistral: Mistral Medium 3.1"
+          name: 'Mistral: Mistral Medium 3.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.5v
-          name: "Z.ai: GLM 4.5V"
+          name: 'Z.ai: GLM 4.5V'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5
-          name: "OpenAI: GPT-5"
+          name: 'OpenAI: GPT-5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5:batch
-          name: "OpenAI: GPT-5 (batch)"
+          name: 'OpenAI: GPT-5 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-mini
-          name: "OpenAI: GPT-5 Mini"
+          name: 'OpenAI: GPT-5 Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-mini:batch
-          name: "OpenAI: GPT-5 Mini (batch)"
+          name: 'OpenAI: GPT-5 Mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-nano
-          name: "OpenAI: GPT-5 Nano"
+          name: 'OpenAI: GPT-5 Nano'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-5-nano:batch
-          name: "OpenAI: GPT-5 Nano (batch)"
+          name: 'OpenAI: GPT-5 Nano (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-oss-120b
-          name: "OpenAI: gpt-oss-120b"
+          name: 'OpenAI: gpt-oss-120b'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-oss-120b:batch
-          name: "OpenAI: gpt-oss-120b (batch)"
+          name: 'OpenAI: gpt-oss-120b (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-oss-20b
-          name: "OpenAI: gpt-oss-20b"
+          name: 'OpenAI: gpt-oss-20b'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-oss-20b:batch
-          name: "OpenAI: gpt-oss-20b (batch)"
+          name: 'OpenAI: gpt-oss-20b (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.1
-          name: "Anthropic: Claude Opus 4.1"
+          name: 'Anthropic: Claude Opus 4.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4.1:batch
-          name: "Anthropic: Claude Opus 4.1 (batch)"
+          name: 'Anthropic: Claude Opus 4.1 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/codestral-2508
-          name: "Mistral: Codestral 2508"
+          name: 'Mistral: Codestral 2508'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-coder-30b-a3b-instruct
-          name: "Qwen: Qwen3 Coder 30B A3B Instruct"
+          name: 'Qwen: Qwen3 Coder 30B A3B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-30b-a3b-instruct-2507
-          name: "Qwen: Qwen3 30B A3B Instruct 2507"
+          name: 'Qwen: Qwen3 30B A3B Instruct 2507'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.5
-          name: "Z.ai: GLM 4.5"
+          name: 'Z.ai: GLM 4.5'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: z-ai/glm-4.5-air
-          name: "Z.ai: GLM 4.5 Air"
+          name: 'Z.ai: GLM 4.5 Air'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-235b-a22b-thinking-2507
-          name: "Qwen: Qwen3 235B A22B Thinking 2507"
+          name: 'Qwen: Qwen3 235B A22B Thinking 2507'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-coder
-          name: "Qwen: Qwen3 Coder 480B A35B"
+          name: 'Qwen: Qwen3 Coder 480B A35B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: bytedance/ui-tars-1.5-7b
-          name: "ByteDance: UI-TARS 7B "
+          name: 'ByteDance: UI-TARS 7B '
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-flash-lite
-          name: "Google: Gemini 2.5 Flash Lite"
+          name: 'Google: Gemini 2.5 Flash Lite'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-flash-lite:batch
-          name: "Google: Gemini 2.5 Flash Lite (batch)"
+          name: 'Google: Gemini 2.5 Flash Lite (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-235b-a22b-2507
-          name: "Qwen: Qwen3 235B A22B Instruct 2507"
+          name: 'Qwen: Qwen3 235B A22B Instruct 2507'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: moonshotai/kimi-k2
-          name: "MoonshotAI: Kimi K2 0711"
+          name: 'MoonshotAI: Kimi K2 0711'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: cognitivecomputations/dolphin-mistral-24b-venice-edition
-          name: "Venice: Uncensored"
+          name: 'Venice: Uncensored'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: tencent/hunyuan-a13b-instruct
-          name: "Tencent: Hunyuan A13B Instruct"
+          name: 'Tencent: Hunyuan A13B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: morph/morph-v3-large
-          name: "Morph: Morph V3 Large"
+          name: 'Morph: Morph V3 Large'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: morph/morph-v3-fast
-          name: "Morph: Morph V3 Fast"
+          name: 'Morph: Morph V3 Fast'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: baidu/ernie-4.5-vl-424b-a47b
-          name: "Baidu: ERNIE 4.5 VL 424B A47B "
+          name: 'Baidu: ERNIE 4.5 VL 424B A47B '
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-small-3.2-24b-instruct
-          name: "Mistral: Mistral Small 3.2 24B"
+          name: 'Mistral: Mistral Small 3.2 24B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-m1
-          name: "MiniMax: MiniMax M1"
+          name: 'MiniMax: MiniMax M1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-flash
-          name: "Google: Gemini 2.5 Flash"
+          name: 'Google: Gemini 2.5 Flash'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-flash:batch
-          name: "Google: Gemini 2.5 Flash (batch)"
+          name: 'Google: Gemini 2.5 Flash (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-pro
-          name: "Google: Gemini 2.5 Pro"
+          name: 'Google: Gemini 2.5 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-pro:batch
-          name: "Google: Gemini 2.5 Pro (batch)"
+          name: 'Google: Gemini 2.5 Pro (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3-pro
-          name: "OpenAI: o3 Pro"
+          name: 'OpenAI: o3 Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-pro-preview
-          name: "Google: Gemini 2.5 Pro Preview 06-05"
+          name: 'Google: Gemini 2.5 Pro Preview 06-05'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-r1-0528
-          name: "DeepSeek: R1 0528"
+          name: 'DeepSeek: R1 0528'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-opus-4
-          name: "Anthropic: Claude Opus 4"
+          name: 'Anthropic: Claude Opus 4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-sonnet-4
-          name: "Anthropic: Claude Sonnet 4"
+          name: 'Anthropic: Claude Sonnet 4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-medium-3
-          name: "Mistral: Mistral Medium 3"
+          name: 'Mistral: Mistral Medium 3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemini-2.5-pro-preview-05-06
-          name: "Google: Gemini 2.5 Pro Preview 05-06"
+          name: 'Google: Gemini 2.5 Pro Preview 05-06'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-guard-4-12b
-          name: "Meta: Llama Guard 4 12B"
+          name: 'Meta: Llama Guard 4 12B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-30b-a3b
-          name: "Qwen: Qwen3 30B A3B"
+          name: 'Qwen: Qwen3 30B A3B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-8b
-          name: "Qwen: Qwen3 8B"
+          name: 'Qwen: Qwen3 8B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-14b
-          name: "Qwen: Qwen3 14B"
+          name: 'Qwen: Qwen3 14B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-32b
-          name: "Qwen: Qwen3 32B"
+          name: 'Qwen: Qwen3 32B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen3-235b-a22b
-          name: "Qwen: Qwen3 235B A22B"
+          name: 'Qwen: Qwen3 235B A22B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o4-mini-high
-          name: "OpenAI: o4 Mini High"
+          name: 'OpenAI: o4 Mini High'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3
-          name: "OpenAI: o3"
+          name: 'OpenAI: o3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3:batch
-          name: "OpenAI: o3 (batch)"
+          name: 'OpenAI: o3 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o4-mini
-          name: "OpenAI: o4 Mini"
+          name: 'OpenAI: o4 Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o4-mini:batch
-          name: "OpenAI: o4 Mini (batch)"
+          name: 'OpenAI: o4 Mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1
-          name: "OpenAI: GPT-4.1"
+          name: 'OpenAI: GPT-4.1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1:batch
-          name: "OpenAI: GPT-4.1 (batch)"
+          name: 'OpenAI: GPT-4.1 (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1-mini
-          name: "OpenAI: GPT-4.1 Mini"
+          name: 'OpenAI: GPT-4.1 Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1-mini:batch
-          name: "OpenAI: GPT-4.1 Mini (batch)"
+          name: 'OpenAI: GPT-4.1 Mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1-nano
-          name: "OpenAI: GPT-4.1 Nano"
+          name: 'OpenAI: GPT-4.1 Nano'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4.1-nano:batch
-          name: "OpenAI: GPT-4.1 Nano (batch)"
+          name: 'OpenAI: GPT-4.1 Nano (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-4-maverick
-          name: "Meta: Llama 4 Maverick"
+          name: 'Meta: Llama 4 Maverick'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-4-scout
-          name: "Meta: Llama 4 Scout"
+          name: 'Meta: Llama 4 Scout'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-chat-v3-0324
-          name: "DeepSeek: DeepSeek V3 0324"
+          name: 'DeepSeek: DeepSeek V3 0324'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o1-pro
-          name: "OpenAI: o1-pro"
+          name: 'OpenAI: o1-pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-small-3.1-24b-instruct
-          name: "Mistral: Mistral Small 3.1 24B"
+          name: 'Mistral: Mistral Small 3.1 24B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-3-4b-it
-          name: "Google: Gemma 3 4B"
+          name: 'Google: Gemma 3 4B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-3-12b-it
-          name: "Google: Gemma 3 12B"
+          name: 'Google: Gemma 3 12B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: cohere/command-a
-          name: "Cohere: Command A"
+          name: 'Cohere: Command A'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1768,132 +1770,132 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-3-27b-it
-          name: "Google: Gemma 3 27B"
+          name: 'Google: Gemma 3 27B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: thedrummer/skyfall-36b-v2
-          name: "TheDrummer: Skyfall 36B V2"
+          name: 'TheDrummer: Skyfall 36B V2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perplexity/sonar-reasoning-pro
-          name: "Perplexity: Sonar Reasoning Pro"
+          name: 'Perplexity: Sonar Reasoning Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perplexity/sonar-pro
-          name: "Perplexity: Sonar Pro"
+          name: 'Perplexity: Sonar Pro'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perplexity/sonar-deep-research
-          name: "Perplexity: Sonar Deep Research"
+          name: 'Perplexity: Sonar Deep Research'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-saba
-          name: "Mistral: Saba"
+          name: 'Mistral: Saba'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3-mini-high
-          name: "OpenAI: o3 Mini High"
+          name: 'OpenAI: o3 Mini High'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: aion-labs/aion-rp-llama-3.1-8b
-          name: "AionLabs: Aion-RP 1.0 (8B)"
+          name: 'AionLabs: Aion-RP 1.0 (8B)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen2.5-vl-72b-instruct
-          name: "Qwen: Qwen2.5 VL 72B Instruct"
+          name: 'Qwen: Qwen2.5 VL 72B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen-plus
-          name: "Qwen: Qwen-Plus"
+          name: 'Qwen: Qwen-Plus'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3-mini
-          name: "OpenAI: o3 Mini"
+          name: 'OpenAI: o3 Mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o3-mini:batch
-          name: "OpenAI: o3 Mini (batch)"
+          name: 'OpenAI: o3 Mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-small-24b-instruct-2501
-          name: "Mistral: Mistral Small 3"
+          name: 'Mistral: Mistral Small 3'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: perplexity/sonar
-          name: "Perplexity: Sonar"
+          name: 'Perplexity: Sonar'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-r1-distill-llama-70b
-          name: "DeepSeek: R1 Distill Llama 70B"
+          name: 'DeepSeek: R1 Distill Llama 70B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: deepseek/deepseek-r1
-          name: "DeepSeek: R1"
+          name: 'DeepSeek: R1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: minimax/minimax-01
-          name: "MiniMax: MiniMax-01"
+          name: 'MiniMax: MiniMax-01'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: microsoft/phi-4
-          name: "Microsoft: Phi 4"
+          name: 'Microsoft: Phi 4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: sao10k/l3.3-euryale-70b
-          name: "Sao10K: Llama 3.3 Euryale 70B"
+          name: 'Sao10K: Llama 3.3 Euryale 70B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/o1
-          name: "OpenAI: o1"
+          name: 'OpenAI: o1'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: cohere/command-r7b-12-2024
-          name: "Cohere: Command R7B (12-2024)"
+          name: 'Cohere: Command R7B (12-2024)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-3.3-70b-instruct
-          name: "Meta: Llama 3.3 70B Instruct"
+          name: 'Meta: Llama 3.3 70B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: amazon/nova-lite-v1
-          name: "Amazon: Nova Lite 1.0"
+          name: 'Amazon: Nova Lite 1.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: amazon/nova-micro-v1
-          name: "Amazon: Nova Micro 1.0"
+          name: 'Amazon: Nova Micro 1.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: amazon/nova-pro-v1
-          name: "Amazon: Nova Pro 1.0"
+          name: 'Amazon: Nova Pro 1.0'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-2024-11-20
-          name: "OpenAI: GPT-4o (2024-11-20)"
+          name: 'OpenAI: GPT-4o (2024-11-20)'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1908,7 +1910,7 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: thedrummer/unslopnemo-12b
-          name: "TheDrummer: UnslopNemo 12B"
+          name: 'TheDrummer: UnslopNemo 12B'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1918,17 +1920,17 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: qwen/qwen-2.5-7b-instruct
-          name: "Qwen: Qwen2.5 7B Instruct"
+          name: 'Qwen: Qwen2.5 7B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-3.2-1b-instruct
-          name: "Meta: Llama 3.2 1B Instruct"
+          name: 'Meta: Llama 3.2 1B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-3.2-3b-instruct
-          name: "Meta: Llama 3.2 3B Instruct"
+          name: 'Meta: Llama 3.2 3B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -1938,87 +1940,87 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: cohere/command-r-08-2024
-          name: "Cohere: Command R (08-2024)"
+          name: 'Cohere: Command R (08-2024)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: cohere/command-r-plus-08-2024
-          name: "Cohere: Command R+ (08-2024)"
+          name: 'Cohere: Command R+ (08-2024)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: sao10k/l3.1-euryale-70b
-          name: "Sao10K: Llama 3.1 Euryale 70B v2.2"
+          name: 'Sao10K: Llama 3.1 Euryale 70B v2.2'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nousresearch/hermes-3-llama-3.1-70b
-          name: "Nous: Hermes 3 70B Instruct"
+          name: 'Nous: Hermes 3 70B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: nousresearch/hermes-3-llama-3.1-405b
-          name: "Nous: Hermes 3 405B Instruct"
+          name: 'Nous: Hermes 3 405B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: sao10k/l3-lunaris-8b
-          name: "Sao10K: Llama 3 8B Lunaris"
+          name: 'Sao10K: Llama 3 8B Lunaris'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-2024-08-06
-          name: "OpenAI: GPT-4o (2024-08-06)"
+          name: 'OpenAI: GPT-4o (2024-08-06)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-3.1-70b-instruct
-          name: "Meta: Llama 3.1 70B Instruct"
+          name: 'Meta: Llama 3.1 70B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: meta-llama/llama-3.1-8b-instruct
-          name: "Meta: Llama 3.1 8B Instruct"
+          name: 'Meta: Llama 3.1 8B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mistral-nemo
-          name: "Mistral: Mistral Nemo"
+          name: 'Mistral: Mistral Nemo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-mini
-          name: "OpenAI: GPT-4o-mini"
+          name: 'OpenAI: GPT-4o-mini'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-mini-2024-07-18
-          name: "OpenAI: GPT-4o-mini (2024-07-18)"
+          name: 'OpenAI: GPT-4o-mini (2024-07-18)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-mini:batch
-          name: "OpenAI: GPT-4o-mini (batch)"
+          name: 'OpenAI: GPT-4o-mini (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: google/gemma-2-27b-it
-          name: "Google: Gemma 2 27B"
+          name: 'Google: Gemma 2 27B'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o-2024-05-13
-          name: "OpenAI: GPT-4o (2024-05-13)"
+          name: 'OpenAI: GPT-4o (2024-05-13)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4o:batch
-          name: "OpenAI: GPT-4o (batch)"
+          name: 'OpenAI: GPT-4o (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mistralai/mixtral-8x22b-instruct
-          name: "Mistral: Mixtral 8x22B Instruct"
+          name: 'Mistral: Mixtral 8x22B Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -2028,17 +2030,17 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4-turbo
-          name: "OpenAI: GPT-4 Turbo"
+          name: 'OpenAI: GPT-4 Turbo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4-turbo:batch
-          name: "OpenAI: GPT-4 Turbo (batch)"
+          name: 'OpenAI: GPT-4 Turbo (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-3-haiku
-          name: "Anthropic: Claude 3 Haiku"
+          name: 'Anthropic: Claude 3 Haiku'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -2048,12 +2050,12 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-3.5-turbo-0613
-          name: "OpenAI: GPT-3.5 Turbo (older v0613)"
+          name: 'OpenAI: GPT-3.5 Turbo (older v0613)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4-turbo-preview
-          name: "OpenAI: GPT-4 Turbo Preview"
+          name: 'OpenAI: GPT-4 Turbo Preview'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -2063,17 +2065,17 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-3.5-turbo-instruct
-          name: "OpenAI: GPT-3.5 Turbo Instruct"
+          name: 'OpenAI: GPT-3.5 Turbo Instruct'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-3.5-turbo-16k
-          name: "OpenAI: GPT-3.5 Turbo 16k"
+          name: 'OpenAI: GPT-3.5 Turbo 16k'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: mancer/weaver
-          name: "Mancer: Weaver (alpha)"
+          name: 'Mancer: Weaver (alpha)'
           input: []
           compat:
             chatTemplateKwargs: {}
@@ -2088,26 +2090,26 @@ llm-pi-ai:
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-3.5-turbo
-          name: "OpenAI: GPT-3.5 Turbo"
+          name: 'OpenAI: GPT-3.5 Turbo'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-3.5-turbo:batch
-          name: "OpenAI: GPT-3.5 Turbo (batch)"
+          name: 'OpenAI: GPT-3.5 Turbo (batch)'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: openai/gpt-4
-          name: "OpenAI: GPT-4"
+          name: 'OpenAI: GPT-4'
           input: []
           compat:
             chatTemplateKwargs: {}
         - id: anthropic/claude-fable-5.1
-          name: "Anthropic: Claude Fable 5.1"
+          name: 'Anthropic: Claude Fable 5.1'
     gemini:
       models:
         - id: gemini-3.7-flash
-          name: "Google: Gemini 3.7 Flash"
+          name: 'Google: Gemini 3.7 Flash'
           contextWindow: 1048576
           maxTokens: 8192
           input:
@@ -2117,7 +2119,7 @@ llm-pi-ai:
             supportsStore: false
             chatTemplateKwargs: {}
         - id: gemini-3.1-pro
-          name: "Google: Gemini 3.1 Pro"
+          name: 'Google: Gemini 3.1 Pro'
           contextWindow: 1048576
           maxTokens: 8192
           input:
@@ -2234,3 +2236,23 @@ llm-pi-ai:
           name: models/lyria-realtime-exp
 dsh-better-sidebar:
   openByDefault: true
+prompt-library:
+  panelWidth: 360
+  panelHeight: 500
+  maxPromptCount: 100
+  deepseekApiKey: ''
+  backupRetention: 15
+  backupSchedule: weekly
+  backupFormat: db
+  assistantCharacter: whale
+  assistantEnabled: true
+  settingsAboveMenuEnabled: true
+  showComposerButton: true
+  composerButtonIconOnly: true
+  showAIPolishButton: true
+  aiPolishButtonIconOnly: true
+  tildaTriggerEnabled: true
+  selectionAddEnabled: true
+  contextRecommendEnabled: true
+  autoUpdateEnabled: true
+  backupEnabled: true
