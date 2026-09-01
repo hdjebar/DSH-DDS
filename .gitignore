@@ -14,6 +14,8 @@ config/sessions/
 config/storages/
 config/profiles/web/.dsh-market/
 config/profiles/.dsh-market/
+config/phoenix/*.db-shm
+config/phoenix/*.db-wal
 
 # OS & Editor Files
 .DS_Store
