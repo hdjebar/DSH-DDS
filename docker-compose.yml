@@ -36,6 +36,14 @@ services:
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
+      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+      - GOOGLE_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-${OPENROUTER_API_KEY:-}}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://openrouter.ai/api/v1}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     logging:
       driver: "json-file"
       options:
