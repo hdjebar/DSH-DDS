@@ -150,22 +150,16 @@ async function checkGitHubToken() {
 async function checkPlugins() {
   console.log('\n🔍 [6/7] Pre-Packaged DSH Plugins:');
   const expectedPlugins = [
-    'dshmarket',
     '@liustack/modsearch',
-    'dsh-better-sidebar',
     'dsh-find-plugin',
-    'dsh-mcp-market',
     'dsh-mcp-panel',
     'dsh-provider-model-configurator',
     'dsh-model-sync',
     'dsh-mnemon',
+    'dsh-mcp-market',
     'dsh-persona-memory',
-    'dsh-prompt-customizer',
-    '@sunjuntao/dsh-prompt-library',
     'dsh-run2skill',
-    '@mhw12138/dsh-ui-better-sidebar-skill',
-    'dsh-session-reader',
-    '@mimateinn/dsh-i18n'
+    'dsh-session-reader'
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';
