@@ -100,9 +100,14 @@ You can choose where DeepSeek Harness should be installed:
 docker compose up -d --build
 ```
 
-### 4. Access DeepSeek Harness
-Open your browser and navigate to:
-👉 **[http://localhost:3080](http://localhost:3080)**
+### 4. Access Web Interfaces
+
+* **DeepSeek Harness Web UI**:
+  👉 **[http://localhost:3080](http://localhost:3080)**
+
+* **Arize Phoenix Telemetry & Traces Dashboard**:
+  👉 **[http://localhost:6006](http://localhost:6006)**
+  *(Visualizes agent execution graphs, LLM latency percentiles, token usage, and tool calling waterfalls locally)*
 
 ---
 

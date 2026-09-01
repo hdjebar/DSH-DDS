@@ -251,6 +251,25 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
+      - DSH_TELEMETRY_MODE=FULL
+      - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
+    depends_on:
+      - phoenix
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: dsh-phoenix
+    restart: unless-stopped
+    ports:
+      - "6006:6006"
+    environment:
+      - PHOENIX_PORT=6006
+      - PHOENIX_GRPC_PORT=4317
     logging:
       driver: "json-file"
       options:

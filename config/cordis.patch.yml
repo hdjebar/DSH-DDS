@@ -27,6 +27,14 @@
   config:
     enable_per_workspace_memory: true
     auto_index_project_briefs: true
+- id: session-telemetry-otel
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FULL'
+    shutdownTimeoutMillis: 3000
+    exporter:
+      url: !!js process.env.DSH_TELEMETRY_OTLP_URL || 'http://phoenix:6006/v1/traces'
+      compression: none
+      timeoutMillis: 2000
 - id: llm-pi-ai
   config:
     providers:
