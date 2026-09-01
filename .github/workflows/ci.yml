@@ -1,0 +1,56 @@
+name: CI & Security Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Code, Compose & Secret Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax Check JavaScript (.mjs) Scripts
+        run: |
+          echo "🔍 Checking Node.js scripts for syntax errors..."
+          for file in $(find config/ -name "*.mjs"); do
+            node --check "$file"
+            echo "  ✅ Syntax OK: $file"
+          done
+
+      - name: Syntax Check Shell Scripts
+        run: |
+          echo "🔍 Checking Shell scripts for syntax errors..."
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -e SC1091 -e SC2086 -e SC2181 dsh.sh reset.sh || bash -n dsh.sh reset.sh install_dsh.sh
+          for sh in $(find config/personas/ -name "workflow.sh"); do
+            bash -n "$sh"
+            echo "  ✅ Syntax OK: $sh"
+          done
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          echo "🔍 Validating docker-compose.yml configuration..."
+          cp .env.example .env
+          docker compose config --quiet
+          echo "  ✅ Docker Compose configuration is valid."
+
+      - name: Scan for Tracked Database & Sensitive Artefacts
+        run: |
+          echo "🔍 Checking repository index for prohibited .db / secret files..."
+          if git ls-files | grep -E '\.(db|db-wal|db-shm)$|^\.env$|\.anonymous-user-id'; then
+            echo "❌ Error: Forbidden runtime or database files found in git index!"
+            exit 1
+          else
+            echo "  ✅ Clean: No runtime database files tracked."
+          fi

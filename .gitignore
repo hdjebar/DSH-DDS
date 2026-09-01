@@ -9,13 +9,23 @@ node_modules/
 .pnpm-store/
 **/.pnpm-store/
 
-# Persistent session & storage data
+# SQLite & Runtime Database Artefacts
+*.db
+*.db-wal
+*.db-shm
+**/*.db
+**/*.db-wal
+**/*.db-shm
+
+# Persistent session, telemetry & storage data
 config/sessions/
 config/storages/
+config/phoenix/
+config/prompt-library/
 config/profiles/web/.dsh-market/
 config/profiles/.dsh-market/
-config/phoenix/*.db-shm
-config/phoenix/*.db-wal
+config/.anonymous-user-id
+config/patch.tmp.yaml
 
 # OS & Editor Files
 .DS_Store

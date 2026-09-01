@@ -18,6 +18,17 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
 * **🧩 10 Pre-Packaged English Plugins & 3 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, visual MCP marketplace, and persistent unified memory.
 
+---
+
+## 🎯 Design Motivation & Governance Rationale
+
+Modern enterprise AI deployments face three critical operational constraints:
+1. **Data Sovereignty & Regulatory Compliance (EU AI Act / DORA / NIS 2)**: Cloud-hosted telemetry often leaks sensitive prompts, internal code, and credentials to third-party SaaS vendors. This stack enforces a **100% local OpenTelemetry collector (Arize Phoenix)** running on an internal Docker bridge, retaining all telemetry spans, pricing, and prompt traces entirely on-premise.
+2. **AI FinOps & Model Arbitrage**: Hardcoding a single frontier LLM across all tasks introduces unacceptable cost and latency. By decoupling agent capabilities into **6-Layer Personas** with calibrated multi-model routing, trivial triage executes on lightweight flash models while expensive reasoning tiers are invoked selectively.
+3. **Reproducibility & Personas-as-Code**: Ad-hoc conversational prompt engineering creates fragile, unversioned workflows. DeepSeek Harness encapsulates domain skills, model matrices, execution profiles, and MCP tools into **version-controlled declarative packages (`persona.yaml` + `SKILL.md`)** subject to standard Git review and CI/CD validation.
+
+---
+
 ## 📚 Documentation Suite
 
 For comprehensive deep dives, architectural guides, and troubleshooting:

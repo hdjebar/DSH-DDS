@@ -31,10 +31,14 @@ const file = "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendi
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("const googleExtraContentCache")) {\
+    const anchor1 = "const name = toolCall.function?.name ?? toolCall.custom?.name;";\
+    const anchor2 = "return {\\n                        id: tc.id,";\
+    if (!content.includes(anchor1)) throw new Error("pi-ai patch assertion failed: anchor1 not found");\
     content = "const googleExtraContentCache = new Map();\\n" + content;\
-    content = content.replace("const name = toolCall.function?.name ?? toolCall.custom?.name;", "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            const name = toolCall.function?.name ?? toolCall.custom?.name;");\
-    content = content.replace("return {\\n                        id: tc.id,", "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
+    content = content.replace(anchor1, "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            " + anchor1);\
+    content = content.replace(anchor2, "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
     fs.writeFileSync(file, content, "utf8");\
+    console.log("✅ pi-ai thought signature bridge applied successfully.");\
   }\
 }'
 
@@ -45,9 +49,15 @@ const file = "/app/entrypoint.sh";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("sync_models.mjs")) {\
-    const syncHook = "# ── 2.8 动态多模型自动同步 ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] 自动同步多提供商模型 (OpenRouter & Google AI Studio) ...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
-    content = content.replace("echo \"[proxy] 启动代理", syncHook + "echo \"[proxy] 启动代理");\
+    const syncHook = "# ── 2.8 Automated Multi-Provider Model Synchronization ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
+    const anchor = "echo \"[proxy] 启动代理";\
+    if (!content.includes(anchor)) {\
+      content = syncHook + content;\
+    } else {\
+      content = content.replace(anchor, syncHook + anchor);\
+    }\
     fs.writeFileSync(file, content, "utf8");\
+    console.log("✅ entrypoint model synchronization hook applied successfully.");\
   }\
 }'
 
