@@ -29,6 +29,7 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 15 plugins and 3 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
 * 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` CLI matrix.
+* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — Step-by-step walkthrough: interactive chat, trace audit, and persona distillation.
 
 ---
 
