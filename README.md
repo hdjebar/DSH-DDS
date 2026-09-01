@@ -29,6 +29,7 @@ An optimized, lightweight, production-ready Docker deployment stack for **DeepSe
 | **`@liustack/modsearch`** | `modsearch` | Integrated web search provider |
 | **`dsh-better-sidebar`** | `better-sidebar` | VS Code-style sidebar with persistent terminal |
 | **`dsh-find-plugin`** | `find-dsh-plugin` | Workspace file and symbol finder |
+| **`dsh-mcp-market`** | `dsh-mcp-market` | Visual MCP Server Marketplace with 1-click install |
 | **`dsh-mcp-panel`** | `mcp-panel` | Model Context Protocol (MCP) management panel |
 | **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Visual LLM provider and model manager |
 | **`dsh-model-sync`** | `model-sync` | Automated model sync and quota monitor widget |

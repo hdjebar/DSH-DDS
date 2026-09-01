@@ -3,13 +3,15 @@
   "private": true,
   "dependencies": {
     "@liustack/modsearch": "^5.10.0",
+    "@pakiknowledge/dsh-client-ui-skin-claude": "^0.2.0",
     "dsh-better-sidebar": "^0.17.1",
     "dsh-find-plugin": "^0.3.7",
+    "dsh-mcp-market": "^0.1.2",
     "dsh-mcp-panel": "^0.6.2",
     "dsh-mnemon": "^0.4.3",
     "dsh-model-sync": "^0.1.6",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
-    "dshmarket": "^1.38.1"
+    "dshmarket": "^1.39.0"
   },
   "dsh": {
     "profile": {
@@ -23,7 +25,8 @@
         "dsh-mcp-panel",
         "dsh-provider-model-configurator",
         "dsh-mnemon",
-        "dsh-model-sync"
+        "dsh-model-sync",
+        "dsh-mcp-market"
       ]
     }
   }
