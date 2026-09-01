@@ -157,23 +157,20 @@ workflows:
 
 ## 🧪 Interactive Session Recording & Persona Distillation
 
-Instead of writing a persona from scratch, you can **draft and refine workflows interactively** in a chat session, and then **distill the session into a permanent Persona Package** using dedicated ecosystem plugins:
+Instead of writing a persona from scratch, you can **draft and refine workflows interactively** in a chat session, and then **distill the session into a permanent Persona Package** using our native CLI distiller:
 
 ```mermaid
 flowchart TD
     SESSION["💬 1. Interactive Session\n(Web Workbench :3080 / Terminal CLI)"]
     
-    subgraph Recording_Plugins ["🧠 Real-Time Session & Workflow Capture"]
-        R2S["dsh-run2skill\n(Translates execution runs into skills)"]
-        MEM["dsh-persona-memory\n(Saves learned rules to MEMORY.md)"]
-        PLIB["@sunjuntao/dsh-prompt-library\n(1-Click clip of successful prompts)"]
+    subgraph Recording_Pipeline ["🧠 Real-Time Session & Workflow Capture"]
+        MEM["dsh-mnemon\n(Unified Memory System & Session Spaces)"]
         SREAD["dsh-session-reader\n(Reads transcript logs & tool calls)"]
         OTEL["Arize Phoenix OTel\n(Logs traces, tool waterfalls & spans)"]
     end
 
-    subgraph Studio_UI ["🎨 Visual Studio & CLI Distiller"]
-        STUDIO["@mhw12138/dsh-ui-better-sidebar-skill\n(Visual Skill Studio in right sidebar)"]
-        CLI["./dsh.sh persona distill <name>\n(Universal CLI Package Generator)"]
+    subgraph Distiller_CLI ["🧪 Universal Persona Distiller"]
+        CLI["./dsh.sh persona distill <name>\n(Universal 5-Layer Package Generator)"]
     end
 
     subgraph Persona_Package ["📦 Persona Package (config/personas/<name>/)"]
@@ -182,9 +179,9 @@ flowchart TD
         WF["workflow.sh (Automation Recipes)"]
     end
 
-    SESSION --> Recording_Plugins
-    Recording_Plugins --> Studio_UI
-    Studio_UI --> Persona_Package
+    SESSION --> Recording_Pipeline
+    Recording_Pipeline --> Distiller_CLI
+    Distiller_CLI --> Persona_Package
     Persona_Package --> RUN["🚀 Re-usable in Web UI & Headless CLI"]
 ```
 
@@ -195,12 +192,9 @@ flowchart TD
 #### 1. Draft & Iterate in Chat (`http://localhost:3080` or `./dsh.sh cli`)
 * Interact with the agent on your specific problem.
 * Correct mistakes, test MCP tools (e.g. SQLite, GitHub, Fetch), and discover what prompt constraints work best.
-* The pre-installed plugins (**`dsh-run2skill`**, **`dsh-persona-memory`**, **`@sunjuntao/dsh-prompt-library`**, **`dsh-mnemon`**) and **Arize Phoenix** automatically record your prompt clips, tool spans, and learned guidelines in `config/MEMORY.md` and OTel trace storage.
+* **`dsh-mnemon`** and **Arize Phoenix** automatically record your execution spans, memory spaces, and learned guidelines.
 
-#### 2. Manage via Visual Skill Studio
-* In the Web UI right sidebar (**`dsh-better-sidebar`**), click the **Skills Tab** provided by **`@mhw12138/dsh-ui-better-sidebar-skill`** to view, preview, and live-edit skills visually.
-
-#### 3. Distill into a Persona Package
+#### 2. Distill into a 5-Layer Persona Package
 Once you have refined the workflow, run the distiller CLI:
 
 ```bash

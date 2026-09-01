@@ -19,11 +19,10 @@ flowchart LR
 ## 📍 Step 1: Open the Web Workbench & Explore Plugins
 
 1. Open **[http://localhost:3080](http://localhost:3080)** in your browser.
-2. **Check the Right Sidebar (`dsh-better-sidebar`)**:
-   * Click on the **Skills / Persona Studio Tab** (provided by **`@mhw12138/dsh-ui-better-sidebar-skill`**).
-   * Notice active personas (`data-analyst`, `sdmx-expert`, `security-auditor`, `devops-sre`) listed with live previews and edit capabilities.
-3. **Check the Composer Bar**:
-   * Notice the **Prompt Vault & Clipper** icon above the text input (provided by **`@sunjuntao/dsh-prompt-library`**).
+2. **Check the Navigation Sidebar**:
+   * Click on the **Plugin Market (`dshmarket`)** and **MCP Market (`dsh-mcp-market`)** icons to view 1-click tools in clean English.
+3. **Check the Settings Dialog**:
+   * Click **Settings (⚙️)** in the bottom left to view the unified **Memory System (`dsh-mnemon`)** and **Model Configurator**.
 
 ---
 
@@ -37,7 +36,7 @@ Help me find the exact SDMX 2.1 REST endpoints for Luxembourg inflation (LUSTAT 
 
 ### What Happens Behind the Scenes:
 * **Interactive Chat**: The agent retrieves the LUSTAT & ESTAT endpoint definitions, applies SDMX rules, and structures Python `uv` code.
-* **Continuous Recording**: **`dsh-persona-memory`** and **`dsh-run2skill`** record the operational constraints, while **`dsh-session-telemetry-otel`** streams all spans.
+* **Continuous Recording**: **`dsh-mnemon`** records the operational constraints, while **`dsh-session-telemetry-otel`** streams all spans.
 
 ---
 
