@@ -16,11 +16,12 @@ flowchart TD
         
         subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (10 Plugins)"]
             PLUG_SRC["@liustack/modsearch (Web Search)"]
+            PLUG_MKT["dshmarket (Plugin Market)"]
             PLUG_FIND["dsh-find-plugin (File Finder)"]
             PLUG_MCP_PNL["dsh-mcp-panel & dsh-mcp-market"]
             PLUG_CFG["dsh-provider-model-configurator"]
             PLUG_SYNC["dsh-model-sync (Quota & Token Monitor)"]
-            PLUG_MNEM["dsh-mnemon & dsh-persona-memory (Memory)"]
+            PLUG_MNEM["dsh-mnemon (Unified Memory System)"]
             PLUG_DISTILL["dsh-run2skill & dsh-session-reader (Distiller)"]
         end
 

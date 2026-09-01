@@ -8,7 +8,6 @@
     "dsh-mcp-panel": "^0.6.3",
     "dsh-mnemon": "^0.4.4",
     "dsh-model-sync": "^0.1.6",
-    "dsh-persona-memory": "^0.2.0",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
     "dsh-run2skill": "^0.3.1",
     "dsh-session-reader": "^0.1.0",
@@ -20,16 +19,15 @@
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
         "@liustack/modsearch",
+        "dshmarket",
         "dsh-find-plugin",
         "dsh-mcp-panel",
         "dsh-provider-model-configurator",
         "dsh-mnemon",
         "dsh-model-sync",
         "dsh-mcp-market",
-        "dsh-persona-memory",
         "dsh-run2skill",
-        "dsh-session-reader",
-        "dshmarket"
+        "dsh-session-reader"
       ]
     }
   }
