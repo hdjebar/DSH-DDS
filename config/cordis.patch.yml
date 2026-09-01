@@ -64,17 +64,37 @@
             name: "DeepSeek: DeepSeek V3"
             contextWindow: 65536
             maxTokens: 8192
-          - id: "google/gemini-2.5-flash"
-            name: "OpenRouter: Gemini 2.5 Flash"
-            contextWindow: 1048576
+          - id: "deepseek/deepseek-r1"
+            name: "DeepSeek: DeepSeek R1"
+            contextWindow: 65536
+            maxTokens: 8192
+          - id: "anthropic/claude-3.7-sonnet"
+            name: "Anthropic: Claude 3.7 Sonnet"
+            contextWindow: 200000
+            maxTokens: 8192
+          - id: "anthropic/claude-3.5-sonnet"
+            name: "Anthropic: Claude 3.5 Sonnet"
+            contextWindow: 200000
             maxTokens: 8192
           - id: "openai/gpt-4o"
             name: "OpenAI: GPT-4o"
             contextWindow: 128000
             maxTokens: 4096
-          - id: "anthropic/claude-3.5-sonnet"
-            name: "Anthropic: Claude 3.5 Sonnet"
+          - id: "openai/o3-mini"
+            name: "OpenAI: o3-mini"
             contextWindow: 200000
+            maxTokens: 65536
+          - id: "meta-llama/llama-3.3-70b-instruct"
+            name: "Meta: Llama 3.3 70B Instruct"
+            contextWindow: 131072
+            maxTokens: 8192
+          - id: "qwen/qwen-2.5-coder-32b-instruct"
+            name: "Qwen: Qwen 2.5 Coder 32B"
+            contextWindow: 131072
+            maxTokens: 8192
+          - id: "google/gemini-2.5-flash"
+            name: "OpenRouter: Gemini 2.5 Flash"
+            contextWindow: 1048576
             maxTokens: 8192
 - id: agent-default-model
   config:
