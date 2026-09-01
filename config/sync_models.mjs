@@ -133,6 +133,17 @@ async function main() {
     await syncToPhoenix(openRouterModels);
   }
 
+  // Auto-patch plugin translations to English
+  try {
+    const patchScript = path.resolve(process.cwd(), 'config/patch_translations.mjs');
+    const containerPatchScript = '/root/.dsh/patch_translations.mjs';
+    if (fs.existsSync(containerPatchScript)) {
+      await import(containerPatchScript);
+    } else if (fs.existsSync(patchScript)) {
+      await import(patchScript);
+    }
+  } catch {}
+
   console.log('========================================================');
   console.log(`🎉 Sync Complete: ${openRouterModels.length} OpenRouter & ${googleModels.length} Google Gemini models active.`);
   console.log('========================================================');
