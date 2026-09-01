@@ -158,7 +158,10 @@ async function checkPlugins() {
     'dsh-mcp-panel',
     'dsh-provider-model-configurator',
     'dsh-model-sync',
-    'dsh-mnemon'
+    'dsh-mnemon',
+    'dsh-persona-memory',
+    'dsh-prompt-customizer',
+    '@sunjuntao/dsh-prompt-library'
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';

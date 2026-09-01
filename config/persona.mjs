@@ -252,6 +252,141 @@ function runWorkflow(name, workflowKey) {
   runPersona(name, wf.command.replace(new RegExp(`^Using the ${name} skill,\\s*`), ''), tier);
 }
 
+function distillPersona(name, options = {}) {
+  ensureDirs();
+  if (!name) {
+    console.error('❌ Error: Persona name required. Usage: ./dsh.sh persona distill <name>');
+    process.exit(1);
+  }
+
+  console.log('========================================================================');
+  console.log(`🧪 Distilling Interactive Session into Persona Package: '\x1b[32m${name}\x1b[0m'`);
+  console.log('========================================================================');
+
+  // 1. Inspect recent sessions & memory notes
+  const memoryFile = path.resolve(process.cwd(), 'config/MEMORY.md');
+  let memoryNotes = '';
+  if (fs.existsSync(memoryFile)) {
+    memoryNotes = fs.readFileSync(memoryFile, 'utf8');
+    console.log('📖 Ingested long-term session memories from config/MEMORY.md');
+  }
+
+  const cleanTitle = options.title || name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const cleanDesc = options.description || `Distilled specialist persona for ${cleanTitle} derived from interactive sessions.`;
+
+  const targetDir = path.join(PERSONAS_DIR, name);
+  const targetSkillDir = path.join(SKILLS_DIR, name);
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.mkdirSync(targetSkillDir, { recursive: true });
+
+  // 2. Generate persona.yaml with Multi-Model Matrix
+  const personaYaml = `name: ${name}
+title: "${cleanTitle}"
+description: "${cleanDesc}"
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "General ${cleanTitle} task drafting and conversational execution"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Deep architectural reasoning and complex problem decomposition"
+  audit:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "High-accuracy code inspection and precision verification"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "Rapid large file parsing and repository indexing"
+
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-mnemon"
+  - "dsh-persona-memory"
+  - "dsh-find-plugin"
+
+mcpServers:
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+
+workflows:
+  default-task:
+    modelTier: default
+    command: "Using the ${name} skill, execute the core ${cleanTitle} workflow."
+  deep-analysis:
+    modelTier: reasoning
+    command: "Using the ${name} skill, perform deep multi-step reasoning on the active workspace."
+`;
+  fs.writeFileSync(path.join(targetDir, 'persona.yaml'), personaYaml, 'utf8');
+
+  // 3. Generate distilled SKILL.md
+  const skillMd = `---
+name: ${name}
+description: ${cleanDesc}
+---
+
+# 🎯 ${cleanTitle}
+
+## 🎯 Role & Objective
+You are a domain-specialized AI agent for ${cleanTitle}, distilled from refined workflow interactions and best practices.
+
+## 📋 Operational Guidelines & Rules
+1. **Domain Focus**: Execute tasks strictly aligned with ${cleanTitle} standards.
+2. **Quality & Validation**: Verify all outputs against target specifications before concluding tasks.
+3. **Multi-Model Matching**:
+   * Use **default** (\`deepseek-chat\`) for general iterative drafting.
+   * Use **reasoning** (\`deepseek-r1\`) for complex multi-variable logic and proof verification.
+   * Use **audit** (\`claude-3.5-sonnet\`) for precision code changes.
+${memoryNotes ? `\n## 🧠 Learned Context & Distilled Session Rules\n${memoryNotes}\n` : ''}
+## 📊 Output Schema
+* 📌 **Executive Summary**: 1-2 sentence core conclusion.
+* 🛠️ **Implementation / Deliverables**: Formatted code, tables, or findings.
+* 💡 **Next Steps & Recommendations**: Concrete follow-up actions.
+`;
+  fs.writeFileSync(path.join(targetDir, 'SKILL.md'), skillMd, 'utf8');
+  fs.writeFileSync(path.join(targetSkillDir, 'SKILL.md'), skillMd, 'utf8');
+
+  // 4. Generate workflow.sh
+  const workflowSh = `#!/usr/bin/env bash
+# ${cleanTitle} Automation Recipes
+
+WORKFLOW="\${1:-default}"
+
+case "$WORKFLOW" in
+  default)
+    ./dsh.sh persona run ${name} "execute standard ${cleanTitle} workflow"
+    ;;
+  reasoning)
+    ./dsh.sh persona run ${name} --tier reasoning "perform deep ${cleanTitle} analysis"
+    ;;
+  *)
+    echo "Available workflows: default, reasoning"
+    ;;
+esac
+`;
+  fs.writeFileSync(path.join(targetDir, 'workflow.sh'), workflowSh, 'utf8');
+  fs.chmodSync(path.join(targetDir, 'workflow.sh'), 0o755);
+
+  console.log(`✅ Successfully distilled and built persona package '\x1b[32m${name}\x1b[0m'!`);
+  console.log(`📁 Package Path:  config/personas/${name}/`);
+  console.log(`   ├── persona.yaml   (Multi-Model Matrix & MCPs)`);
+  console.log(`   ├── SKILL.md       (Distilled rules & guidelines)`);
+  console.log(`   └── workflow.sh    (Automated command recipes)`);
+  console.log(`📁 Active Skill:  config/skills/${name}/SKILL.md`);
+  console.log(`\n🚀 Ready to run:`);
+  console.log(`   ./dsh.sh persona run ${name} "<task>"`);
+  console.log('========================================================================');
+}
+
 function showPersona(name) {
   const pDir = path.join(PERSONAS_DIR, name);
   if (!fs.existsSync(pDir)) {
@@ -295,6 +430,11 @@ switch (command) {
     break;
   }
 
+  case 'distill':
+  case 'record':
+    distillPersona(filteredArgs[0]);
+    break;
+
   case 'apply':
   case 'activate':
     applyPersona(filteredArgs[0], tier);
@@ -315,5 +455,5 @@ switch (command) {
     break;
 
   default:
-    console.log('Usage: ./dsh.sh persona [list | create <name> --template <tmpl> | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
+    console.log('Usage: ./dsh.sh persona [list | create <name> --template <tmpl> | distill <name> | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
 }
