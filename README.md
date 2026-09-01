@@ -23,6 +23,8 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 For comprehensive deep dives, architectural guides, and troubleshooting:
 
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel pipelines.
+* 🎭 **[AI Agent Personas](docs/personas.md)** — Specialized agent roles (Data Analyst, Security Auditor, DevOps, SDMX).
+* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 * ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 9 plugins and 3 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
