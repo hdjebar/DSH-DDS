@@ -63,6 +63,11 @@ case "$COMMAND" in
     ./reset.sh "$@"
     ;;
 
+  persona)
+    shift || true
+    node config/persona.mjs "$@"
+    ;;
+
   status)
     echo "📊 Container Status:"
     docker compose ps
@@ -84,6 +89,7 @@ case "$COMMAND" in
     echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
     echo "  cli               Launch interactive terminal matrix"
     echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
+    echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
     echo "  reset             Safely clear caches & restart stack"
     echo "  status            Show container health status"
     echo "========================================================"

@@ -120,13 +120,58 @@ description: Use when managing Docker services, debugging container failures, an
 
 ---
 
-## 🔄 Running Personas in Docker
+## 🧰 Fast Persona Customization & Scaffolding
 
-To invoke any persona in your Docker stack:
+DSH-DDS includes a built-in **Persona Template Scaffolder** that makes creating and customizing personas effortless both via the **CLI** and inside the **Web UI**.
 
-1. Place your skill in `config/skills/<persona-name>/SKILL.md` (or in project `.agents/skills/<persona-name>/SKILL.md`).
-2. Run via Web UI (select the skill) or via CLI:
-   ```bash
-   ./dsh.sh run "Using the <persona-name> skill, <your task prompt>"
-   ```
-3. Monitor the execution trace live in **Arize Phoenix** at `http://localhost:6006`.
+---
+
+### Method A: Scaffold via CLI (`./dsh.sh persona`)
+
+You can list available templates and generate a new persona with 1 command:
+
+```bash
+# 1. List active personas and available starter templates
+./dsh.sh persona list
+
+# 2. Create a new persona from a pre-built template
+./dsh.sh persona create my-analyst --template data-analyst
+./dsh.sh persona create my-auditor --template security-auditor
+./dsh.sh persona create stats-bot  --template sdmx-expert
+./dsh.sh persona create custom-bot --template base-template
+
+# 3. View the generated persona
+./dsh.sh persona show my-analyst
+```
+
+#### Available Starter Templates (`config/templates/personas/`):
+* `base-template.md`: Universal boilerplate with standard frontmatter, rules, and output schemas.
+* `data-analyst.md`: SQL, CSV, metric summaries, and data quality checks.
+* `security-auditor.md`: AppSec, OWASP top 10, secret leak verification, and code diffs.
+* `sdmx-expert.md`: SDMX 2.1 dataflows, LUSTAT/STATEC, Eurostat, and Python `uv` extraction.
+
+---
+
+### Method B: Customize Inside the Web UI
+
+Because `config/skills/` is mounted to `/root/.dsh/skills/`, every persona you create is **immediately discovered** in the Web UI:
+
+1. **Via Built-in Editor**: Open the Web UI at `http://localhost:3080` $\rightarrow$ Open the File Explorer $\rightarrow$ Edit `config/skills/<name>/SKILL.md` directly.
+2. **Via Conversational Prompts**: You can prompt the agent to create or modify a persona:
+   > 💬 *"Create a new persona named `fastapi-architect` using the persona template format with rules for async SQLAlchemy 2.0 and Pydantic v2. Save it into `config/skills/fastapi-architect/SKILL.md`."*
+
+---
+
+## 🔄 Running Personas
+
+### 1. In the Web UI (`http://localhost:3080`)
+* In the chat prompt, select the skill or instruct the agent:  
+  > 💬 *"Using the `data-analyst` skill, summarize the user churn dataset in `/workspaces/churn.csv`."*
+
+### 2. In Headless CLI Mode
+```bash
+./dsh.sh run "Using the sdmx-expert skill, query the latest inflation dataflows from LUSTAT"
+```
+
+### 3. Trace Observability in Phoenix
+Every persona execution automatically logs its reasoning traces, tools, and token metrics to **Arize Phoenix** at `http://localhost:6006`.
