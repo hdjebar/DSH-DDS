@@ -9,7 +9,6 @@
     "dsh-mnemon": "^0.4.4",
     "dsh-model-sync": "^0.1.6",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
-    "dsh-run2skill": "^0.3.1",
     "dsh-session-reader": "^0.1.0",
     "dshmarket": "^1.39.0"
   },
@@ -26,7 +25,6 @@
         "dsh-mnemon",
         "dsh-model-sync",
         "dsh-mcp-market",
-        "dsh-run2skill",
         "dsh-session-reader"
       ]
     }

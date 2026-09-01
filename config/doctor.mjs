@@ -158,7 +158,6 @@ async function checkPlugins() {
     'dsh-mnemon',
     'dsh-mcp-market',
     'dshmarket',
-    'dsh-run2skill',
     'dsh-session-reader'
   ];
 

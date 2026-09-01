@@ -29,9 +29,6 @@ importers:
       dsh-provider-model-configurator:
         specifier: github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3
         version: https://codeload.github.com/LiangYin233/dsh-provider-model-configurator/tar.gz/70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3
-      dsh-run2skill:
-        specifier: ^0.3.1
-        version: 0.3.1
       dsh-session-reader:
         specifier: ^0.1.0
         version: 0.1.0
@@ -522,13 +519,6 @@ packages:
       '@deepseek-ai/dsh-typert-registry':
         optional: true
 
-  dsh-run2skill@0.3.1:
-    resolution: {integrity: sha512-2BYeNVNXGqtFPfV8uSYovOCTqSokXz0uL0ySaOqHPwMa5LG2ceWwqN6oH07cKXxb0JhjIslF2F7s0mCr6vuAyQ==}
-    engines: {node: ^22.19.0 || >=24.0.0}
-    peerDependencies:
-      '@deepseek-ai/dsh-agent-presets': 0.1.1-rc.2
-      '@deepseek-ai/dsh-client-ui-primitives': 0.1.1-rc.2
-
   dsh-session-reader@0.1.0:
     resolution: {integrity: sha512-OGj9CzbSj0QnNn/QlPXFuR0zsSS5OzyEaV2pmaU22GCE17JNC1okpLNvx1qkfHQqrsOwbU8oALNKHe3W3ZmW3Q==}
 
@@ -976,12 +966,6 @@ snapshots:
       '@deepseek-ai/schemastery': 3.18.1
 
   dsh-provider-model-configurator@https://codeload.github.com/LiangYin233/dsh-provider-model-configurator/tar.gz/70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3: {}
-
-  dsh-run2skill@0.3.1:
-    dependencies:
-      '@deepseek-ai/schemastery': 3.18.1
-      react: 18.3.1
-      zod: 4.5.4
 
   dsh-session-reader@0.1.0: {}
 

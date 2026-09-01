@@ -1,6 +1,6 @@
 # 🧩 DSH Plugins & Model Context Protocol (MCP) Guide
 
-This repository comes pre-packaged with **10 essential, pure English DSH plugins** and **3 pre-configured MCP servers** baked into the container image.
+This repository comes pre-packaged with **9 essential, pure English DSH plugins** and **3 pre-configured MCP servers** baked into the container image.
 
 ---
 
@@ -38,11 +38,7 @@ This repository comes pre-packaged with **10 essential, pure English DSH plugins
 * **ID**: `mnemon`
 * **Purpose**: Provides a unified 3-tier memory engine (Runtime context, Project archives, and Memory Spaces) with cross-session recall.
 
-### 9. `dsh-run2skill` (Session-to-Skill Distiller)
-* **ID**: `dsh-run2skill`
-* **Purpose**: Automatically turns explicit interactive DSH session runs, tool calls, and refined task steps into reviewable native `SKILL.md` files.
-
-### 10. `dsh-session-reader` (Cross-Session Inspector)
+### 9. `dsh-session-reader` (Cross-Session Inspector)
 * **ID**: `dsh-session-reader`
 * **Purpose**: Allows agents and personas to read prior session contents, thinking processes, and tool responses to synthesize workflows.
 
