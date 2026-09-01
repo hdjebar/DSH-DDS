@@ -1,13 +1,13 @@
 # 🎭 AI Agent Personas & Multi-Model Task Routing
 
-> 🔬 **Academic & Industry Research**: For the theoretical foundations, empirical evidence, and comparative analysis of AI personas across Stanford, Google, and Anthropic literature, read the **[AI Personas Research Note](research-notes-ai-personas.md)**.
+> 🔬 **Academic & Industry Research**: For theoretical foundations, literature analysis (Stanford, Google, Anthropic), and comparative framework benchmarks, see the **[AI Personas Research Note](research-notes-ai-personas.md)**.
 
 A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **6 specialized layers**:
 1. **Domain Skill (`SKILL.md`)**: Operational guidelines, domain rules, code patterns, and structured output schemas.
 2. **Provider & Calibrated Models (`models`)**: A **Multi-Model Task-Routing Matrix** assigning optimal models per task type (e.g. Default, Deep Reasoning, Precision Coding/Audit, Fast Indexing, Multimodal).
-3. **Execution Context Profiles (`profiles`)**: Defined runtime execution environments (e.g. `web` for interactive visual canvas & widgets, `headless` for automated CI/CD batch runs, `cli` for terminal TUI).
-4. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
-5. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
+3. **Execution Context Profiles (`profiles`)**: Defined runtime execution environments (e.g. `web` for interactive visual canvas & widgets, `headless` for automated CI/CD batch runs, `cli` for terminal TUI, `sandbox` for isolated security).
+4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
+5. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
 6. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
 
 ---
@@ -16,13 +16,13 @@ A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker
 
 ```mermaid
 flowchart TD
-    subgraph Package ["📦 Persona Package (config/personas/<name>/)"]
-        MANIFEST["📋 persona.yaml\n(Multi-Model Matrix, Profiles, Plugins, MCPs, Workflows)"]
-        SKILL["🧠 SKILL.md\n(Domain Guidelines & Output Schemas)"]
-        WORKFLOW["🤖 workflow.sh\n(Automated CLI Recipes)"]
-        MCPS["🔌 Scoped MCP Servers\n(SQLite, GitHub, Web Fetch)"]
-        PLUGS["🧩 Custom Plugins\n(deepseek-flow, Search, Memory)"]
-        PROFILES["🌐 Execution Contexts\n(web, headless, cli)"]
+    subgraph Package ["📦 Persona Package (config/personas/name/)"]
+        MANIFEST["📋 persona.yaml<br/>(Multi-Model Matrix, Profiles, MCPs, Plugins, Workflows)"]
+        SKILL["🧠 SKILL.md<br/>(Domain Guidelines & Output Schemas)"]
+        WORKFLOW["🤖 workflow.sh<br/>(Automated CLI Recipes)"]
+        MCPS["🔌 Scoped MCP Servers<br/>(SQLite, GitHub, Web Fetch)"]
+        PLUGS["🧩 Custom Plugins<br/>(deepseek-flow, Search, Memory)"]
+        PROFILES["🌐 Execution Contexts<br/>(web, headless, cli, sandbox)"]
     end
 
     MANIFEST --> SKILL
@@ -46,13 +46,13 @@ Personas can define both **standard built-in profiles** and **custom user-define
 
 ```mermaid
 flowchart LR
-    PERSONA["📦 Persona Manifest\n(sdmx-expert / persona-creator)"]
+    PERSONA["📦 Persona Manifest<br/>(sdmx-expert / persona-creator)"]
     
     subgraph Execution_Contexts ["🌐 Supported Execution Contexts (profiles)"]
-        WEB["🌐 web Profile\n(Interactive Web Workbench + deepseek-flow Canvas)"]
-        HEADLESS["⚡ headless Profile\n(Zero-GUI Autonomous Runner for CI/CD & Batch)"]
-        CLI["⌨️ cli Profile\n(Interactive Terminal Text UI)"]
-        SANDBOX["🔒 sandbox Profile\n(User-Defined Isolated Read-Only Execution)"]
+        WEB["🌐 web Profile<br/>(Interactive Web Workbench + deepseek-flow Canvas)"]
+        HEADLESS["⚡ headless Profile<br/>(Zero-GUI Autonomous Runner for CI/CD & Batch)"]
+        CLI["⌨️ cli Profile<br/>(Interactive Terminal Text UI)"]
+        SANDBOX["🔒 sandbox Profile<br/>(User-Defined Isolated Read-Only Execution)"]
     end
     
     PERSONA --> WEB
@@ -65,10 +65,10 @@ flowchart LR
 
 | Profile Type | Runtime Environment | Best Suited For | Key Capabilities |
 | :--- | :--- | :--- | :--- |
-| **`web`** | Full browser workbench on port `3080`. | Interactive domain exploration, visual workflow design, and human-in-the-loop debugging. | • `deepseek-flow` visual canvas<br>• `dshmarket` & MCP marketplace<br>• `dsh-mnemon` memory manager |
-| **`headless`** | Autonomous, zero-GUI CLI runner. | CI/CD automation pipelines, automated cron scripts, and background agent swarms. | • Executes single task to completion<br>• Machine-parsable JSON/stdout<br>• Zero browser/memory overhead |
-| **`cli`** | Interactive terminal Text-User-Interface (TUI). | Terminal-first developers and remote SSH server environments. | • Full interactive multi-turn chat<br>• Terminal streaming tokens<br>• Low resource consumption |
-| **`sandbox`** *(User-Defined)* | Restricted isolated container profile. | Security audits, untrusted code evaluation, and policy enforcement. | • Read-only filesystem boundaries<br>• Network lockdown (no egress)<br>• Scoped non-destructive tools |
+| **`web`** | Full browser workbench on port `3080`. | Interactive domain exploration, visual workflow design, and human-in-the-loop debugging. | • `deepseek-flow` visual canvas<br/>• `dshmarket` & MCP marketplace<br/>• `dsh-mnemon` memory manager |
+| **`headless`** | Autonomous, zero-GUI CLI runner. | CI/CD automation pipelines, automated cron scripts, and background agent swarms. | • Executes single task to completion<br/>• Machine-parsable JSON/stdout<br/>• Zero browser/memory overhead |
+| **`cli`** | Interactive terminal Text-User-Interface (TUI). | Terminal-first developers and remote SSH server environments. | • Full interactive multi-turn chat<br/>• Terminal streaming tokens<br/>• Low resource consumption |
+| **`sandbox`** *(User-Defined)* | Restricted isolated container profile. | Security audits, untrusted code evaluation, and policy enforcement. | • Read-only filesystem boundaries<br/>• Network lockdown (no egress)<br/>• Scoped non-destructive tools (requires pre-vendored dependencies) |
 
 ---
 
@@ -105,13 +105,15 @@ profiles:
     fsMode: "read-only"
 ```
 
+---
+
 ## 🎯 Multi-Model Task-Routing Matrix
 
 Rather than restricting a persona to a single static model, each persona defines multiple calibrated models—each chosen for maximum performance, accuracy, or cost-efficiency on specific subtasks:
 
 | Model Tier | Purpose | Recommended Models |
 | :--- | :--- | :--- |
-| **`default`** | Fast triage, general queries, drafting, and interactive conversations. | `deepseek/deepseek-chat`, `gemini-3.7-flash` |
+| **`default`** | Primary persona model for interactive domain dialogue and task orchestration. | `deepseek/deepseek-chat`, `gemini-3.7-flash` |
 | **`reasoning`** | Deep architectural analysis, complex math, multi-file reconciliation, and formal verification. | `deepseek/deepseek-r1`, `anthropic/claude-3.7-sonnet:thinking` |
 | **`audit` / `coding`**| Precision code review, vulnerability patch generation, and production refactoring. | `anthropic/claude-3.5-sonnet`, `openai/gpt-4o` |
 | **`fast`** | High-throughput parsing, bulk CSV / log scanning, and rapid symbol indexing. | `gemini/gemini-3.7-flash`, `deepseek/deepseek-chat` |
@@ -123,68 +125,72 @@ Rather than restricting a persona to a single static model, each persona defines
 
 ```text
 config/personas/<name>/
-├── persona.yaml       # Master manifest (Multi-Model Matrix, profiles, plugins, MCP tools, workflows)
+├── persona.yaml       # Master manifest (version, Multi-Model Matrix, profiles, MCPs, plugins, workflows)
 ├── SKILL.md           # Reusable domain rules and operational constraints
 └── workflow.sh        # Executable bash recipes for recurring tasks
 ```
 
-### Example Manifest with Multi-Model Matrix & Profiles (`persona.yaml`):
+### Flagship Manifest Example (`config/personas/sdmx-expert/persona.yaml`):
 ```yaml
+version: "1.0"
 name: sdmx-expert
 title: "SDMX 2.1 & Statistical Data Specialist"
 description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
 
 # 🌐 Supported Execution Context Profiles
 profiles:
-  - web
-  - headless
-  - cli
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
 
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:
     provider: openrouter
-    model: anthropic/claude-3.5-sonnet
+    model: deepseek/deepseek-chat
     temperature: 0.1
-    useCase: "Precision code security auditing, vulnerability verification, and patch generation"
+    useCase: "Dataflow queries, dimension mapping, and XML/JSON endpoint extraction"
   reasoning:
     provider: openrouter
     model: deepseek/deepseek-r1
     temperature: 0.0
-    useCase: "Complex cryptanalysis, threat modeling, and multi-file taint analysis"
+    useCase: "Complex cross-agency statistical reconciliation (LU1 vs ESTAT) and DSD validation"
   fast:
-    provider: openrouter
-    model: deepseek/deepseek-chat
-    temperature: 0.2
-    useCase: "Rapid repository secret scanning and basic linter reviews"
-  multimodal:
     provider: gemini
     model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "High-speed schema parsing and statistical codelist browsing"
+  coding:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
     temperature: 0.1
-    useCase: "Architecture diagram review and visual document inspection"
+    useCase: "Writing robust Python / pandas / sdmx1 data processing scripts with uv"
 
-plugins:
-  - "dsh-better-sidebar"
-  - "dsh-find-plugin"
-
+# 🔌 Scoped Model Context Protocol (MCP) Servers
 mcpServers:
-  github:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-github"]
   fetch:
     command: "npx"
     args: ["-y", "@mzxrai/mcp-webresearch"]
+  context7:
+    command: "npx"
+    args: ["-y", "@upstash/context7-mcp"]
 
+# 🧩 Dedicated Plugins
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-model-sync"
+
+# 🤖 Automation Recipes
 workflows:
-  audit-diff:
+  lustat:
     modelTier: default
-    command: "Using the security-auditor skill, audit all modified files in git diff HEAD~1 and report security risks with diff patches."
-  threat-model:
-    modelTier: reasoning
-    command: "Using the security-auditor skill, perform deep architectural threat modeling across the codebase."
-  scan-secrets:
-    modelTier: fast
-    command: "Using the security-auditor skill, scan the repository for hardcoded tokens, passwords, and private keys."
+    command: "Using the sdmx-expert skill, query available dataflows from LUSTAT (LU1) and list top economic indicators."
+  eurostat:
+    modelTier: default
+    command: "Using the sdmx-expert skill, discover Eurostat (ESTAT) dataflow endpoints for consumer price indexes."
+  generate-script:
+    modelTier: coding
+    command: "Using the sdmx-expert skill, write a Python uv script using sdmx1 to fetch and convert LUSTAT data to pandas."
 ```
 
 ---
@@ -199,7 +205,7 @@ workflows:
   * `fast`: `gemini/gemini-3.7-flash` (session log parsing & documentation indexing)
 * **MCP Tools**: `fetch`, `context7`, `github`
 * **Plugins**: `deepseek-flow` (visual canvas), `dsh-mnemon`, `dshmarket`, `dsh-find-plugin`
-* **Workflows**: Visual canvas workflow design, automated 5-layer persona package generation.
+* **Workflows**: Visual canvas workflow design, automated 6-layer persona package generation.
 
 ### 2. 📊 `data-analyst` (Data Analyst & Insights Specialist)
 * **Model Matrix**:
@@ -243,26 +249,134 @@ workflows:
 
 ---
 
+## 📜 Normative `persona.yaml` Manifest Specification
+
+Every persona package is defined by a master declarative manifest `config/personas/<name>/persona.yaml`:
+
+### Schema Reference
+
+```yaml
+# Master Persona Manifest Schema (Version 1.0)
+version: "1.0"                         # [Required] Schema version
+name: "string"                         # [Required] Slug identifier (kebab-case)
+title: "string"                        # [Required] Human-readable display title
+description: "string"                  # [Required] High-level domain summary
+
+# 🌐 Execution Context Profiles (List or Dict)
+profiles:                              # [Required] List or Dict of supported profiles
+  - "web"                              # Standard profiles: web | headless | cli
+  - "headless"
+  - "cli"
+  # Or Structured Dict with Scoped Overrides:
+  # sandbox:
+  #   description: "Isolated security-restricted profile"
+  #   network: false                   # Disable container network egress
+  #   fsMode: "read-only"              # Enforce read-only filesystem mounts
+  #   timeout: "180s"                  # Execution deadline
+  #   outputFormat: "json"             # Formatter (json | text | markdown)
+  #   plugins: ["dsh-find-plugin"]     # Scoped plugins (augmented to global plugins)
+
+# 🎯 Multi-Model Task-Routing Matrix
+models:                                # [Required] Dictionary of task-to-model tiers
+  default:                             # [Required] Primary model for interactive orchestration
+    provider: "openrouter|gemini|ollama" # [Required] Provider slug
+    model: "string"                    # [Required] Model identifier (e.g. deepseek/deepseek-chat)
+    temperature: 0.1                   # [Optional] Sampling temperature (0.0 to 1.0)
+    useCase: "string"                  # [Optional] Human-readable description
+  reasoning:                           # [Optional] Deep architectural & mathematical tier
+    provider: "openrouter|gemini|ollama"
+    model: "string"
+    temperature: 0.0
+    useCase: "string"
+  coding:                              # [Optional] High-precision code generation tier
+    provider: "openrouter|gemini|ollama"
+    model: "string"
+    temperature: 0.1
+    useCase: "string"
+  fast:                                # [Optional] High-throughput document/log parsing tier
+    provider: "gemini|openrouter|ollama"
+    model: "string"
+    temperature: 0.2
+    useCase: "string"
+
+# 🔌 Scoped Model Context Protocol (MCP) Servers
+mcpServers:                            # [Optional] Dictionary of MCP tool definitions
+  <server-name>:
+    command: "npx|python|docker"       # Command binary
+    args: ["-y", "@scope/package"]     # Arguments
+    env:                               # Environment variable indirection
+      TOKEN: "${SECRET_ENV_VAR}"       # (Never hardcode secrets directly)
+
+# 🧩 Dedicated Plugins
+plugins:                               # [Optional] List of DSH plugins required
+  - "plugin-id-or-npm-name"
+
+# 🤖 Executable Automation Recipes
+workflows:                             # [Optional] Dictionary of named execution recipes
+  <workflow-key>:
+    modelTier: "default|reasoning|coding|fast" # Model tier to invoke
+    command: "string"                  # CLI prompt / instruction
+```
+
+### Merging & Resolution Rules:
+1. **Profiles Merging**: Per-profile `plugins` are merged (union) with global `plugins`.
+2. **Model Normalization**: CLI shorthands like `openrouter/deepseek/deepseek-chat` are normalized automatically to `{ provider: 'openrouter', model: 'deepseek/deepseek-chat' }`.
+3. **Secret Indirection**: All MCP credentials **must** use `${VAR_NAME}` syntax referencing environment variables from the host or container environment.
+
+---
+
+## 🔒 Security, Trust Boundaries & Secret Scrubbing in Distillation
+
+When distilling interactive web sessions into permanent persona packages, DeepSeek Harness enforces strict security boundaries:
+
+```mermaid
+flowchart LR
+    SESSION["💬 Interactive Session<br/>(May contain untrusted web text & tokens)"]
+    
+    subgraph Scrubbing_Pipeline ["🛡️ Distillation Security Boundary"]
+        SCRUB["🔑 Secret Scrubber<br/>(Redacts API keys, tokens, Bearer auth)"]
+        DRAFT["📁 Isolated Draft<br/>(Writes to uncommitted config/personas/name/)"]
+        GATE["👁️ Human-in-the-Loop Review<br/>(git diff & code inspection)"]
+    end
+    
+    COMMIT["📦 Active Persona Package<br/>(Committed to Git & active in skills/)"]
+    
+    SESSION --> SCRUB
+    SCRUB --> DRAFT
+    DRAFT --> GATE
+    GATE --> COMMIT
+```
+
+1. **Automated Secret Scrubbing**:
+   * The distiller automatically sanitizes session transcripts, stripping strings matching API key patterns (`sk-...`, `ghp_...`, `Bearer ...`) and environment credentials before writing `persona.yaml` and `SKILL.md`.
+2. **Indirect Prompt Injection Protection**:
+   * Content retrieved from external websites via `@mzxrai/mcp-webresearch` or public APIs could contain malicious prompt injection vectors. 
+   * Distillation is **never automatically pushed to production**. It creates an uncommitted local package under `config/personas/<name>/` that requires explicit developer review (`git diff`) before being committed.
+3. **Sandbox Execution Constraints**:
+   * For personas running in the `sandbox` profile (`network: false`), MCP dependencies must be pre-installed/cached in the container image to prevent runtime `npx` download failures.
+
+---
+
 ## 🧪 Interactive Session Recording & Persona Distillation
 
-Instead of writing a persona from scratch, you can **draft and refine workflows interactively** in a chat session, and then **distill the session into a permanent Persona Package** using our native CLI distiller:
+Instead of writing a persona from scratch, you can **draft and refine workflows interactively** in a chat session, and then **distill the session into a permanent 6-Layer Persona Package** using our native CLI distiller:
 
 ```mermaid
 flowchart TD
-    SESSION["💬 1. Interactive Session\n(Web Workbench :3080 / Terminal CLI)"]
+    SESSION["💬 1. Interactive Session<br/>(Web Workbench :3080 / Terminal CLI)"]
     
     subgraph Recording_Pipeline ["🧠 Real-Time Session & Workflow Capture"]
-        MEM["dsh-mnemon\n(Unified Memory System & Session Spaces)"]
-        SREAD["dsh-session-reader\n(Reads transcript logs & tool calls)"]
-        OTEL["Arize Phoenix OTel\n(Logs traces, tool waterfalls & spans)"]
+        MEM["dsh-mnemon<br/>(Unified Memory System & Session Spaces)"]
+        SREAD["dsh-session-reader<br/>(Reads transcript logs & tool calls)"]
+        OTEL["Arize Phoenix OTel<br/>(Logs traces, tool waterfalls & spans)"]
     end
 
     subgraph Distiller_CLI ["🧪 Universal Persona Distiller"]
-        CLI["./dsh.sh persona distill <name>\n(Universal 5-Layer Package Generator)"]
+        CLI["./dsh.sh persona distill name<br/>(Universal 6-Layer Package Generator)"]
     end
 
-    subgraph Persona_Package ["📦 Persona Package (config/personas/<name>/)"]
-        YAML["persona.yaml (Multi-Model Matrix & MCPs)"]
+    subgraph Persona_Package ["📦 Persona Package (config/personas/name/)"]
+        YAML["persona.yaml (Multi-Model Matrix, Profiles, MCPs)"]
         SKILL["SKILL.md (Rules & Guidelines)"]
         WF["workflow.sh (Automation Recipes)"]
     end
@@ -275,20 +389,18 @@ flowchart TD
 
 ---
 
----
-
 ## 🛠️ The Decoupled Developer Workflow
 
 The recommended engineering pattern separates **interactive execution & experimentation (inside Web UI & Phoenix)** from **persona building, version control, and automation (outside Web UI via CLI & Git)**:
 
 ```mermaid
 flowchart TD
-    START["1. Start Named Session in Web UI (:3080)\ne.g. 'SDMX-LU1-DRAFT' or 'K8S-MIGRATION'"] --> RUN["2. Interact, Test Tools & Refine Prompt\n(Agent uses tools, memory, and models)"]
-    RUN --> OTEL["3. Audit Live Traces in Arize Phoenix (:6006)\n(Inspect model latency, tool waterfalls, token cost)"]
-    OTEL --> LIST["4. Inspect Session Transcripts\n./dsh.sh sessions"]
-    LIST --> DISTILL["5. Distill Outside Web UI into Persona Package\n./dsh.sh persona distill <name> --session <id>"]
-    DISTILL --> GIT["6. Git Commit & IDE Review (VS Code / Antigravity)\nconfig/personas/<name>/ (persona.yaml, SKILL.md, workflow.sh)"]
-    GIT --> AUTO["7. Re-use & Automate Headless\n./config/personas/<name>/workflow.sh or Web UI Dropdown"]
+    START["1. Start Named Session in Web UI (:3080)<br/>e.g. 'SDMX-LU1-DRAFT' or 'K8S-MIGRATION'"] --> RUN["2. Interact, Test Tools & Refine Prompt<br/>(Agent uses tools, memory, and models)"]
+    RUN --> OTEL["3. Audit Live Traces in Arize Phoenix (:6006)<br/>(Inspect model latency, tool waterfalls, token cost)"]
+    OTEL --> LIST["4. Inspect Session Transcripts<br/>./dsh.sh sessions"]
+    LIST --> DISTILL["5. Distill Outside Web UI into Persona Package<br/>./dsh.sh persona distill name --session id"]
+    DISTILL --> GIT["6. Git Commit & IDE Review<br/>config/personas/name/ (persona.yaml, SKILL.md, workflow.sh)"]
+    GIT --> AUTO["7. Re-use & Automate Headless<br/>./config/personas/name/workflow.sh or Web UI Dropdown"]
 ```
 
 ### 📋 Detailed Step-by-Step Guide:
@@ -310,7 +422,7 @@ flowchart TD
   * 💰 **Token Attribution**: Track prompt vs completion token consumption.
 
 #### 4. Distill Externally via CLI
-Open your terminal and distill the refined session into a permanent 5-layer Persona package:
+Open your terminal and distill the refined session into a permanent 6-layer Persona package:
 
 ```bash
 # List all recorded sessions across workspaces:
@@ -323,7 +435,7 @@ Open your terminal and distill the refined session into a permanent 5-layer Pers
 #### 5. Review & Git Commit in Your IDE
 Open the generated package in your editor:
 ```bash
-# Inspect the 5-layer persona package
+# Inspect the 6-layer persona package
 tree config/personas/sdmx-engineer/
 # ├── persona.yaml   # Multi-Model Task Routing Matrix & MCP tools
 # ├── SKILL.md       # Operational rules, guidelines & schemas
@@ -351,7 +463,12 @@ git commit -m "feat(persona): add sdmx-engineer distilled from ESTAT/LUSTAT inte
 | Command | Action |
 | :--- | :--- |
 | **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
-| **`./dsh.sh persona list`** | Lists all personas with their full **Task-to-Model Matrix** and starter templates. |
+| **`./dsh.sh persona list`** | Lists all personas with their full **Task-to-Model Matrix**, execution profiles, and starter templates. |
+| **`./dsh.sh persona create <name> [--template <tmpl>]`** | Generates a new 6-layer persona package in `config/personas/<name>/`. |
+| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills an interactive web/CLI session into a permanent 6-layer persona package. |
+| **`./dsh.sh persona run <name> [--tier <tier>] [--profile <profile>] "<prompt>"`** | Executes persona in target profile with calibrated model tier. |
+| **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a declared automation workflow recipe. |
+| **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets persona default model and active skill as default in Web UI. |
 | **`./dsh.sh persona create <name> --template <template>`** | Scaffolds a complete persona package from a pre-built template. |
 | **`./dsh.sh persona distill <name> [--session <id>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
 | **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets the persona's specified model tier as the active workspace default. |

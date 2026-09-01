@@ -8,7 +8,7 @@ case "$WORKFLOW" in
     ./dsh.sh persona run persona-creator --tier reasoning "Design an interactive visual workflow canvas (WORKFLOW.md and STEP.md) with deepseek-flow for the active workspace."
     ;;
   build-persona)
-    ./dsh.sh persona run persona-creator --tier audit "Synthesize recent session insights and generate a complete 5-layer persona package."
+    ./dsh.sh persona run persona-creator --tier audit "Synthesize recent session insights and generate a complete 6-layer persona package."
     ;;
   benchmark)
     ./dsh.sh persona run persona-creator --tier fast "Audit persona traces and token latency in Arize Phoenix."

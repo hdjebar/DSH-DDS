@@ -1,3 +1,4 @@
+version: "1.0"
 name: data-analyst
 title: "Data Analyst & Insights Specialist"
 description: "Specialized in querying SQL databases, analyzing tabular datasets, and computing distribution metrics."

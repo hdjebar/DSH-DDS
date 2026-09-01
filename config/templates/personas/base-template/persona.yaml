@@ -1,3 +1,4 @@
+version: "1.0"
 name: base-template
 title: "Universal Base Persona Template"
 description: "Universal boilerplate persona configured with a multi-model task matrix and standard toolsets."

@@ -1,3 +1,4 @@
+version: "1.0"
 name: security-auditor
 title: "Security Auditor & AppSec Specialist"
 description: "Specialized in code security reviews, OWASP vulnerability detection, token leak auditing, and dependency scans."

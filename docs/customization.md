@@ -76,7 +76,7 @@ You can add self-hosted local models running on your host machine or network dir
 
 ## 5. 🏗️ Prompt-Driven Persona & Workflow Architecture (`persona-creator`)
 
-You can instruct the meta-architect persona **`persona-creator`** in the Web UI to design visual DAG workflows and generate complete 5-layer persona packages:
+You can instruct the meta-architect persona **`persona-creator`** in the Web UI to design visual DAG workflows and generate complete 6-layer persona packages:
 
 ### Example Prompts:
 > 💬 *"Create a new persona named `data-engineer` with a Multi-Model Matrix: `default` with DeepSeek V3, `reasoning` with DeepSeek R1 for SQL DAG dependency analysis, SQLite MCP, and DuckDB Parquet transformation rules."*  

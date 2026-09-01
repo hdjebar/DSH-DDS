@@ -1,3 +1,4 @@
+version: "1.0"
 name: devops-sre
 title: "DevOps & Site Reliability Engineer"
 description: "Specialized in Docker container lifecycle, health diagnostics, CI/CD automation, and Phoenix observability."

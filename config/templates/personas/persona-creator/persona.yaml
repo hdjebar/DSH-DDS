@@ -1,6 +1,7 @@
+version: "1.0"
 name: persona-creator
 title: "AI Persona & Workflow Architect"
-description: "Meta-architect persona specializing in interactive workflow design with deepseek-flow visual canvas, multi-model matrix calibration, and 5-layer persona package generation."
+description: "Meta-architect persona specializing in interactive workflow design with deepseek-flow visual canvas, multi-model matrix calibration, and 6-layer persona package generation."
 
 # 🌐 Supported Execution Context Profiles
 profiles:
@@ -54,7 +55,7 @@ workflows:
     command: "Design an interactive visual workflow canvas (WORKFLOW.md and STEP.md) with deepseek-flow."
   build-persona:
     modelTier: audit
-    command: "Synthesize and write a complete 5-layer persona package into config/personas/<name>/."
+    command: "Synthesize and write a complete 6-layer persona package into config/personas/<name>/."
   benchmark:
     modelTier: fast
     command: "Evaluate persona token performance and trace latency via Arize Phoenix."

@@ -1,3 +1,4 @@
+version: "1.0"
 name: mlops-engineer
 title: "Mlops Engineer"
 description: "Distilled specialist persona for Mlops Engineer derived from interactive sessions."

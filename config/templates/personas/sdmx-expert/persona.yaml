@@ -1,3 +1,4 @@
+version: "1.0"
 name: sdmx-expert
 title: "SDMX 2.1 & Statistical Data Specialist"
 description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
