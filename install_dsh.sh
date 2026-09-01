@@ -205,6 +205,20 @@ FROM smanx/deepseek-harness:latest AS runner
 # Retain pnpm for on-the-fly dynamic Web UI plugin installations
 RUN npm install -g pnpm && npm cache clean --force
 
+# Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
+RUN node -e '\
+const fs = require("fs");\
+const file = "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js";\
+if (fs.existsSync(file)) {\
+  let content = fs.readFileSync(file, "utf8");\
+  if (!content.includes("const googleExtraContentCache")) {\
+    content = "const googleExtraContentCache = new Map();\\n" + content;\
+    content = content.replace("const name = toolCall.function?.name ?? toolCall.custom?.name;", "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            const name = toolCall.function?.name ?? toolCall.custom?.name;");\
+    content = content.replace("return {\\n                        id: tc.id,", "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
+    fs.writeFileSync(file, content, "utf8");\
+  }\
+}'
+
 # Copy pre-compiled and pre-built plugins
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/

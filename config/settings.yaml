@@ -1,8 +1,8 @@
 ui-onboarding:
   welcomeNoticeVersion: 2026-08-13.1
 agent-default-model:
-  provider: openrouter
-  model: deepseek/deepseek-chat
+  provider: gemini
+  model: gemini-3.7-flash
 llm-pi-ai:
   providers:
     openrouter:
