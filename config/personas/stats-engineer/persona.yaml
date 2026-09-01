@@ -1,6 +1,6 @@
-name: base-template
-title: "Universal Base Persona Template"
-description: "Universal boilerplate persona configured with a multi-model task matrix and standard toolsets."
+name: stats-engineer
+title: "Stats Engineer"
+description: "Distilled specialist persona for Stats Engineer derived from interactive sessions."
 
 # 🌐 Supported Execution Context Profiles
 profiles:
@@ -14,25 +14,27 @@ models:
     provider: openrouter
     model: deepseek/deepseek-chat
     temperature: 0.2
-    useCase: "General queries, planning, and task triage"
+    useCase: "General Stats Engineer task drafting and conversational execution"
   reasoning:
     provider: openrouter
     model: deepseek/deepseek-r1
     temperature: 0.0
-    useCase: "Deep reasoning, logic validation, and complex problem decomposition"
-  coding:
+    useCase: "Deep architectural reasoning and complex problem decomposition"
+  audit:
     provider: openrouter
     model: anthropic/claude-3.5-sonnet
     temperature: 0.1
-    useCase: "High-precision code implementation and patch generation"
+    useCase: "High-accuracy code inspection and precision verification"
   fast:
     provider: gemini
     model: gemini-3.7-flash
     temperature: 0.2
-    useCase: "High-throughput search and file indexing"
+    useCase: "Rapid large file parsing and repository indexing"
 
 plugins:
   - "@liustack/modsearch"
+  - "dsh-mnemon"
+  - "dsh-persona-memory"
   - "dsh-find-plugin"
 
 mcpServers:
@@ -43,7 +45,7 @@ mcpServers:
 workflows:
   default-task:
     modelTier: default
-    command: "Using the base-template skill, execute the standard domain workflow."
-  deep-task:
+    command: "Using the stats-engineer skill, execute the core Stats Engineer workflow."
+  deep-analysis:
     modelTier: reasoning
-    command: "Using the base-template skill, perform deep reasoning and analysis."
+    command: "Using the stats-engineer skill, perform deep multi-step reasoning on the active workspace."

@@ -2,6 +2,12 @@ name: security-auditor
 title: "Security Auditor & AppSec Specialist"
 description: "Specialized in code security reviews, OWASP vulnerability detection, token leak auditing, and dependency scans."
 
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:

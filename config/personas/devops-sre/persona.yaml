@@ -2,6 +2,12 @@ name: devops-sre
 title: "DevOps & Site Reliability Engineer"
 description: "Specialized in Docker container lifecycle, health diagnostics, CI/CD automation, and Phoenix observability."
 
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:

@@ -2,6 +2,12 @@ name: data-analyst
 title: "Data Analyst & Insights Specialist"
 description: "Specialized in querying SQL databases, analyzing tabular datasets, and computing distribution metrics."
 
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:

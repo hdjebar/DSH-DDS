@@ -25,7 +25,7 @@ function ensureDirs() {
 function parsePersonaYaml(filePath) {
   if (!fs.existsSync(filePath)) return {};
   const content = fs.readFileSync(filePath, 'utf8');
-  const result = { models: {}, plugins: [], mcpServers: {}, workflows: {} };
+  const result = { models: {}, plugins: [], mcpServers: {}, workflows: {}, profiles: [] };
 
   const nameM = content.match(/^name:\s*(.+)$/m);
   if (nameM) result.name = nameM[1].trim();
@@ -35,6 +35,19 @@ function parsePersonaYaml(filePath) {
 
   const descM = content.match(/^description:\s*["']?(.+?)["']?$/m);
   if (descM) result.description = descM[1].trim();
+
+  // Parse Execution Context Profiles
+  const profilesMatch = content.match(/profiles:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
+  if (profilesMatch) {
+    const lines = profilesMatch[1].split('\n');
+    for (const line of lines) {
+      const pM = line.match(/^\s*-\s*([a-zA-Z0-9_-]+)/);
+      if (pM) result.profiles.push(pM[1].trim());
+    }
+  }
+  if (result.profiles.length === 0) {
+    result.profiles = ['web', 'headless', 'cli'];
+  }
 
   // Parse Multi-Model Matrix
   const modelsMatch = content.match(/models:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
@@ -95,7 +108,7 @@ function parsePersonaYaml(filePath) {
 function listPersonas() {
   ensureDirs();
   console.log('========================================================================');
-  console.log('🎭 DeepSeek Harness AI Personas (Multi-Model Matrix Enabled)');
+  console.log('🎭 DeepSeek Harness AI Personas (Multi-Model & Execution Contexts)');
   console.log('========================================================================');
 
   console.log('\n📦 Active Personas (in config/personas/):');
@@ -109,12 +122,14 @@ function listPersonas() {
   } else {
     for (const name of installed) {
       const meta = parsePersonaYaml(path.join(PERSONAS_DIR, name, 'persona.yaml'));
-      const title = meta.title || name;
-      console.log(`\n  🔹 \x1b[32m${name}\x1b[0m — \x1b[1m${title}\x1b[0m`);
-      console.log(`     \x1b[90mDesc:\x1b[0m ${meta.description || 'Specialized AI Persona'}`);
-      console.log(`     \x1b[90mTask-to-Model Matrix:\x1b[0m`);
-      for (const [tier, m] of Object.entries(meta.models)) {
-        console.log(`       • \x1b[33m${tier.padEnd(10)}\x1b[0m → \x1b[36m${m.provider}/${m.model}\x1b[0m ${m.useCase ? `\x1b[90m(${m.useCase})\x1b[0m` : ''}`);
+      console.log(`\n  🔹 \x1b[32m${name}\x1b[0m — ${meta.title || name}`);
+      if (meta.description) console.log(`     Desc: \x1b[90m${meta.description}\x1b[0m`);
+      if (meta.profiles && meta.profiles.length > 0) {
+        console.log(`     Contexts (Profiles): \x1b[35m${meta.profiles.join(', ')}\x1b[0m`);
+      }
+      console.log(`     Task-to-Model Matrix:`);
+      for (const [tier, cfg] of Object.entries(meta.models)) {
+        console.log(`       • \x1b[33m${tier.padEnd(10)}\x1b[0m → \x1b[36m${cfg.provider}/${cfg.model}\x1b[0m \x1b[90m(${cfg.useCase || 'General'})\x1b[0m`);
       }
     }
   }
@@ -202,21 +217,22 @@ function applyPersona(name, tier = 'default') {
   }
 }
 
-function runPersona(name, prompt, tier = 'default') {
+function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   if (!name || !prompt) {
-    console.error('❌ Usage: ./dsh.sh persona run <name> [--tier <tier>] "<prompt>"');
+    console.error('❌ Usage: ./dsh.sh persona run <name> [--tier <tier>] [--profile <profile>] "<prompt>"');
     process.exit(1);
   }
 
   const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
   const tempPatchFile = path.resolve(process.cwd(), 'config/patch.tmp.yaml');
   let modelOverride = '';
+  let activeProfile = profile;
 
   if (fs.existsSync(manifestPath)) {
     const meta = parsePersonaYaml(manifestPath);
     const chosenModel = meta.models[tier] || meta.models.default;
     if (chosenModel) {
-      console.log(`🤖 Invoking persona \x1b[32m${name}\x1b[0m using \x1b[33m[${tier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
+      console.log(`🤖 Invoking persona \x1b[32m${name}\x1b[0m on profile \x1b[35m${activeProfile}\x1b[0m using \x1b[33m[${tier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
       const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
       fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
       modelOverride = `--patch /root/.dsh/patch.tmp.yaml`;
@@ -224,7 +240,7 @@ function runPersona(name, prompt, tier = 'default') {
   }
 
   const fullPrompt = `Using the ${name} skill, ${prompt}`;
-  const cmd = `docker compose exec dsh dsh --profile headless ${modelOverride} "${fullPrompt}"`;
+  const cmd = `docker compose exec dsh dsh --profile ${activeProfile} ${modelOverride} "${fullPrompt}"`;
   try {
     execSync(cmd, { stdio: 'inherit', shell: '/bin/bash' });
   } catch (err) {
@@ -510,9 +526,13 @@ switch (command) {
     applyPersona(filteredArgs[0], tier);
     break;
 
-  case 'run':
-    runPersona(filteredArgs[0], filteredArgs[1], tier);
+  case 'run': {
+    let profile = 'headless';
+    const pIdx = rawArgs.indexOf('--profile');
+    if (pIdx !== -1 && rawArgs[pIdx + 1]) profile = rawArgs[pIdx + 1];
+    runPersona(filteredArgs[0], filteredArgs[1], tier, profile);
     break;
+  }
 
   case 'workflow':
   case 'wf':
@@ -525,5 +545,5 @@ switch (command) {
     break;
 
   default:
-    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> --template <tmpl> | distill <name> [--session <id>] | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
+    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> --template <tmpl> | distill <name> [--session <id>] | apply <name> | run <name> [--tier <tier>] [--profile <profile>] "<prompt>" | workflow <name> <wf>]');
 }

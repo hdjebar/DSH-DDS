@@ -1,11 +1,12 @@
 # 🎭 AI Agent Personas & Multi-Model Task Routing
 
-A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **5 specialized layers**:
+A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **6 specialized layers**:
 1. **Domain Skill (`SKILL.md`)**: Operational guidelines, domain rules, code patterns, and structured output schemas.
 2. **Provider & Calibrated Models (`models`)**: A **Multi-Model Task-Routing Matrix** assigning optimal models per task type (e.g. Default, Deep Reasoning, Precision Coding/Audit, Fast Indexing, Multimodal).
-3. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
-4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
-5. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
+3. **Execution Context Profiles (`profiles`)**: Defined runtime execution environments (e.g. `web` for interactive visual canvas & widgets, `headless` for automated CI/CD batch runs, `cli` for terminal TUI).
+4. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
+5. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
+6. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
 
 ---
 
@@ -14,22 +15,36 @@ A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker
 ```mermaid
 flowchart TD
     subgraph Package ["📦 Persona Package (config/personas/<name>/)"]
-        MANIFEST["📋 persona.yaml\n(Multi-Model Matrix, Plugins, MCPs, Workflows)"]
+        MANIFEST["📋 persona.yaml\n(Multi-Model Matrix, Profiles, Plugins, MCPs, Workflows)"]
         SKILL["🧠 SKILL.md\n(Domain Guidelines & Output Schemas)"]
         WORKFLOW["🤖 workflow.sh\n(Automated CLI Recipes)"]
         MCPS["🔌 Scoped MCP Servers\n(SQLite, GitHub, Web Fetch)"]
-        PLUGS["🧩 Custom Plugins\n(Marketplace, Search, Memory)"]
+        PLUGS["🧩 Custom Plugins\n(deepseek-flow, Search, Memory)"]
+        PROFILES["🌐 Execution Contexts\n(web, headless, cli)"]
     end
 
     MANIFEST --> SKILL
     MANIFEST --> MCPS
     MANIFEST --> PLUGS
     MANIFEST --> WORKFLOW
+    MANIFEST --> PROFILES
     
     Package --> WEB["🌐 Web Workbench (Port 3080)"]
     Package --> CLI["⌨️ CLI / Headless Runner"]
     Package --> PHOENIX["📊 Arize Phoenix Tracing (Port 6006)"]
 ```
+
+---
+
+## 🌐 Persona Execution Context Profiles (`profiles`)
+
+A Persona can operate across different execution contexts depending on the task requirements:
+
+| Execution Context Profile | Runtime Environment | Best Suited For |
+| :--- | :--- | :--- |
+| **`web`** | Full browser workbench with `deepseek-flow` visual canvas, plugin market, and memory widgets. | Interactive domain exploration, visual workflow design, and human-in-the-loop debugging. |
+| **`headless`** | Autonomous, zero-GUI CLI runner executing one-shot tasks and printing clean results to `stdout`. | CI/CD pipelines, automated cron scripts, and background agent swarms. |
+| **`cli`** | Interactive terminal Text-User-Interface (TUI) with low memory overhead. | Terminal-first developers and remote SSH server environments. |
 
 ---
 
@@ -51,16 +66,22 @@ Rather than restricting a persona to a single static model, each persona defines
 
 ```text
 config/personas/<name>/
-├── persona.yaml       # Master manifest (Multi-Model Matrix, plugins, MCP tools, workflows)
+├── persona.yaml       # Master manifest (Multi-Model Matrix, profiles, plugins, MCP tools, workflows)
 ├── SKILL.md           # Reusable domain rules and operational constraints
 └── workflow.sh        # Executable bash recipes for recurring tasks
 ```
 
-### Example Manifest with Multi-Model Matrix (`persona.yaml`):
+### Example Manifest with Multi-Model Matrix & Profiles (`persona.yaml`):
 ```yaml
-name: security-auditor
-title: "Security Auditor & AppSec Specialist"
-description: "Specialized in code security reviews, OWASP vulnerability detection, token leak auditing, and dependency scans."
+name: sdmx-expert
+title: "SDMX 2.1 & Statistical Data Specialist"
+description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
+
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web
+  - headless
+  - cli
 
 # 🎯 Multi-Model Task Routing Matrix
 models:

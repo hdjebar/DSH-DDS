@@ -2,6 +2,12 @@ name: sdmx-expert
 title: "SDMX 2.1 & Statistical Data Specialist"
 description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
 
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:

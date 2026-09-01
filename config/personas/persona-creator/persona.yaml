@@ -2,6 +2,12 @@ name: persona-creator
 title: "AI Persona & Workflow Architect"
 description: "Meta-architect persona specializing in interactive workflow design with deepseek-flow visual canvas, multi-model matrix calibration, and 5-layer persona package generation."
 
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
 # 🎯 Multi-Model Task Routing Matrix
 models:
   default:
