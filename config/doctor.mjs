@@ -157,6 +157,7 @@ async function checkPlugins() {
     'dsh-model-sync',
     'dsh-mnemon',
     'dsh-mcp-market',
+    'dshmarket',
     'dsh-persona-memory',
     'dsh-run2skill',
     'dsh-session-reader'

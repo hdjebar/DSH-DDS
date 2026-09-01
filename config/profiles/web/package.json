@@ -11,7 +11,8 @@
     "dsh-persona-memory": "^0.2.0",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
     "dsh-run2skill": "^0.3.1",
-    "dsh-session-reader": "^0.1.0"
+    "dsh-session-reader": "^0.1.0",
+    "dshmarket": "^1.39.0"
   },
   "dsh": {
     "profile": {
@@ -27,7 +28,8 @@
         "dsh-mcp-market",
         "dsh-persona-memory",
         "dsh-run2skill",
-        "dsh-session-reader"
+        "dsh-session-reader",
+        "dshmarket"
       ]
     }
   }

@@ -38,6 +38,9 @@ importers:
       dsh-session-reader:
         specifier: ^0.1.0
         version: 0.1.0
+      dshmarket:
+        specifier: ^1.39.0
+        version: 1.39.0
 
 packages:
 
@@ -668,6 +671,18 @@ packages:
 
   dsh-session-reader@0.1.0:
     resolution: {integrity: sha512-OGj9CzbSj0QnNn/QlPXFuR0zsSS5OzyEaV2pmaU22GCE17JNC1okpLNvx1qkfHQqrsOwbU8oALNKHe3W3ZmW3Q==}
+
+  dshmarket@1.39.0:
+    resolution: {integrity: sha512-URuXIuuNRfX6k0Flo7CJxeA7EVLhLGYDm3Lk4BoEXW1Qlg+boX/LI8wCE8hGC0FMBftFr9j8D/ulGNTdFM67nQ==}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      '@deepseek-ai/dsh-settings': ^0.1.0-rc.7 || ^0.1.1-rc.2 || ^0.1.2-alpha.2
+      '@deepseek-ai/schemastery': ^3.18.1
+    peerDependenciesMeta:
+      '@deepseek-ai/dsh-settings':
+        optional: true
+      '@deepseek-ai/schemastery':
+        optional: true
 
   dts-resolver@3.0.0:
     resolution: {integrity: sha512-1T1f+z+4tl9XD+m+0HBgWoL/nm0bOIffyWaUuUSBlFg/86IWvfx+wjNaO/ybU0AJzG9/Mi5hBUgGV6zCmWEN7Q==}
@@ -1392,6 +1407,11 @@ snapshots:
       zod: 4.5.4
 
   dsh-session-reader@0.1.0: {}
+
+  dshmarket@1.39.0:
+    dependencies:
+      js-yaml: 4.3.2
+      undici: 7.29.0
 
   dts-resolver@3.0.0: {}
 

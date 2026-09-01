@@ -46,6 +46,10 @@ This repository comes pre-packaged with **10 essential, pure English DSH plugins
 * **ID**: `dsh-session-reader`
 * **Purpose**: Allows agents and personas to read prior session contents, thinking processes, and tool responses to synthesize workflows.
 
+### 11. `dshmarket` (Visual Plugin Marketplace — English Localized)
+* **ID**: `dsh-market`
+* **Purpose**: Visual catalog to discover, search, and 1-click install community plugins directly within the web interface.
+
 ---
 
 ## 🔌 Pre-Configured MCP Servers
