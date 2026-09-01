@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * 🎭 Comprehensive Persona Package Manager
- * Manages full persona bundles: Skills + Provider/Model + Plugins + MCP Servers + Workflows.
+ * 🎭 Advanced Multi-Model Persona Package Manager
+ * Manages complete persona bundles with Task-to-Model Routing Matrix, Skills, MCPs, and Workflows.
  */
 
 import fs from 'fs';
@@ -13,7 +13,6 @@ const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
 const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
 const TEMPLATES_DIR = path.resolve(process.cwd(), 'config/templates/personas');
 const SETTINGS_FILE = path.resolve(process.cwd(), 'config/settings.yaml');
-const CORDIS_PATCH = path.resolve(process.cwd(), 'config/profiles/web/cordis.patch.yml');
 
 function ensureDirs() {
   if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true });
@@ -21,28 +20,70 @@ function ensureDirs() {
   if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
 }
 
-function parseYamlSimple(filePath) {
+function parsePersonaYaml(filePath) {
   if (!fs.existsSync(filePath)) return {};
   const content = fs.readFileSync(filePath, 'utf8');
-  const result = {};
-  
+  const result = { models: {}, plugins: [], mcpServers: {}, workflows: {} };
+
   const nameM = content.match(/^name:\s*(.+)$/m);
   if (nameM) result.name = nameM[1].trim();
-  
+
   const titleM = content.match(/^title:\s*["']?(.+?)["']?$/m);
   if (titleM) result.title = titleM[1].trim();
 
   const descM = content.match(/^description:\s*["']?(.+?)["']?$/m);
   if (descM) result.description = descM[1].trim();
 
-  const modelBlock = content.match(/model:\s*\n\s*provider:\s*([^\n\r]+)\s*\n\s*model:\s*([^\n\r]+)/m);
-  if (modelBlock) {
-    result.model = { provider: modelBlock[1].trim(), model: modelBlock[2].trim() };
+  // Parse Multi-Model Matrix
+  const modelsMatch = content.match(/models:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
+  if (modelsMatch) {
+    const lines = modelsMatch[1].split('\n');
+    let currentTier = null;
+    for (const line of lines) {
+      const tierM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
+      if (tierM) {
+        currentTier = tierM[1];
+        result.models[currentTier] = {};
+        continue;
+      }
+      if (currentTier) {
+        const pM = line.match(/^\s+provider:\s*(.+)$/);
+        if (pM) result.models[currentTier].provider = pM[1].trim();
+        const mM = line.match(/^\s+model:\s*(.+)$/);
+        if (mM) result.models[currentTier].model = mM[1].trim();
+        const tM = line.match(/^\s+temperature:\s*(.+)$/);
+        if (tM) result.models[currentTier].temperature = parseFloat(tM[1].trim());
+        const uM = line.match(/^\s+useCase:\s*["']?(.+?)["']?$/);
+        if (uM) result.models[currentTier].useCase = uM[1].trim();
+      }
+    }
   } else {
-    const providerM = content.match(/^\s*provider:\s*([^\n\r]+)$/m);
-    const modelM = content.match(/^\s*model:\s*([^\n\r]+)$/m);
-    if (providerM && modelM) {
-      result.model = { provider: providerM[1].trim(), model: modelM[1].trim() };
+    // Fallback single model
+    const pM = content.match(/provider:\s*(.+)$/m);
+    const mM = content.match(/model:\s*(.+)$/m);
+    if (pM && mM) {
+      result.models.default = { provider: pM[1].trim(), model: mM[1].trim() };
+    }
+  }
+
+  // Parse Workflows
+  const wfMatch = content.match(/workflows:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
+  if (wfMatch) {
+    const lines = wfMatch[1].split('\n');
+    let currentWf = null;
+    for (const line of lines) {
+      const wfM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
+      if (wfM) {
+        currentWf = wfM[1];
+        result.workflows[currentWf] = {};
+        continue;
+      }
+      if (currentWf) {
+        const tierM = line.match(/^\s+modelTier:\s*(.+)$/);
+        if (tierM) result.workflows[currentWf].modelTier = tierM[1].trim();
+        const cmdM = line.match(/^\s+command:\s*["']?(.+?)["']?$/);
+        if (cmdM) result.workflows[currentWf].command = cmdM[1].trim();
+      }
     }
   }
 
@@ -52,10 +93,9 @@ function parseYamlSimple(filePath) {
 function listPersonas() {
   ensureDirs();
   console.log('========================================================================');
-  console.log('🎭 DeepSeek Harness AI Personas & Specialized Workspaces');
+  console.log('🎭 DeepSeek Harness AI Personas (Multi-Model Matrix Enabled)');
   console.log('========================================================================');
 
-  // 1. Installed Full Persona Packages
   console.log('\n📦 Active Personas (in config/personas/):');
   const installed = fs.readdirSync(PERSONAS_DIR).filter(f => {
     return fs.statSync(path.join(PERSONAS_DIR, f)).isDirectory() &&
@@ -66,32 +106,33 @@ function listPersonas() {
     console.log('  (No custom personas configured yet. Create one with: ./dsh.sh persona create <name>)');
   } else {
     for (const name of installed) {
-      const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
-      const meta = parseYamlSimple(manifestPath);
+      const meta = parsePersonaYaml(path.join(PERSONAS_DIR, name, 'persona.yaml'));
       const title = meta.title || name;
-      const model = meta.model ? `${meta.model.provider}/${meta.model.model}` : 'default';
-      console.log(`  🔹 \x1b[32m${name}\x1b[0m — \x1b[1m${title}\x1b[0m`);
-      console.log(`     \x1b[90mModel:\x1b[0m ${model}`);
-      console.log(`     \x1b[90mDesc:\x1b[0m  ${meta.description || 'Specialized AI Persona'}`);
+      console.log(`\n  🔹 \x1b[32m${name}\x1b[0m — \x1b[1m${title}\x1b[0m`);
+      console.log(`     \x1b[90mDesc:\x1b[0m ${meta.description || 'Specialized AI Persona'}`);
+      console.log(`     \x1b[90mTask-to-Model Matrix:\x1b[0m`);
+      for (const [tier, m] of Object.entries(meta.models)) {
+        console.log(`       • \x1b[33m${tier.padEnd(10)}\x1b[0m → \x1b[36m${m.provider}/${m.model}\x1b[0m ${m.useCase ? `\x1b[90m(${m.useCase})\x1b[0m` : ''}`);
+      }
     }
   }
 
-  // 2. Available Starter Templates
   console.log('\n📋 Available Persona Starter Templates:');
   const templates = fs.readdirSync(TEMPLATES_DIR).filter(f => {
     return fs.statSync(path.join(TEMPLATES_DIR, f)).isDirectory() &&
            fs.existsSync(path.join(TEMPLATES_DIR, f, 'persona.yaml'));
   });
   for (const t of templates) {
-    const meta = parseYamlSimple(path.join(TEMPLATES_DIR, t, 'persona.yaml'));
-    console.log(`  🔸 \x1b[36m${t}\x1b[0m — ${meta.title || t}`);
+    const meta = parsePersonaYaml(path.join(TEMPLATES_DIR, t, 'persona.yaml'));
+    console.log(`  🔸 \x1b[36m${t.padEnd(18)}\x1b[0m — ${meta.title || t}`);
   }
 
-  console.log('\n💡 Commands:');
-  console.log('  ./dsh.sh persona create <name> --template <template>   # Scaffold new persona package');
-  console.log('  ./dsh.sh persona apply <name>                         # Switch active model to persona');
-  console.log('  ./dsh.sh persona run <name> "<prompt>"                # Execute task with persona');
-  console.log('  ./dsh.sh persona workflow <name> [action]             # Run defined persona workflow');
+  console.log('\n💡 Execution & Routing Commands:');
+  console.log('  ./dsh.sh persona create <name> --template <tmpl>   # Create new persona package');
+  console.log('  ./dsh.sh persona run <name> "<prompt>"             # Run with default task model');
+  console.log('  ./dsh.sh persona run <name> --tier <tier> "<prompt>" # Run with specific model tier (e.g. reasoning, audit)');
+  console.log('  ./dsh.sh persona workflow <name> <workflow-key>    # Run automated workflow');
+  console.log('  ./dsh.sh persona apply <name>                      # Set as active default in UI');
   console.log('========================================================================');
 }
 
@@ -119,73 +160,69 @@ function createPersona(name, templateName = 'data-analyst') {
     process.exit(1);
   }
 
-  // Copy template files
   for (const file of fs.readdirSync(templateDir)) {
     let content = fs.readFileSync(path.join(templateDir, file), 'utf8');
     content = content.replace(/name:\s*[\w-]+/m, `name: ${name}`);
     fs.writeFileSync(path.join(targetDir, file), content, 'utf8');
   }
 
-  // Make workflow executable
   if (fs.existsSync(path.join(targetDir, 'workflow.sh'))) {
     fs.chmodSync(path.join(targetDir, 'workflow.sh'), 0o755);
   }
 
-  // Copy SKILL.md into config/skills/<name>/SKILL.md for instant DSH discovery
   if (fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
     fs.copyFileSync(path.join(targetDir, 'SKILL.md'), path.join(targetSkillDir, 'SKILL.md'));
   }
 
   console.log('========================================================================');
-  console.log(`✅ Persona Package '${name}' successfully created!`);
-  console.log(`📁 Package Path:  config/personas/${name}/`);
-  console.log(`   ├── persona.yaml   (Model, plugins, MCP servers)`);
-  console.log(`   ├── SKILL.md       (Domain instructions & rules)`);
-  console.log(`   └── workflow.sh    (Ready-to-run automation recipes)`);
-  console.log(`📁 Skill Active:  config/skills/${name}/SKILL.md`);
-  console.log(`\n🚀 Ready to use:`);
-  console.log(`   ./dsh.sh persona apply ${name}              # Set as active workspace persona`);
-  console.log(`   ./dsh.sh persona run ${name} "<prompt>"     # Run one-shot headless task`);
+  console.log(`✅ Persona Package '${name}' created successfully with Multi-Model Matrix!`);
+  console.log(`📁 Package Path: config/personas/${name}/`);
+  console.log(`📁 Skill Active: config/skills/${name}/SKILL.md`);
   console.log('========================================================================');
 }
 
-function applyPersona(name) {
+function applyPersona(name, tier = 'default') {
   const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
   if (!fs.existsSync(manifestPath)) {
-    console.error(`❌ Error: Persona '${name}' not found at config/personas/${name}/persona.yaml`);
+    console.error(`❌ Persona '${name}' not found.`);
     process.exit(1);
   }
 
-  const meta = parseYamlSimple(manifestPath);
-  if (meta.model && fs.existsSync(SETTINGS_FILE)) {
+  const meta = parsePersonaYaml(manifestPath);
+  const targetModel = meta.models[tier] || meta.models.default;
+
+  if (targetModel && fs.existsSync(SETTINGS_FILE)) {
     let settings = fs.readFileSync(SETTINGS_FILE, 'utf8');
     settings = settings.replace(/agent-default-model:\s*\n\s*provider:\s*\w+\s*\n\s*model:\s*[\w\-\/\.:]+/m,
-      `agent-default-model:\n  provider: ${meta.model.provider}\n  model: ${meta.model.model}`);
+      `agent-default-model:\n  provider: ${targetModel.provider}\n  model: ${targetModel.model}`);
     fs.writeFileSync(SETTINGS_FILE, settings, 'utf8');
-    console.log(`✅ Applied default model: ${meta.model.provider}/${meta.model.model} for persona '${name}'`);
+    console.log(`✅ Applied default model: ${targetModel.provider}/${targetModel.model} (${tier} tier) for persona '${name}'`);
   }
-
-  console.log(`🚀 Persona '${name}' is now active in your workspace.`);
 }
 
-function runPersona(name, prompt) {
+function runPersona(name, prompt, tier = 'default') {
   if (!name || !prompt) {
-    console.error('❌ Usage: ./dsh.sh persona run <name> "<prompt>"');
+    console.error('❌ Usage: ./dsh.sh persona run <name> [--tier <tier>] "<prompt>"');
     process.exit(1);
   }
 
   const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
+  const tempPatchFile = path.resolve(process.cwd(), 'config/patch.tmp.yaml');
   let modelOverride = '';
+
   if (fs.existsSync(manifestPath)) {
-    const meta = parseYamlSimple(manifestPath);
-    if (meta.model) {
-      modelOverride = `--patch <(echo "- id: agent-default-model\n  config:\n    provider: ${meta.model.provider}\n    model: ${meta.model.model}")`;
+    const meta = parsePersonaYaml(manifestPath);
+    const chosenModel = meta.models[tier] || meta.models.default;
+    if (chosenModel) {
+      console.log(`🤖 Invoking persona \x1b[32m${name}\x1b[0m using \x1b[33m[${tier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
+      const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
+      fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
+      modelOverride = `--patch /root/.dsh/patch.tmp.yaml`;
     }
   }
 
   const fullPrompt = `Using the ${name} skill, ${prompt}`;
   const cmd = `docker compose exec dsh dsh --profile headless ${modelOverride} "${fullPrompt}"`;
-  console.log(`🚀 Executing persona '${name}'...`);
   try {
     execSync(cmd, { stdio: 'inherit', shell: '/bin/bash' });
   } catch (err) {
@@ -193,17 +230,26 @@ function runPersona(name, prompt) {
   }
 }
 
-function runWorkflow(name, action = '') {
-  const workflowScript = path.join(PERSONAS_DIR, name, 'workflow.sh');
-  if (!fs.existsSync(workflowScript)) {
-    console.error(`❌ No workflow.sh found for persona '${name}'`);
+function runWorkflow(name, workflowKey) {
+  const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
+  if (!fs.existsSync(manifestPath)) {
+    console.error(`❌ Persona '${name}' not found.`);
     process.exit(1);
   }
-  try {
-    execSync(`bash "${workflowScript}" ${action}`, { stdio: 'inherit' });
-  } catch (err) {
-    process.exit(err.status || 1);
+
+  const meta = parsePersonaYaml(manifestPath);
+  if (!workflowKey || !meta.workflows[workflowKey]) {
+    console.log(`Available workflows for persona '${name}':`);
+    for (const [k, v] of Object.entries(meta.workflows)) {
+      console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
+    }
+    return;
   }
+
+  const wf = meta.workflows[workflowKey];
+  const tier = wf.modelTier || 'default';
+  console.log(`🚀 Running workflow '\x1b[36m${workflowKey}\x1b[0m' for persona '\x1b[32m${name}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
+  runPersona(name, wf.command.replace(new RegExp(`^Using the ${name} skill,\\s*`), ''), tier);
 }
 
 function showPersona(name) {
@@ -218,9 +264,20 @@ function showPersona(name) {
   if (fs.existsSync(path.join(pDir, 'SKILL.md'))) console.log(fs.readFileSync(path.join(pDir, 'SKILL.md'), 'utf8'));
 }
 
-// Command dispatch
-const args = process.argv.slice(2);
-const command = args[0] || 'list';
+// Argument Parsing
+const rawArgs = process.argv.slice(2);
+const command = rawArgs[0] || 'list';
+
+let tier = 'default';
+let filteredArgs = [];
+for (let i = 1; i < rawArgs.length; i++) {
+  if (rawArgs[i] === '--tier' || rawArgs[i] === '-t' || rawArgs[i] === '--task-model') {
+    tier = rawArgs[i + 1] || 'default';
+    i++;
+  } else {
+    filteredArgs.push(rawArgs[i]);
+  }
+}
 
 switch (command) {
   case 'list':
@@ -230,33 +287,33 @@ switch (command) {
 
   case 'create':
   case 'new': {
-    const name = args[1];
+    const name = filteredArgs[0];
     let template = 'data-analyst';
-    const tIdx = args.indexOf('--template');
-    if (tIdx !== -1 && args[tIdx + 1]) template = args[tIdx + 1];
+    const tIdx = rawArgs.indexOf('--template');
+    if (tIdx !== -1 && rawArgs[tIdx + 1]) template = rawArgs[tIdx + 1];
     createPersona(name, template);
     break;
   }
 
   case 'apply':
   case 'activate':
-    applyPersona(args[1]);
+    applyPersona(filteredArgs[0], tier);
     break;
 
   case 'run':
-    runPersona(args[1], args[2]);
+    runPersona(filteredArgs[0], filteredArgs[1], tier);
     break;
 
   case 'workflow':
   case 'wf':
-    runWorkflow(args[1], args[2]);
+    runWorkflow(filteredArgs[0], filteredArgs[1]);
     break;
 
   case 'show':
   case 'cat':
-    showPersona(args[1]);
+    showPersona(filteredArgs[0]);
     break;
 
   default:
-    console.log('Usage: ./dsh.sh persona [list | create <name> --template <tmpl> | apply <name> | run <name> "<prompt>" | workflow <name> [act]]');
+    console.log('Usage: ./dsh.sh persona [list | create <name> --template <tmpl> | apply <name> | run <name> [--tier <tier>] "<prompt>" | workflow <name> <wf>]');
 }

@@ -1,0 +1,43 @@
+name: base-template
+title: "Universal Base Persona Template"
+description: "Universal boilerplate persona configured with a multi-model task matrix and standard toolsets."
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "General queries, planning, and task triage"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Deep reasoning, logic validation, and complex problem decomposition"
+  coding:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "High-precision code implementation and patch generation"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "High-throughput search and file indexing"
+
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-find-plugin"
+
+mcpServers:
+  fetch:
+    command: "npx"
+    args: ["-y", "@mzxrai/mcp-webresearch"]
+
+workflows:
+  default-task:
+    modelTier: default
+    command: "Using the base-template skill, execute the standard domain workflow."
+  deep-task:
+    modelTier: reasoning
+    command: "Using the base-template skill, perform deep reasoning and analysis."

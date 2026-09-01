@@ -1,13 +1,34 @@
 name: sdmx-expert
 title: "SDMX 2.1 & Statistical Data Specialist"
 description: "Specialized in querying, extracting, and processing official statistics from LUSTAT (STATEC) and Eurostat SDMX 2.1 APIs."
-model:
-  provider: openrouter
-  model: deepseek/deepseek-chat
-  temperature: 0.1
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.1
+    useCase: "Dataflow queries, dimension mapping, and XML/JSON endpoint extraction"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Complex cross-agency statistical reconciliation (LU1 vs ESTAT) and DSD validation"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "High-speed schema parsing and statistical codelist browsing"
+  coding:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "Writing robust Python / pandas / sdmx1 data processing scripts with uv"
+
 plugins:
   - "@liustack/modsearch"
   - "dsh-model-sync"
+
 mcpServers:
   fetch:
     command: "npx"
@@ -15,6 +36,14 @@ mcpServers:
   context7:
     command: "npx"
     args: ["-y", "@upstash/context7-mcp"]
+
 workflows:
-  dataflow-discovery: "Using the sdmx-expert skill, discover latest available dataflows for inflation and employment in LUSTAT."
-  eurostat-query: "Using the sdmx-expert skill, generate a Python snippet using uv to download Eurostat GDP time series."
+  lustat:
+    modelTier: default
+    command: "Using the sdmx-expert skill, query available dataflows from LUSTAT (LU1) and list top economic indicators."
+  eurostat:
+    modelTier: default
+    command: "Using the sdmx-expert skill, discover Eurostat (ESTAT) dataflow endpoints for consumer price indexes."
+  generate-script:
+    modelTier: coding
+    command: "Using the sdmx-expert skill, write a Python uv script using sdmx1 to fetch and convert LUSTAT data to pandas."

@@ -1,14 +1,35 @@
 name: data-analyst
 title: "Data Analyst & Insights Specialist"
 description: "Specialized in querying SQL databases, analyzing tabular datasets, and computing distribution metrics."
-model:
-  provider: openrouter
-  model: deepseek/deepseek-chat
-  temperature: 0.2
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "General data queries, table formatting, and SQL drafting"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Complex statistical modeling, anomaly correlation, and multi-table reconciliation"
+  audit:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "High-accuracy executive reports and business KPI summaries"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "Rapid large CSV parsing and column indexing"
+
 plugins:
   - "@liustack/modsearch"
   - "dsh-mnemon"
   - "dsh-find-plugin"
+
 mcpServers:
   sqlite-db:
     command: "npx"
@@ -16,6 +37,14 @@ mcpServers:
   fetch:
     command: "npx"
     args: ["-y", "@mzxrai/mcp-webresearch"]
+
 workflows:
-  summarize-data: "Using the data-analyst skill, analyze /workspaces/data.csv and produce a summary table with distribution stats."
-  audit-schema: "Using the data-analyst skill, inspect table schemas in /workspaces/data.db and report missing indexes."
+  summarize:
+    modelTier: default
+    command: "Using the data-analyst skill, analyze /workspaces/data.csv and produce a summary table with distribution stats."
+  deep-analysis:
+    modelTier: reasoning
+    command: "Using the data-analyst skill, analyze statistical trends, correlations, and anomalies in the active datasets."
+  executive-report:
+    modelTier: audit
+    command: "Using the data-analyst skill, generate a comprehensive executive KPI dashboard summary in markdown."
