@@ -165,8 +165,7 @@ async function checkPlugins() {
     'dsh-run2skill',
     '@mhw12138/dsh-ui-better-sidebar-skill',
     'dsh-session-reader',
-    '@mimateinn/dsh-i18n',
-    '@huanlin/dsh-plugin-better-locale'
+    '@mimateinn/dsh-i18n'
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';

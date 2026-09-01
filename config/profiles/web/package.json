@@ -2,7 +2,6 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "@huanlin/dsh-plugin-better-locale": "^0.3.0",
     "@liustack/modsearch": "^5.10.0",
     "@mhw12138/dsh-ui-better-sidebar-skill": "^0.1.4",
     "@mimateinn/dsh-i18n": "^0.2.1",
@@ -41,8 +40,7 @@
         "dsh-run2skill",
         "@mhw12138/dsh-ui-better-sidebar-skill",
         "dsh-session-reader",
-        "@mimateinn/dsh-i18n",
-        "@huanlin/dsh-plugin-better-locale"
+        "@mimateinn/dsh-i18n"
       ]
     }
   }

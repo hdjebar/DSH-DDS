@@ -71,10 +71,6 @@ This repository comes pre-packaged with 9 essential DSH plugins and 3 pre-config
 * **ID**: `dsh-i18n`
 * **Purpose**: Comprehensive 20-locale internationalization engine providing automatic UI translation and English localization for all workbench components.
 
-### 17. `@huanlin/dsh-plugin-better-locale` (Extended Locale Dictionary Pack)
-* **ID**: `dsh-plugin-better-locale`
-* **Purpose**: Registers 19 bundled locale dictionaries with clean fallback to English for sidebars, tabs, and modals.
-
 ---
 
 ## 🔌 Pre-Configured MCP Servers
