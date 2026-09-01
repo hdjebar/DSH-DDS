@@ -2256,3 +2256,5 @@ prompt-library:
   contextRecommendEnabled: true
   autoUpdateEnabled: true
   backupEnabled: true
+ui-theme:
+  preference: system

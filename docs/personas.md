@@ -189,7 +189,17 @@ workflows:
 
 ## 🛠️ Pre-Packaged Starter Personas
 
-### 1. 📊 `data-analyst` (Data Analyst & Insights Specialist)
+### 1. 🏗️ `persona-creator` (AI Persona & Workflow Architect)
+* **Model Matrix**:
+  * `default`: `openrouter/deepseek/deepseek-chat` (interactive domain interviewing & requirement gathering)
+  * `reasoning`: `openrouter/deepseek/deepseek-r1` (Boolean condition gates & DAG dependency verification)
+  * `audit`: `openrouter/anthropic/claude-3.5-sonnet` (precision YAML manifest & tool validation)
+  * `fast`: `gemini/gemini-3.7-flash` (session log parsing & documentation indexing)
+* **MCP Tools**: `fetch`, `context7`, `github`
+* **Plugins**: `deepseek-flow` (visual canvas), `dsh-mnemon`, `dshmarket`, `dsh-find-plugin`
+* **Workflows**: Visual canvas workflow design, automated 5-layer persona package generation.
+
+### 2. 📊 `data-analyst` (Data Analyst & Insights Specialist)
 * **Model Matrix**:
   * `default`: `openrouter/deepseek/deepseek-chat` (queries & formatting)
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (statistical modeling & anomaly correlation)
@@ -199,34 +209,34 @@ workflows:
 * **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
 * **Workflows**: Table distribution summaries, database schema audits.
 
-### 2. 🛡️ `security-auditor` (Security Auditor & AppSec Specialist)
+### 3. 🛡️ `security-auditor` (Security Auditor & AppSec Specialist)
 * **Model Matrix**:
   * `default`: `openrouter/anthropic/claude-3.5-sonnet` (AppSec audit & patch diffs)
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (threat modeling & crypto verification)
   * `fast`: `openrouter/deepseek/deepseek-chat` (secret scanner)
   * `multimodal`: `gemini/gemini-3.7-flash` (architecture diagram review)
 * **MCP Tools**: `github` (`@modelcontextprotocol/server-github`), `fetch`
-* **Plugins**: `dsh-better-sidebar`, `dsh-find-plugin`
+* **Plugins**: `dsh-find-plugin`, `dsh-mnemon`
 * **Workflows**: Git diff security reviews, hardcoded secret and token leak detection.
 
-### 3. 🌐 `sdmx-expert` (SDMX 2.1 & Statistical Data Specialist)
+### 4. 🌐 `sdmx-expert` (SDMX 2.1 & Statistical Data Specialist)
 * **Model Matrix**:
   * `default`: `openrouter/deepseek/deepseek-chat` (dataflow queries & mapping)
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (cross-agency statistical reconciliation)
-  * `coding`: `openrouter/anthropic/claude-3.5-sonnet` / `openai/gpt-4o` (Python `uv` + `sdmx1` scripts)
+  * `coding`: `openrouter/anthropic/claude-3.5-sonnet` (Python `uv` + `sdmx1` scripts)
   * `fast`: `gemini/gemini-3.7-flash` (codelist indexing)
 * **MCP Tools**: `fetch`, `context7` (`@upstash/context7-mcp`)
-* **Plugins**: `@liustack/modsearch`, `dsh-model-sync`
+* **Plugins**: `@liustack/modsearch`, `dsh-model-sync`, `dsh-mnemon`
 * **Workflows**: LUSTAT (STATEC LU1) and Eurostat (ESTAT) dataflow queries and Python `uv` scripts.
 
-### 4. 🚀 `devops-sre` (DevOps & Site Reliability Engineer)
+### 5. 🚀 `devops-sre` (DevOps & Site Reliability Engineer)
 * **Model Matrix**:
   * `default`: `openrouter/deepseek/deepseek-chat` (health checks & logs)
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (root-cause analysis of crash loops)
   * `coding`: `openrouter/anthropic/claude-3.5-sonnet` (Dockerfiles & CI workflows)
   * `fast`: `gemini/gemini-3.7-flash` (port triage)
 * **MCP Tools**: `github`, `fetch`
-* **Plugins**: `dsh-mcp-panel`, `dsh-provider-model-configurator`
+* **Plugins**: `dsh-mcp-panel`, `dsh-provider-model-configurator`, `dsh-mnemon`
 * **Workflows**: `./dsh.sh doctor` ecosystem diagnostics and container log inspection.
 
 ---
