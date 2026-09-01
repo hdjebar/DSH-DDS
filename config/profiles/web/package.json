@@ -1,0 +1,30 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "@liustack/modsearch": "^5.10.0",
+    "dsh-better-sidebar": "^0.17.1",
+    "dsh-find-plugin": "^0.3.7",
+    "dsh-mcp-panel": "^0.6.2",
+    "dsh-mnemon": "^0.4.3",
+    "dsh-model-sync": "^0.1.6",
+    "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
+    "dshmarket": "^1.38.1"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dshmarket",
+        "@liustack/modsearch",
+        "dsh-better-sidebar",
+        "dsh-find-plugin",
+        "dsh-mcp-panel",
+        "dsh-provider-model-configurator",
+        "dsh-mnemon",
+        "dsh-model-sync"
+      ]
+    }
+  }
+}

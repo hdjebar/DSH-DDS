@@ -1,0 +1,70 @@
+- id: llm-deepseek
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web
+  config:
+    searchProvider: modsearch
+    defaultWorkspacePath: /workspaces
+- id: find-dsh-plugin
+  config:
+    search_paths:
+      - /workspaces
+    exclude_patterns:
+      - "**/node_modules/**"
+      - "**/.git/**"
+      - "**/.venv/**"
+- id: better-sidebar
+  config:
+    layout: vscode-classic
+    persistent_terminal: true
+- id: model-sync
+  config:
+    auto_poll_on_startup: true
+    sync_interval_hours: 12
+    enable_quota_ui_widget: true
+- id: mnemon
+  config:
+    enable_per_workspace_memory: true
+    auto_index_project_briefs: true
+- id: llm-pi-ai
+  config:
+    providers:
+      gemini:
+        apiKeyEnv: GEMINI_API_KEY
+        displayName: "Google AI Studio (Gemini)"
+        api: openai-completions
+        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai"
+        compat:
+          supportsStore: false
+        models:
+          - id: "gemini-3.7-flash"
+            name: "Google: Gemini 3.7 Flash"
+            contextWindow: 1048576
+            maxTokens: 8192
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-3.1-pro"
+            name: "Google: Gemini 3.1 Pro"
+            contextWindow: 1048576
+            maxTokens: 8192
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+      openrouter:
+        apiKeyEnv: OPENROUTER_API_KEY
+        displayName: "OpenRouter"
+        api: openai-completions
+        baseURL: "https://openrouter.ai/api/v1"
+        models:
+          - id: "deepseek/deepseek-chat"
+            name: "DeepSeek: DeepSeek V3"
+          - id: "openai/gpt-4o"
+            name: "OpenAI: GPT-4o"
+          - id: "anthropic/claude-3.5-sonnet"
+            name: "Anthropic: Claude 3.5 Sonnet"
+- id: agent-default-model
+  config:
+    provider: gemini
+    model: gemini-3.7-flash

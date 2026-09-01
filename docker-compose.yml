@@ -1,0 +1,21 @@
+services:
+  dsh:
+    build: .
+    image: dsh-local:latest
+    container_name: dsh-local
+    restart: unless-stopped
+    ports:
+      - "${DSH_PORT:-3080}:3080"
+    volumes:
+      - ./config:/root/.dsh
+      - ./workspaces:/workspaces
+    environment:
+      - PORT=3080
+      - NODE_ENV=production
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
