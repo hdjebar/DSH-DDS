@@ -1,0 +1,27 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.25.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@11.25.0",
+  "type": "module",
+  "dependencies": {
+    "@liustack/modsearch": "^5.10.0",
+    "dsh-find-plugin": "^0.3.7",
+    "dsh-mnemon": "^0.4.4",
+    "dsh-model-sync": "^0.1.6"
+  }
+}
