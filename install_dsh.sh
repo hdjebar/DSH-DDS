@@ -102,7 +102,82 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
     model: gemini-3.7-flash
 EOF
 
-# 3. Write Multi-Stage Dockerfile (pnpm builder + minimal runtime)
+# 3. Write Web Profile Plugin Manifest (9 Pre-Packaged Plugins)
+cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "@liustack/modsearch": "^5.10.0",
+    "dsh-better-sidebar": "^0.17.1",
+    "dsh-find-plugin": "^0.3.7",
+    "dsh-mcp-market": "^0.1.2",
+    "dsh-mcp-panel": "^0.6.2",
+    "dsh-mnemon": "^0.4.3",
+    "dsh-model-sync": "^0.1.6",
+    "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
+    "dshmarket": "^1.39.0"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dshmarket",
+        "@liustack/modsearch",
+        "dsh-better-sidebar",
+        "dsh-find-plugin",
+        "dsh-mcp-panel",
+        "dsh-provider-model-configurator",
+        "dsh-mnemon",
+        "dsh-model-sync",
+        "dsh-mcp-market"
+      ]
+    }
+  }
+}
+EOF
+
+# 4. Write Web Profile MCP Configuration (Pre-configured MCP Servers)
+cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+# --- dsh-mcp-market managed (auto-generated) ---
+- insert:
+    - id: mcp-fetch
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: fetch
+        transport: stdio
+        command: npx
+        args:
+          - '-y'
+          - '@mzxrai/mcp-webresearch'
+- insert:
+    - id: mcp-context7
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: context7
+        transport: stdio
+        command: npx
+        args:
+          - '-y'
+          - '@upstash/context7-mcp'
+- insert:
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: github
+        transport: stdio
+        command: npx
+        args:
+          - '-y'
+          - '@modelcontextprotocol/server-github'
+# --- end dsh-mcp-market managed ---
+EOF
+
+# 5. Write Multi-Stage Dockerfile (pnpm builder + minimal runtime)
 cat << 'EOF' > "$DSH_INSTALL/Dockerfile"
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
 FROM smanx/deepseek-harness:latest AS builder
@@ -116,9 +191,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/.dsh/profiles/web
-COPY config/profiles/web/package.json ./package.json
+COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml* config/profiles/web/pnpm-workspace.yaml* ./
 
-RUN pnpm install \
+RUN pnpm config set minimum-release-age 0 \
+    && pnpm install \
     && pnpm approve-builds --all || true \
     && pnpm prune --prod \
     && rm -rf /root/.cache /root/.npm
@@ -131,6 +207,7 @@ RUN npm install -g pnpm && npm cache clean --force
 
 # Copy pre-compiled and pre-built plugins
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
+COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
 
 EXPOSE 3080
 

@@ -15,13 +15,15 @@ An optimized, lightweight, production-ready Docker deployment stack for **DeepSe
 - **🤖 Dual LLM Provider Support**:
   - **Google AI Studio (Gemini)**: Pre-configured for `gemini-3.7-flash` (default) and `gemini-3.1-pro`.
   - **OpenRouter**: Pre-configured for `deepseek/deepseek-chat` (V3), `openai/gpt-4o`, and `anthropic/claude-3.5-sonnet`.
-- **🧩 Pre-Installed Plugin Suite**: Includes 8 essential DSH plugins (Marketplace, ModSearch, Persistent Terminal, MCP Panel, Multi-Workspace Memory, and Model Sync).
+- **🧩 Pre-Installed Plugin Suite**: Includes 9 essential DSH plugins and 3 pre-configured MCP servers (Web Research, Context7 Docs, and GitHub).
 - **🛒 Dynamic UI Plugin Installation**: Retains `pnpm` runtime integration so additional extensions can be installed directly through the Web UI without container rebuilds.
 - **🛡️ Production Hardened**: Automated Docker health checks, log rotation limits (`10MB` max, `3` files), and isolated volume mounts.
 
 ---
 
-## 📦 Pre-Packaged Plugins
+## 📦 Pre-Packaged Plugins & MCP Servers
+
+### 1. DSH Plugins (9 Pre-Installed)
 
 | Plugin | Service ID | Purpose |
 | :--- | :--- | :--- |
@@ -34,6 +36,14 @@ An optimized, lightweight, production-ready Docker deployment stack for **DeepSe
 | **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Visual LLM provider and model manager |
 | **`dsh-model-sync`** | `model-sync` | Automated model sync and quota monitor widget |
 | **`dsh-mnemon`** | `mnemon` | Multi-workspace memory persistence & indexing |
+
+### 2. Pre-Configured MCP Servers
+
+| MCP Server | Runner | Capabilities |
+| :--- | :--- | :--- |
+| **`fetch`** | `@mzxrai/mcp-webresearch` | Web scraping, page summarization, and live URL fetching |
+| **`context7`** | `@upstash/context7-mcp` | Real-time SDK documentation & library context |
+| **`github`** | `@modelcontextprotocol/server-github` | Repositories, PRs, issues, commits, and code search |
 
 ---
 

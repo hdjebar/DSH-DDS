@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /root/.dsh/profiles/web
 COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml* config/profiles/web/pnpm-workspace.yaml* ./
 
-RUN pnpm install \
+RUN pnpm config set minimum-release-age 0 \
+    && pnpm install \
     && pnpm approve-builds --all || true \
     && pnpm prune --prod \
     && rm -rf /root/.cache /root/.npm
@@ -25,6 +26,7 @@ RUN npm install -g pnpm && npm cache clean --force
 
 # Copy pre-compiled and pre-built plugins
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
+COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
 
 EXPOSE 3080
 
