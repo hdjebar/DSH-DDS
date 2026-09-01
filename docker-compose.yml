@@ -5,7 +5,7 @@ services:
     container_name: dsh-local
     restart: unless-stopped
     ports:
-      - "${DSH_PORT:-3080}:3080"
+      - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
       - ./config:/root/.dsh
       - ./workspaces:/workspaces
@@ -32,18 +32,11 @@ services:
     container_name: dsh-phoenix
     restart: unless-stopped
     ports:
-      - "6006:6006"
+      - "127.0.0.1:6006:6006"
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - GOOGLE_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-${OPENROUTER_API_KEY:-}}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://openrouter.ai/api/v1}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - ./config/phoenix:/root/.phoenix
     logging:

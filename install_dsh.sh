@@ -9,14 +9,38 @@ echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
 mkdir -p "$DSH_INSTALL/config/profiles/web" \
          "$DSH_INSTALL/workspaces"
 
-# 2. Smart Path & Variable Injection Layer
+# 2. Strict & Safe Environment Variable Loader
+load_env_safely() {
+  local env_file="$1"
+  [ -f "$env_file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Trim leading/trailing whitespace
+    line="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    case "$line" in
+      \#*|"") continue ;;
+    esac
+    # Validate strictly alphanumeric KEY name
+    if echo "$line" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; then
+      local key="${line%%=*}"
+      local val="${line#*=}"
+      # Strip surrounding quotes safely
+      if [[ "$val" =~ ^\"(.*)\"$ ]]; then
+        val="${BASH_REMATCH[1]}"
+      elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
+        val="${BASH_REMATCH[1]}"
+      fi
+      export "$key=$val"
+    fi
+  done < "$env_file"
+}
+
 if [ -f "$DSH_INSTALL/.env" ]; then
-  echo "📝 Found existing .env file in target folder. Injecting variables..."
-  export $(grep -v '^#' "$DSH_INSTALL/.env" | xargs)
+  echo "📝 Loading environment variables from $DSH_INSTALL/.env..."
+  load_env_safely "$DSH_INSTALL/.env"
 elif [ -f ".env" ]; then
-  echo "📝 Found existing local .env file. Copying to target and injecting variables..."
+  echo "📝 Copying local .env to $DSH_INSTALL/.env and loading variables..."
   cp .env "$DSH_INSTALL/.env"
-  export $(grep -v '^#' .env | xargs)
+  load_env_safely "$DSH_INSTALL/.env"
 else
   echo "⚠️  No .env file found in current directory or target folder."
   echo "👉 Please create a .env file with your GEMINI_API_KEY first."

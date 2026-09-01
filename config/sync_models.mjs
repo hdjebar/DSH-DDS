@@ -105,7 +105,7 @@ async function syncToPhoenix(openRouterModels) {
             provider: 'openrouter',
             clientConfig: {
               openai: {
-                openaiAuthenticationMethod: { apiKey: OPENROUTER_API_KEY },
+                openaiAuthenticationMethod: { apiKey: 'DSH_INDEPENDENT_GATEWAY' },
                 openaiClientKwargs: { baseUrl: 'https://openrouter.ai/api/v1' },
                 openaiApiType: 'CHAT_COMPLETIONS'
               }

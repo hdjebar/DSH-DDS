@@ -11,7 +11,7 @@
         command: npx
         args:
           - '-y'
-          - '@mzxrai/mcp-webresearch'
+          - '@mzxrai/mcp-webresearch@^0.1.0'
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'
@@ -21,7 +21,7 @@
         command: npx
         args:
           - '-y'
-          - '@upstash/context7-mcp'
+          - '@upstash/context7-mcp@^1.0.0'
 - insert:
     - id: mcp-github
       name: '@deepseek-ai/dsh-mcp-client'
@@ -31,5 +31,5 @@
         command: npx
         args:
           - '-y'
-          - '@modelcontextprotocol/server-github'
+          - '@modelcontextprotocol/server-github@^0.6.0'
 # --- end dsh-mcp-market managed ---

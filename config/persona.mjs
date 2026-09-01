@@ -7,7 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 
 const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
 const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
@@ -15,6 +15,23 @@ const TEMPLATES_DIR = path.resolve(process.cwd(), 'config/templates/personas');
 const SETTINGS_FILE = path.resolve(process.cwd(), 'config/settings.yaml');
 const CONFIG_DIR = path.resolve(process.cwd(), 'config');
 const SESSIONS_DIR = path.resolve(process.cwd(), 'config/sessions');
+
+function validateSlug(input, fieldName = 'name') {
+  if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
+    console.error(`❌ Error: Invalid ${fieldName} '${input}'. Must be alphanumeric with hyphens or underscores only.`);
+    process.exit(1);
+  }
+  return input;
+}
+
+function scrubSecrets(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/\b(sk-[a-zA-Z0-9-_]{20,})\b/g, '[REDACTED_API_KEY]')
+    .replace(/\b(ghp_[a-zA-Z0-9]{30,})\b/g, '[REDACTED_GITHUB_TOKEN]')
+    .replace(/\b(Bearer\s+[a-zA-Z0-9._-]{20,})\b/gi, 'Bearer [REDACTED_TOKEN]')
+    .replace(/(api[_-]?key\s*[:=]\s*["']?)[a-zA-Z0-9_-]{16,}(["']?)/gi, '$1[REDACTED_KEY]$2');
+}
 
 function ensureDirs() {
   if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true });
@@ -164,31 +181,29 @@ function listPersonas() {
 
 function createPersona(name, templateName = 'data-analyst') {
   ensureDirs();
-  if (!name) {
-    console.error('❌ Error: Persona name is required. Usage: ./dsh.sh persona create <name>');
-    process.exit(1);
-  }
+  const safeName = validateSlug(name, 'persona name');
+  const safeTemplate = validateSlug(templateName, 'template name');
 
-  const targetDir = path.join(PERSONAS_DIR, name);
-  const targetSkillDir = path.join(SKILLS_DIR, name);
+  const targetDir = path.join(PERSONAS_DIR, safeName);
+  const targetSkillDir = path.join(SKILLS_DIR, safeName);
 
   if (fs.existsSync(targetDir)) {
-    console.error(`❌ Error: Persona '${name}' already exists at config/personas/${name}/`);
+    console.error(`❌ Error: Persona '${safeName}' already exists at config/personas/${safeName}/`);
     process.exit(1);
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
   fs.mkdirSync(targetSkillDir, { recursive: true });
 
-  const templateDir = path.join(TEMPLATES_DIR, templateName);
+  const templateDir = path.join(TEMPLATES_DIR, safeTemplate);
   if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Error: Template '${templateName}' not found in config/templates/personas/`);
+    console.error(`❌ Error: Template '${safeTemplate}' not found in config/templates/personas/`);
     process.exit(1);
   }
 
   for (const file of fs.readdirSync(templateDir)) {
     let content = fs.readFileSync(path.join(templateDir, file), 'utf8');
-    content = content.replace(/name:\s*[\w-]+/m, `name: ${name}`);
+    content = content.replace(/name:\s*[\w-]+/m, `name: ${safeName}`);
     fs.writeFileSync(path.join(targetDir, file), content, 'utf8');
   }
 
@@ -201,28 +216,30 @@ function createPersona(name, templateName = 'data-analyst') {
   }
 
   console.log('========================================================================');
-  console.log(`✅ Persona Package '${name}' created successfully with Multi-Model Matrix!`);
-  console.log(`📁 Package Path: config/personas/${name}/`);
-  console.log(`📁 Skill Active: config/skills/${name}/SKILL.md`);
+  console.log(`✅ Persona Package '${safeName}' created successfully with Multi-Model Matrix!`);
+  console.log(`📁 Package Path: config/personas/${safeName}/`);
+  console.log(`📁 Skill Active: config/skills/${safeName}/SKILL.md`);
   console.log('========================================================================');
 }
 
 function applyPersona(name, tier = 'default') {
-  const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
+  const safeName = validateSlug(name, 'persona name');
+  const safeTier = validateSlug(tier, 'model tier');
+  const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   if (!fs.existsSync(manifestPath)) {
-    console.error(`❌ Persona '${name}' not found.`);
+    console.error(`❌ Persona '${safeName}' not found.`);
     process.exit(1);
   }
 
   const meta = parsePersonaYaml(manifestPath);
-  const targetModel = meta.models[tier] || meta.models.default;
+  const targetModel = meta.models[safeTier] || meta.models.default;
 
   if (targetModel && fs.existsSync(SETTINGS_FILE)) {
     let settings = fs.readFileSync(SETTINGS_FILE, 'utf8');
     settings = settings.replace(/agent-default-model:\s*\n\s*provider:\s*\w+\s*\n\s*model:\s*[\w\-\/\.:]+/m,
       `agent-default-model:\n  provider: ${targetModel.provider}\n  model: ${targetModel.model}`);
     fs.writeFileSync(SETTINGS_FILE, settings, 'utf8');
-    console.log(`✅ Applied default model: ${targetModel.provider}/${targetModel.model} (${tier} tier) for persona '${name}'`);
+    console.log(`✅ Applied default model: ${targetModel.provider}/${targetModel.model} (${safeTier} tier) for persona '${safeName}'`);
   }
 }
 
@@ -232,51 +249,64 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
     process.exit(1);
   }
 
-  const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
+  const safeName = validateSlug(name, 'persona name');
+  const safeProfile = validateSlug(profile, 'profile name');
+  const safeTier = validateSlug(tier, 'model tier');
+
+  const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   const tempPatchFile = path.resolve(process.cwd(), 'config/patch.tmp.yaml');
-  let modelOverride = '';
-  let activeProfile = profile;
+  let hasPatch = false;
 
   if (fs.existsSync(manifestPath)) {
     const meta = parsePersonaYaml(manifestPath);
-    const chosenModel = meta.models[tier] || meta.models.default;
+    const chosenModel = meta.models[safeTier] || meta.models.default;
     if (chosenModel) {
-      console.log(`🤖 Invoking persona \x1b[32m${name}\x1b[0m on profile \x1b[35m${activeProfile}\x1b[0m using \x1b[33m[${tier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
+      console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
       const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
       fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
-      modelOverride = `--patch /root/.dsh/patch.tmp.yaml`;
+      hasPatch = true;
     }
   }
 
-  const fullPrompt = `Using the ${name} skill, ${prompt}`;
-  const cmd = `docker compose exec dsh dsh --profile ${activeProfile} ${modelOverride} "${fullPrompt}"`;
-  try {
-    execSync(cmd, { stdio: 'inherit', shell: '/bin/bash' });
-  } catch (err) {
-    process.exit(err.status || 1);
+  const fullPrompt = `Using the ${safeName} skill, ${prompt}`;
+  const dockerArgs = ['compose', 'exec', 'dsh', 'dsh', '--profile', safeProfile];
+  if (hasPatch) {
+    dockerArgs.push('--patch', '/root/.dsh/patch.tmp.yaml');
+  }
+  dockerArgs.push(fullPrompt);
+
+  const res = spawnSync('docker', dockerArgs, { stdio: 'inherit', shell: false });
+  if (res.error) {
+    console.error('❌ Execution failed:', res.error.message);
+    process.exit(1);
+  }
+  if (res.status !== 0) {
+    process.exit(res.status || 1);
   }
 }
 
 function runWorkflow(name, workflowKey) {
-  const manifestPath = path.join(PERSONAS_DIR, name, 'persona.yaml');
+  const safeName = validateSlug(name, 'persona name');
+  const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   if (!fs.existsSync(manifestPath)) {
-    console.error(`❌ Persona '${name}' not found.`);
+    console.error(`❌ Persona '${safeName}' not found.`);
     process.exit(1);
   }
 
   const meta = parsePersonaYaml(manifestPath);
   if (!workflowKey || !meta.workflows[workflowKey]) {
-    console.log(`Available workflows for persona '${name}':`);
+    console.log(`Available workflows for persona '${safeName}':`);
     for (const [k, v] of Object.entries(meta.workflows)) {
       console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
     }
     return;
   }
 
-  const wf = meta.workflows[workflowKey];
+  const safeWfKey = validateSlug(workflowKey, 'workflow key');
+  const wf = meta.workflows[safeWfKey];
   const tier = wf.modelTier || 'default';
-  console.log(`🚀 Running workflow '\x1b[36m${workflowKey}\x1b[0m' for persona '\x1b[32m${name}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
-  runPersona(name, wf.command.replace(new RegExp(`^Using the ${name} skill,\\s*`), ''), tier);
+  console.log(`🚀 Running workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
+  runPersona(safeName, wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), ''), tier);
 }
 
 function listSessions() {
@@ -326,24 +356,22 @@ function listSessions() {
 
 function distillPersona(name, options = {}) {
   ensureDirs();
-  if (!name) {
-    console.error('❌ Error: Persona name is required. Usage: ./dsh.sh persona distill <name> [--session <id>]');
-    process.exit(1);
-  }
+  const safeName = validateSlug(name, 'persona name');
 
   console.log('========================================================================');
-  console.log(`🧪 Distilling Workflow & Telemetry into Persona Package '${name}'`);
+  console.log(`🧪 Distilling Workflow & Telemetry into Persona Package '${safeName}'`);
   console.log('========================================================================');
 
   let sessionNotes = '';
   const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
 
   if (options.sessionId && fs.existsSync(SESSIONS_DIR)) {
+    const safeSessionId = validateSlug(options.sessionId, 'session ID');
     for (const ws of fs.readdirSync(SESSIONS_DIR)) {
-      const sFile = path.join(SESSIONS_DIR, ws, options.sessionId);
+      const sFile = path.join(SESSIONS_DIR, ws, safeSessionId);
       if (fs.existsSync(sFile)) {
-        sessionNotes = fs.readFileSync(sFile, 'utf8');
-        console.log(`📖 Ingested transcript from target session: ${options.sessionId}`);
+        sessionNotes = scrubSecrets(fs.readFileSync(sFile, 'utf8'));
+        console.log(`📖 Ingested transcript from target session: ${safeSessionId}`);
         break;
       }
     }
@@ -353,22 +381,30 @@ function distillPersona(name, options = {}) {
   let memoryNotes = '';
   const memoryFile = path.join(CONFIG_DIR, 'MEMORY.md');
   if (fs.existsSync(memoryFile)) {
-    memoryNotes = fs.readFileSync(memoryFile, 'utf8');
+    memoryNotes = scrubSecrets(fs.readFileSync(memoryFile, 'utf8'));
     console.log('📖 Ingested long-term session memories from config/MEMORY.md');
   }
 
-  const cleanTitle = options.title || name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  const cleanDesc = options.description || `Distilled specialist persona for ${cleanTitle} derived from interactive sessions.`;
+  const rawTitle = options.title || safeName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const cleanTitle = JSON.stringify(rawTitle.replace(/[\r\n\t]/g, ' ')).slice(1, -1);
+  const cleanDesc = `Distilled specialist persona for ${cleanTitle} derived from interactive sessions.`;
 
-  const targetDir = path.join(PERSONAS_DIR, name);
-  const targetSkillDir = path.join(SKILLS_DIR, name);
+  const targetDir = path.join(PERSONAS_DIR, safeName);
+  const targetSkillDir = path.join(SKILLS_DIR, safeName);
   fs.mkdirSync(targetDir, { recursive: true });
   fs.mkdirSync(targetSkillDir, { recursive: true });
 
   // 2. Generate persona.yaml with Multi-Model Matrix
-  const personaYaml = `name: ${name}
+  const personaYaml = `version: "1.0"
+name: ${safeName}
 title: "${cleanTitle}"
 description: "${cleanDesc}"
+
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web
+  - headless
+  - cli
 
 # 🎯 Multi-Model Task Routing Matrix
 models:
@@ -402,15 +438,15 @@ plugins:
 mcpServers:
   fetch:
     command: "npx"
-    args: ["-y", "@mzxrai/mcp-webresearch"]
+    args: ["-y", "@mzxrai/mcp-webresearch@^0.1.0"]
 
 workflows:
   default-task:
     modelTier: default
-    command: "Using the ${name} skill, execute the core ${cleanTitle} workflow."
+    command: "Using the ${safeName} skill, execute the core ${cleanTitle} workflow."
   deep-analysis:
     modelTier: reasoning
-    command: "Using the ${name} skill, perform deep multi-step reasoning on the active workspace."
+    command: "Using the ${safeName} skill, perform deep multi-step reasoning on the active workspace."
 `;
   fs.writeFileSync(path.join(targetDir, 'persona.yaml'), personaYaml, 'utf8');
 
@@ -474,14 +510,15 @@ esac
 }
 
 function showPersona(name) {
-  const pDir = path.join(PERSONAS_DIR, name);
+  const safeName = validateSlug(name, 'persona name');
+  const pDir = path.join(PERSONAS_DIR, safeName);
   if (!fs.existsSync(pDir)) {
-    console.error(`❌ Persona '${name}' not found.`);
+    console.error(`❌ Persona '${safeName}' not found.`);
     process.exit(1);
   }
-  console.log(`=== config/personas/${name}/persona.yaml ===`);
+  console.log(`=== config/personas/${safeName}/persona.yaml ===`);
   if (fs.existsSync(path.join(pDir, 'persona.yaml'))) console.log(fs.readFileSync(path.join(pDir, 'persona.yaml'), 'utf8'));
-  console.log(`\n=== config/personas/${name}/SKILL.md ===`);
+  console.log(`\n=== config/personas/${safeName}/SKILL.md ===`);
   if (fs.existsSync(path.join(pDir, 'SKILL.md'))) console.log(fs.readFileSync(path.join(pDir, 'SKILL.md'), 'utf8'));
 }
 

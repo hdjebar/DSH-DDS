@@ -39,10 +39,10 @@ plugins:
 mcpServers:
   fetch:
     command: "npx"
-    args: ["-y", "@mzxrai/mcp-webresearch"]
+    args: ["-y", "@mzxrai/mcp-webresearch@^0.1.0"]
   context7:
     command: "npx"
-    args: ["-y", "@upstash/context7-mcp"]
+    args: ["-y", "@upstash/context7-mcp@^1.0.0"]
 
 workflows:
   lustat:
