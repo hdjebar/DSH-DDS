@@ -11,15 +11,18 @@ importers:
       '@liustack/modsearch':
         specifier: ^5.10.0
         version: 5.10.0
+      '@mhw12138/dsh-ui-better-sidebar-skill':
+        specifier: ^0.1.4
+        version: 0.1.4(react@18.3.1)
       '@pakiknowledge/dsh-client-ui-skin-claude':
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.3.1)
       '@sunjuntao/dsh-prompt-library':
         specifier: ^0.10.0
-        version: 0.10.0
+        version: 0.10.0(react@18.3.1)
       dsh-better-sidebar:
         specifier: ^0.17.1
-        version: 0.17.1
+        version: 0.17.1(react@18.3.1)
       dsh-find-plugin:
         specifier: ^0.3.7
         version: 0.3.7
@@ -28,25 +31,31 @@ importers:
         version: 0.1.2
       dsh-mcp-panel:
         specifier: ^0.6.2
-        version: 0.6.2
+        version: 0.6.2(@deepseek-ai/schemastery@3.18.1)
       dsh-mnemon:
         specifier: ^0.4.3
-        version: 0.4.3
+        version: 0.4.3(react@18.3.1)
       dsh-model-sync:
         specifier: ^0.1.6
-        version: 0.1.6
+        version: 0.1.6(@deepseek-ai/schemastery@3.18.1)
       dsh-persona-memory:
         specifier: ^0.2.0
-        version: 0.2.0
+        version: 0.2.0(react@18.3.1)
       dsh-prompt-customizer:
         specifier: ^0.4.2
-        version: 0.4.2
+        version: 0.4.2(react@18.3.1)
       dsh-provider-model-configurator:
         specifier: github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3
         version: https://codeload.github.com/LiangYin233/dsh-provider-model-configurator/tar.gz/70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3
+      dsh-run2skill:
+        specifier: ^0.3.1
+        version: 0.3.1
+      dsh-session-reader:
+        specifier: ^0.1.0
+        version: 0.1.0
       dshmarket:
         specifier: ^1.39.0
-        version: 1.39.0
+        version: 1.39.0(@deepseek-ai/schemastery@3.18.1)
 
 packages:
 
@@ -137,6 +146,9 @@ packages:
       '@deepseek-ai/cordis': ^4.0.1
       '@deepseek-ai/dsh-invariants': ^0.1.1-rc.2
 
+  '@deepseek-ai/schemastery@3.18.1':
+    resolution: {integrity: sha512-Qn0FCSwCQnpnj6SB31I6i2sIKgKWnkbJM8O0EU91Gv2UsYVvtZTl6IA0sCwk2e2MZf5S8w5hpq9QkeVvK9qwxg==}
+
   '@deepseek-ai/schemastery@3.18.2':
     resolution: {integrity: sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ==}
 
@@ -208,6 +220,11 @@ packages:
 
   '@mermaid-js/parser@1.2.1':
     resolution: {integrity: sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw==}
+
+  '@mhw12138/dsh-ui-better-sidebar-skill@0.1.4':
+    resolution: {integrity: sha512-DYYSUqxuzNAClJNJTPE3f6wKc0FepW/jBpQfwC5h8bkbd+Si8KuCXQ1VLgFGiJPkEM/RTYkvSe5H6Gj5RPG4oQ==}
+    peerDependencies:
+      react: ^18.2.0
 
   '@oxc-project/types@0.147.0':
     resolution: {integrity: sha512-IJ3s6ltHLp45S0bh7phkX+gJO7A1Wuz2EaqpAhb8WjqDwbzMiWKHhyyT42tskaWjEYXtHtVCPpnBJVT9+dcRLg==}
@@ -1151,6 +1168,16 @@ packages:
       '@deepseek-ai/dsh-typert-registry':
         optional: true
 
+  dsh-run2skill@0.3.1:
+    resolution: {integrity: sha512-2BYeNVNXGqtFPfV8uSYovOCTqSokXz0uL0ySaOqHPwMa5LG2ceWwqN6oH07cKXxb0JhjIslF2F7s0mCr6vuAyQ==}
+    engines: {node: ^22.19.0 || >=24.0.0}
+    peerDependencies:
+      '@deepseek-ai/dsh-agent-presets': 0.1.1-rc.2
+      '@deepseek-ai/dsh-client-ui-primitives': 0.1.1-rc.2
+
+  dsh-session-reader@0.1.0:
+    resolution: {integrity: sha512-OGj9CzbSj0QnNn/QlPXFuR0zsSS5OzyEaV2pmaU22GCE17JNC1okpLNvx1qkfHQqrsOwbU8oALNKHe3W3ZmW3Q==}
+
   dshmarket@1.39.0:
     resolution: {integrity: sha512-URuXIuuNRfX6k0Flo7CJxeA7EVLhLGYDm3Lk4BoEXW1Qlg+boX/LI8wCE8hGC0FMBftFr9j8D/ulGNTdFM67nQ==}
     peerDependencies:
@@ -1259,6 +1286,9 @@ packages:
   is-arrayish@0.3.4:
     resolution: {integrity: sha512-m6UrgzFVUYawGBh1dUsWR5M2Clqic9RVXC/9f8ceNlv2IcO9j9J/z8UoCLPqtsPBFNzEpfR3xftohbfqDx8EQA==}
 
+  js-tokens@4.0.0:
+    resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+
   js-yaml@4.3.2:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
     hasBin: true
@@ -1285,6 +1315,10 @@ packages:
 
   long@4.0.0:
     resolution: {integrity: sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==}
+
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
 
   markdown-to-jsx@7.7.17:
     resolution: {integrity: sha512-7mG/1feQ0TX5I7YyMZVDgCC/y2I3CiEhIRQIhyov9nGBP5eoVrOXXHuL5ZP8GRfxVZKRiXWJgwXkb9It+nQZfQ==}
@@ -1392,6 +1426,10 @@ packages:
     resolution: {integrity: sha512-LBLy340Rzqy6+/yVhZKT3B/QpP1BZaesGqasf09HPOBzRarcDIFH0WwXlXQfE7q7ipxK4MSiC5DIBWURCny6fw==}
     peerDependencies:
       react: '*'
+
+  react@18.3.1:
+    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
+    engines: {node: '>=0.10.0'}
 
   readable-stream@3.6.2:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
@@ -1804,6 +1842,11 @@ snapshots:
 
   '@deepseek-ai/dsh-subprocess@0.1.1-rc.2': {}
 
+  '@deepseek-ai/schemastery@3.18.1':
+    dependencies:
+      '@deepseek-ai/cosmokit': 1.8.3
+      '@standard-schema/spec': 1.1.0
+
   '@deepseek-ai/schemastery@3.18.2':
     dependencies:
       '@deepseek-ai/cosmokit': 1.8.3
@@ -1917,9 +1960,15 @@ snapshots:
     dependencies:
       '@chevrotain/types': 11.1.2
 
+  '@mhw12138/dsh-ui-better-sidebar-skill@0.1.4(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+
   '@oxc-project/types@0.147.0': {}
 
-  '@pakiknowledge/dsh-client-ui-skin-claude@0.2.0': {}
+  '@pakiknowledge/dsh-client-ui-skin-claude@0.2.0(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -1996,9 +2045,10 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@sunjuntao/dsh-prompt-library@0.10.0':
+  '@sunjuntao/dsh-prompt-library@0.10.0(react@18.3.1)':
     dependencies:
       js-yaml: 5.4.1
+      react: 18.3.1
 
   '@types/d3-array@3.2.2': {}
 
@@ -2571,7 +2621,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  dsh-better-sidebar@0.17.1:
+  dsh-better-sidebar@0.17.1(react@18.3.1):
     dependencies:
       '@codemirror/commands': 6.11.0
       '@codemirror/lang-cpp': 6.0.3
@@ -2599,7 +2649,8 @@ snapshots:
       dompurify: 3.4.14
       mermaid: 11.17.2
       node-pty: 1.1.0
-      react-icons: 5.7.0
+      react: 18.3.1
+      react-icons: 5.7.0(react@18.3.1)
       rxjs: 7.8.2
       schemastery: 3.18.0
       ws: 8.21.3
@@ -2613,9 +2664,10 @@ snapshots:
     dependencies:
       js-yaml: 4.3.2
 
-  dsh-mcp-panel@0.6.2:
+  dsh-mcp-panel@0.6.2(@deepseek-ai/schemastery@3.18.1):
     dependencies:
       '@deepseek-ai/dsh-subprocess': 0.1.1-rc.2
+      '@deepseek-ai/schemastery': 3.18.1
       tsdown: 0.22.14(typescript@7.0.2)
       typescript: 7.0.2
       zod: 4.5.4
@@ -2634,34 +2686,49 @@ snapshots:
       - unrun
       - vue-tsc
 
-  dsh-mnemon@0.4.3:
+  dsh-mnemon@0.4.3(react@18.3.1):
     dependencies:
       fflate: 0.8.3
-      markdown-to-jsx: 7.7.17
+      markdown-to-jsx: 7.7.17(react@18.3.1)
+      react: 18.3.1
       schemastery: 3.18.0
       zod: 4.5.4
 
-  dsh-model-sync@0.1.6: {}
+  dsh-model-sync@0.1.6(@deepseek-ai/schemastery@3.18.1):
+    dependencies:
+      '@deepseek-ai/schemastery': 3.18.1
 
-  dsh-persona-memory@0.2.0:
+  dsh-persona-memory@0.2.0(react@18.3.1):
     dependencies:
       '@xenova/transformers': 2.17.2
+      react: 18.3.1
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
       - react-native-b4a
 
-  dsh-prompt-customizer@0.4.2:
+  dsh-prompt-customizer@0.4.2(react@18.3.1):
     dependencies:
       '@deepseek-ai/schemastery': 3.18.2
+      react: 18.3.1
       yaml: 2.9.0
 
   dsh-provider-model-configurator@https://codeload.github.com/LiangYin233/dsh-provider-model-configurator/tar.gz/70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3: {}
 
-  dshmarket@1.39.0:
+  dsh-run2skill@0.3.1:
+    dependencies:
+      '@deepseek-ai/schemastery': 3.18.1
+      react: 18.3.1
+      zod: 4.5.4
+
+  dsh-session-reader@0.1.0: {}
+
+  dshmarket@1.39.0(@deepseek-ai/schemastery@3.18.1):
     dependencies:
       js-yaml: 4.3.2
       undici: 7.29.0
+    optionalDependencies:
+      '@deepseek-ai/schemastery': 3.18.1
 
   dts-resolver@3.0.0: {}
 
@@ -2729,6 +2796,8 @@ snapshots:
 
   is-arrayish@0.3.4: {}
 
+  js-tokens@4.0.0: {}
+
   js-yaml@4.3.2:
     dependencies:
       argparse: 2.0.1
@@ -2751,7 +2820,13 @@ snapshots:
 
   long@4.0.0: {}
 
-  markdown-to-jsx@7.7.17: {}
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
+
+  markdown-to-jsx@7.7.17(react@18.3.1):
+    optionalDependencies:
+      react: 18.3.1
 
   marked@16.4.2: {}
 
@@ -2886,7 +2961,13 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
-  react-icons@5.7.0: {}
+  react-icons@5.7.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+
+  react@18.3.1:
+    dependencies:
+      loose-envify: 1.4.0
 
   readable-stream@3.6.2:
     dependencies:

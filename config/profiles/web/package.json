@@ -3,6 +3,7 @@
   "private": true,
   "dependencies": {
     "@liustack/modsearch": "^5.10.0",
+    "@mhw12138/dsh-ui-better-sidebar-skill": "^0.1.4",
     "@pakiknowledge/dsh-client-ui-skin-claude": "^0.2.0",
     "@sunjuntao/dsh-prompt-library": "^0.10.0",
     "dsh-better-sidebar": "^0.17.1",
@@ -14,6 +15,8 @@
     "dsh-persona-memory": "^0.2.0",
     "dsh-prompt-customizer": "^0.4.2",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
+    "dsh-run2skill": "^0.3.1",
+    "dsh-session-reader": "^0.1.0",
     "dshmarket": "^1.39.0"
   },
   "dsh": {
@@ -32,7 +35,10 @@
         "dsh-mcp-market",
         "dsh-persona-memory",
         "dsh-prompt-customizer",
-        "@sunjuntao/dsh-prompt-library"
+        "@sunjuntao/dsh-prompt-library",
+        "dsh-run2skill",
+        "@mhw12138/dsh-ui-better-sidebar-skill",
+        "dsh-session-reader"
       ]
     }
   }

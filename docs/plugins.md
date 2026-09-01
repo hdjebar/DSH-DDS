@@ -43,6 +43,30 @@ This repository comes pre-packaged with 9 essential DSH plugins and 3 pre-config
 * **ID**: `mnemon`
 * **Purpose**: Provides cross-session indexing and long-term memory for agent conversations and project briefs.
 
+### 10. `dsh-run2skill` (Session-to-Skill Distiller)
+* **ID**: `dsh-run2skill`
+* **Purpose**: Automatically turns explicit interactive DSH session runs, tool calls, and refined task steps into reviewable native `SKILL.md` files.
+
+### 11. `@mhw12138/dsh-ui-better-sidebar-skill` (Skill & Persona Studio)
+* **ID**: `dsh-ui-better-sidebar-skill`
+* **Purpose**: Adds an interactive Skill & Persona Studio tab inside the right sidebar of the Web UI to browse, preview, edit, create, and delete skills live.
+
+### 12. `dsh-persona-memory` (Long-Term Persona Memory)
+* **ID**: `dsh-persona-memory`
+* **Purpose**: Manages long-term persona memory files (`MEMORY.md`, `USER.md`), provides `memory_save`/`memory_search` tools, and includes a settings management page.
+
+### 13. `@sunjuntao/dsh-prompt-library` (Prompt Vault & Session Clipper)
+* **ID**: `dsh-prompt-library`
+* **Purpose**: Interactive prompt library above the composer: CRUD management, prompt tagging, and 1-click text clipping from active sessions.
+
+### 14. `dsh-prompt-customizer` (System Prompt & Tool Customizer)
+* **ID**: `dsh-prompt-customizer`
+* **Purpose**: Visual UI panel to inject/replace system prompt sections and customize active tool rosters per task.
+
+### 15. `dsh-session-reader` (Cross-Session Inspector)
+* **ID**: `dsh-session-reader`
+* **Purpose**: Allows agents and personas to read prior session contents, thinking processes, and tool responses to synthesize workflows.
+
 ---
 
 ## 🔌 Pre-Configured MCP Servers

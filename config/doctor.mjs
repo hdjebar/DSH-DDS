@@ -161,7 +161,10 @@ async function checkPlugins() {
     'dsh-mnemon',
     'dsh-persona-memory',
     'dsh-prompt-customizer',
-    '@sunjuntao/dsh-prompt-library'
+    '@sunjuntao/dsh-prompt-library',
+    'dsh-run2skill',
+    '@mhw12138/dsh-ui-better-sidebar-skill',
+    'dsh-session-reader'
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';
