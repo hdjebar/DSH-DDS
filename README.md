@@ -124,6 +124,13 @@ PHOENIX_API_KEY=your_optional_phoenix_key
 # Or: docker compose up -d --build
 ```
 
+> [!TIP]
+> **Analyzing Untrusted Code?**  
+> When using DSH to analyze external or unverified code repositories, start with the sandbox override:
+> ```bash
+> docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+> ```
+
 #### 4. Run System Diagnostics
 ```bash
 ./dsh.sh doctor
@@ -175,7 +182,7 @@ config/                          # Mounted directly to /root/.dsh in container
 
 ## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
 
-For evaluating untrusted scripts or running in air-gapped environments, launch the stack with the sandbox compose override:
+When using DSH to analyze external or unverified code repositories, start with the sandbox override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
