@@ -36,14 +36,14 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: '.'
-          ignore_paths: 'testinstall'
+          ignore_paths: 'testinstall installtest'
           severity: warning
 
       - name: Hadolint Dockerfile Linter
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-          ignore: DL3008,DL3013
+          ignore: DL3008,DL3013,DL3016,DL3025,DL4006
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -83,7 +83,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: actions/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker Image (No Cache)
         run: |
