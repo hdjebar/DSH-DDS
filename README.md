@@ -220,10 +220,7 @@ node --test tests/*.test.mjs
 **What the test suite covers:**
 1. **CLI Argument Parser**: Validates `--option=value`, short flags (`-t`, `-p`), mixed ordering, prompts with quotes/spaces, and rejects malformed/unknown options.
 2. **Installer Parity Assertion**: Enforces byte-for-byte equality between `install_dsh.sh` templates and canonical repo files (`Dockerfile`, `docker-compose.yml`, `package.json`, `cordis.patch.yml`).
-3. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint `bash -n`, and runs `--network none` offline MCP smoke tests on every push.           # Interactive terminal profile
-│       └── headless/      # One-shot autonomous CLI runner profile
-└── workspaces/            # Mounted directory for your code projects
-```
+3. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint `bash -n`, and runs `--network none` offline MCP smoke tests on every push.
 
 ---
 

@@ -168,3 +168,30 @@ tags: [ai, deepseek, automation]
   assert.deepEqual(parsed.flow, { enabled: true, retries: 2, strategy: 'exponential' });
   assert.deepEqual(parsed.tags, ['ai', 'deepseek', 'automation']);
 });
+
+test('CLI Parser: distill title option (--title and --title=)', () => {
+  const parsed1 = parsePersonaArgs(['distill', 'stats-engineer', '--title', 'Statistical Engineer']);
+  assert.equal(parsed1.command, 'distill');
+  assert.equal(parsed1.title, 'Statistical Engineer');
+  assert.deepEqual(parsed1.positionalArgs, ['stats-engineer']);
+
+  const parsed2 = parsePersonaArgs(['distill', 'stats-engineer', '--title=Statistical Engineer']);
+  assert.equal(parsed2.title, 'Statistical Engineer');
+
+  assert.throws(() => parsePersonaArgs(['distill', 'stats-engineer', '--title']), /Missing value for option '--title'/);
+  assert.throws(() => parsePersonaArgs(['distill', 'stats-engineer', '--title=']), /Missing value for option '--title='/);
+});
+
+test('Secret Scrubber: redacts Google AI Studio keys and GitHub fine-grained PATs', async () => {
+  const { scrubSecrets } = await import('../config/persona.mjs');
+  const mockGemini = ['AIza', 'SyD3x918ABCD1234567890abcdefghijklm'].join('');
+  const mockPat = ['github', 'pat', '11' + 'A'.repeat(80)].join('_');
+  const mockApiKey = ['sk', '1234567890123456789012'].join('-');
+  const rawText = `Keys: ${mockGemini} and ${mockPat} and ${mockApiKey}`;
+  const scrubbed = scrubSecrets(rawText);
+  assert.ok(!scrubbed.includes('SyD3x918'));
+  assert.ok(!scrubbed.includes(mockPat));
+  assert.ok(scrubbed.includes('[REDACTED_GEMINI_KEY]'));
+  assert.ok(scrubbed.includes('[REDACTED_GITHUB_PAT]'));
+  assert.ok(scrubbed.includes('[REDACTED_API_KEY]'));
+});

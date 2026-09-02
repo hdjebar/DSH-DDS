@@ -46,3 +46,51 @@ test('Installer Parity: bootstrap entrypoint is provisioned', () => {
   assert.match(installScript, /fetch_or_copy_file "docker\/entrypoint\.sh"/);
   assert.match(installScript, /chmod \+x "\$DSH_INSTALL\/docker\/entrypoint\.sh"/);
 });
+
+test('Installer Parity: all canonical personas, skills, and templates are provisioned in install_dsh.sh', () => {
+  const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+
+  function assertDirAssets(relDir) {
+    const fullDir = path.join(ROOT, relDir);
+    if (!fs.existsSync(fullDir)) return;
+    const entries = fs.readdirSync(fullDir, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const filePath = path.join(entry.parentPath || entry.path, entry.name);
+        const relPath = path.relative(ROOT, filePath);
+        assert.ok(
+          installScript.includes(`fetch_or_copy_file "${relPath}"`),
+          `install_dsh.sh must provision canonical asset: ${relPath}`
+        );
+      }
+    }
+  }
+
+  assertDirAssets('config/personas');
+  assertDirAssets('config/skills');
+  assertDirAssets('config/templates/personas');
+});
+
+test('Installer Parity: runtime scripts and profile assets are provisioned', () => {
+  const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+  const required = [
+    'config/sync_models.mjs',
+    'config/doctor.mjs',
+    'config/persona.mjs',
+    'config/patch_translations.mjs',
+    'config/settings.yaml',
+    'dsh.sh',
+    'reset.sh',
+    'docker-compose.sandbox.yml',
+    'docker/entrypoint.sh',
+    'config/profiles/web/pnpm-lock.yaml',
+    'config/profiles/cli/pnpm-lock.yaml'
+  ];
+
+  for (const item of required) {
+    assert.ok(
+      installScript.includes(`fetch_or_copy_file "${item}"`),
+      `install_dsh.sh must provision runtime dependency: ${item}`
+    );
+  }
+});

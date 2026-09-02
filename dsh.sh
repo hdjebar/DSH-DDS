@@ -4,7 +4,32 @@ set -euo pipefail
 # 🚀 DSH Universal CLI Control Script
 # Provides intuitive commands for managing DeepSeek Harness, Phoenix, and agents.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 COMMAND="${1:-help}"
+
+print_help() {
+  echo "========================================================"
+  echo "⚡ DeepSeek Harness (DSH) CLI Controller"
+  echo "========================================================"
+  echo "Usage: ./dsh.sh [command] [options]"
+  echo ""
+  echo "Available Commands:"
+  echo "  up / start        Start DSH and Arize Phoenix containers"
+  echo "  down / stop       Stop all containers"
+  echo "  restart           Restart all containers"
+  echo "  build             Rebuild container image with latest plugins"
+  echo "  logs [service]    View real-time logs (e.g. ./dsh.sh logs dsh)"
+  echo "  doctor            Run ecosystem health check & diagnostics"
+  echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
+  echo "  cli               Launch interactive terminal matrix"
+  echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
+  echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
+  echo "  reset             Safely clear caches & restart stack"
+  echo "  status            Show container health status"
+  echo "========================================================"
+}
 
 case "$COMMAND" in
   up|start)
@@ -78,25 +103,13 @@ case "$COMMAND" in
     docker compose ps
     ;;
 
-  help|--help|-h|*)
-    echo "========================================================"
-    echo "⚡ DeepSeek Harness (DSH) CLI Controller"
-    echo "========================================================"
-    echo "Usage: ./dsh.sh [command] [options]"
-    echo ""
-    echo "Available Commands:"
-    echo "  up / start        Start DSH and Arize Phoenix containers"
-    echo "  down / stop       Stop all containers"
-    echo "  restart           Restart all containers"
-    echo "  build             Rebuild container image with latest plugins"
-    echo "  logs [service]    View real-time logs (e.g. ./dsh.sh logs dsh)"
-    echo "  doctor            Run ecosystem health check & diagnostics"
-    echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
-    echo "  cli               Launch interactive terminal matrix"
-    echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
-    echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
-    echo "  reset             Safely clear caches & restart stack"
-    echo "  status            Show container health status"
-    echo "========================================================"
+  help|--help|-h)
+    print_help
+    exit 0
+    ;;
+
+  *)
+    echo "❌ Unknown command '$COMMAND'. Run './dsh.sh help' for usage."
+    exit 1
     ;;
 esac

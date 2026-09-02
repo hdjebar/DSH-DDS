@@ -104,39 +104,82 @@ fetch_or_copy_file "config/sync_models.mjs"
 fetch_or_copy_file "config/doctor.mjs"
 fetch_or_copy_file "config/persona.mjs"
 fetch_or_copy_file "config/patch_translations.mjs"
+fetch_or_copy_file "config/settings.yaml"
+fetch_or_copy_file "dsh.sh"
+fetch_or_copy_file "reset.sh"
+fetch_or_copy_file "docker-compose.sandbox.yml"
+fetch_or_copy_file "docker/entrypoint.sh"
+
+# Profiles
+fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
+fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
+fetch_or_copy_file "config/profiles/web/cordis.yml"
+fetch_or_copy_file "config/profiles/cli/pnpm-lock.yaml"
+fetch_or_copy_file "config/profiles/cli/package.json"
+fetch_or_copy_file "config/profiles/cli/cordis.yml"
+fetch_or_copy_file "config/profiles/headless/package.json"
+fetch_or_copy_file "config/profiles/headless/cordis.yml"
+fetch_or_copy_file "config/profiles/headless/cordis.patch.yml"
+fetch_or_copy_file "config/profiles/headless/pnpm-workspace.yaml"
+
+# Personas (all 7 domain packages)
 fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
 fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
 fetch_or_copy_file "config/personas/sdmx-expert/workflow.sh"
 fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
 fetch_or_copy_file "config/personas/data-analyst/SKILL.md"
 fetch_or_copy_file "config/personas/data-analyst/workflow.sh"
+fetch_or_copy_file "config/personas/devops-sre/persona.yaml"
+fetch_or_copy_file "config/personas/devops-sre/SKILL.md"
+fetch_or_copy_file "config/personas/devops-sre/workflow.sh"
+fetch_or_copy_file "config/personas/mlops-engineer/persona.yaml"
+fetch_or_copy_file "config/personas/mlops-engineer/SKILL.md"
+fetch_or_copy_file "config/personas/mlops-engineer/workflow.sh"
+fetch_or_copy_file "config/personas/persona-creator/persona.yaml"
+fetch_or_copy_file "config/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/personas/persona-creator/workflow.sh"
+fetch_or_copy_file "config/personas/security-auditor/persona.yaml"
+fetch_or_copy_file "config/personas/security-auditor/SKILL.md"
+fetch_or_copy_file "config/personas/security-auditor/workflow.sh"
+fetch_or_copy_file "config/personas/stats-engineer/persona.yaml"
+fetch_or_copy_file "config/personas/stats-engineer/SKILL.md"
+fetch_or_copy_file "config/personas/stats-engineer/workflow.sh"
+
+# Skills (all 7 domain skills)
+fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
+fetch_or_copy_file "config/skills/devops-sre/SKILL.md"
+fetch_or_copy_file "config/skills/mlops-engineer/SKILL.md"
+fetch_or_copy_file "config/skills/persona-creator/SKILL.md"
+fetch_or_copy_file "config/skills/security-auditor/SKILL.md"
+fetch_or_copy_file "config/skills/stats-engineer/SKILL.md"
+
+# Templates
 fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
 fetch_or_copy_file "config/templates/personas/base-template/SKILL.md"
 fetch_or_copy_file "config/templates/personas/base-template/workflow.sh"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/persona.yaml"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/workflow.sh"
 fetch_or_copy_file "config/templates/personas/data-analyst/persona.yaml"
 fetch_or_copy_file "config/templates/personas/data-analyst/SKILL.md"
 fetch_or_copy_file "config/templates/personas/data-analyst/workflow.sh"
-fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
-fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
-fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
-fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
-fetch_or_copy_file "config/profiles/web/cordis.yml"
-fetch_or_copy_file "dsh.sh"
-fetch_or_copy_file "docker-compose.sandbox.yml"
-fetch_or_copy_file "docker/entrypoint.sh"
+fetch_or_copy_file "config/templates/personas/devops-sre/persona.yaml"
+fetch_or_copy_file "config/templates/personas/devops-sre/SKILL.md"
+fetch_or_copy_file "config/templates/personas/devops-sre/workflow.sh"
+fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
+fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/templates/personas/persona-creator/workflow.sh"
+fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
+fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
+fetch_or_copy_file "config/templates/personas/security-auditor/workflow.sh"
 
-if [ -f "$DSH_INSTALL/dsh.sh" ]; then
-  chmod +x "$DSH_INSTALL/dsh.sh"
-fi
-if [ -f "$DSH_INSTALL/docker/entrypoint.sh" ]; then
-  chmod +x "$DSH_INSTALL/docker/entrypoint.sh"
-fi
-if [ -f "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh" ]; then
-  chmod +x "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh"
-fi
-if [ -f "$DSH_INSTALL/config/personas/data-analyst/workflow.sh" ]; then
-  chmod +x "$DSH_INSTALL/config/personas/data-analyst/workflow.sh"
-fi
+# Permissions
+chmod +x "$DSH_INSTALL/dsh.sh" 2>/dev/null || true
+chmod +x "$DSH_INSTALL/reset.sh" 2>/dev/null || true
+chmod +x "$DSH_INSTALL/docker/entrypoint.sh" 2>/dev/null || true
+find "$DSH_INSTALL/config/personas" -name "workflow.sh" -exec chmod +x {} + 2>/dev/null || true
+find "$DSH_INSTALL/config/templates" -name "workflow.sh" -exec chmod +x {} + 2>/dev/null || true
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
 cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
@@ -281,6 +324,16 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: github-mcp-server
         args:
           - stdio
+- insert:
+    - id: mcp-sqlite-db
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: sqlite-db
+        transport: stdio
+        command: mcp-server-sqlite
+        args:
+          - --db-path
+          - /workspaces/data.db
 # --- end dsh-mcp-market managed ---
 EOF
 
@@ -416,6 +469,7 @@ services:
       - DSH_TELEMETRY_MODE=FULL
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
     depends_on:
       - phoenix
     logging:
@@ -433,6 +487,8 @@ services:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
     volumes:
       - ./config/phoenix:/root/.phoenix
     logging:

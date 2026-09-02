@@ -135,8 +135,14 @@ async function syncToPhoenix(openRouterModels) {
       console.warn(`⚠️ Phoenix GraphQL sync returned ${msg}`);
       return { success: false, error: msg };
     }
-    const data = await res.json();
-    if (data.errors && data.errors.length > 0) {
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      console.warn('⚠️ Phoenix GraphQL returned non-JSON response');
+      return { success: false, error: 'Non-JSON response' };
+    }
+    if (data && data.errors && data.errors.length > 0) {
       const genuineErrors = data.errors.filter(e => !e.message?.toLowerCase().includes('already exists'));
       if (genuineErrors.length > 0) {
         const msg = genuineErrors.map(e => e.message).join(', ');

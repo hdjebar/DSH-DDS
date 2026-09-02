@@ -62,11 +62,21 @@ function validateSlug(input, fieldName = 'name') {
   return input;
 }
 
-function scrubSecrets(text) {
+function validateSessionId(input) {
+  if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(input) || input.includes('..')) {
+    console.error(`❌ Error: Invalid session ID '${input}'. Must be alphanumeric with hyphens, underscores, or dots without directory traversal.`);
+    process.exit(1);
+  }
+  return input;
+}
+
+export function scrubSecrets(text) {
   if (!text || typeof text !== 'string') return text;
   return text
     .replace(/\b(sk-[a-zA-Z0-9-_]{20,})\b/g, '[REDACTED_API_KEY]')
+    .replace(/\b(AIza[0-9A-Za-z_-]{35})\b/g, '[REDACTED_GEMINI_KEY]')
     .replace(/\b(ghp_[a-zA-Z0-9]{30,})\b/g, '[REDACTED_GITHUB_TOKEN]')
+    .replace(/\b(github_pat_[0-9a-zA-Z_]{82})\b/g, '[REDACTED_GITHUB_PAT]')
     .replace(/\b(Bearer\s+[a-zA-Z0-9._-]{20,})\b/gi, 'Bearer [REDACTED_TOKEN]')
     .replace(/(api[_-]?key\s*[:=]\s*["']?)[a-zA-Z0-9_-]{16,}(["']?)/gi, '$1[REDACTED_KEY]$2');
 }
@@ -257,9 +267,20 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   const safeProfile = validateSlug(profile, 'profile name');
   const safeTier = validateSlug(tier, 'model tier');
 
+  // Derive container-accessible patch path
+  let containerPatchDir = '/root/.dsh';
+  if (process.env.DSH_RUNTIME_DIR) {
+    containerPatchDir = process.env.DSH_RUNTIME_DIR;
+  } else if (RUNTIME_DIR !== CONFIG_DIR) {
+    console.error(`❌ Error: RUNTIME_DIR ('${RUNTIME_DIR}') is not inside the container configuration mount ('${CONFIG_DIR}'). Cannot mount patch into container.`);
+    process.exitCode = 1;
+    return;
+  }
+
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   const tempPatchName = `patch.${process.pid}.${Date.now()}.tmp.yaml`;
   const tempPatchFile = path.join(RUNTIME_DIR, tempPatchName);
+  const containerPatchPath = path.posix.join(containerPatchDir, tempPatchName);
   let hasPatch = false;
 
   try {
@@ -268,7 +289,24 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
       const chosenModel = meta.models[safeTier] || meta.models.default;
       if (chosenModel) {
         console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
-        const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
+        let patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
+
+        // Wire persona plugins
+        if (Array.isArray(meta.plugins) && meta.plugins.length > 0) {
+          for (const plugin of meta.plugins) {
+            patchContent += `- id: ${plugin}\n  disabled: false\n`;
+          }
+        }
+
+        // Wire persona MCP servers
+        if (meta.mcpServers && typeof meta.mcpServers === 'object') {
+          for (const [sName, sCfg] of Object.entries(meta.mcpServers)) {
+            if (sCfg && sCfg.command) {
+              patchContent += `- insert:\n    - id: mcp-${sName}\n      name: '@deepseek-ai/dsh-mcp-client'\n      config:\n        serverName: ${sName}\n        transport: ${sCfg.transport || 'stdio'}\n        command: ${sCfg.command}\n        args: ${JSON.stringify(sCfg.args || [])}\n`;
+            }
+          }
+        }
+
         fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
         hasPatch = true;
       }
@@ -277,7 +315,7 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
     const fullPrompt = `Using the ${safeName} skill, ${prompt}`;
     const dockerArgs = ['compose', 'exec', 'dsh', 'dsh', '--profile', safeProfile];
     if (hasPatch) {
-      dockerArgs.push('--patch', `/root/.dsh/${tempPatchName}`);
+      dockerArgs.push('--patch', containerPatchPath);
     }
     dockerArgs.push(fullPrompt);
 
@@ -307,16 +345,26 @@ function runWorkflow(name, workflowKey) {
   }
 
   const meta = parsePersonaYaml(manifestPath);
-  if (!workflowKey || !meta.workflows[workflowKey]) {
+  const workflows = (meta.workflows && typeof meta.workflows === 'object') ? meta.workflows : {};
+
+  if (!workflowKey) {
     console.log(`Available workflows for persona '${safeName}':`);
-    for (const [k, v] of Object.entries(meta.workflows)) {
+    for (const [k, v] of Object.entries(workflows)) {
       console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
     }
     return;
   }
 
   const safeWfKey = validateSlug(workflowKey, 'workflow key');
-  const wf = meta.workflows[safeWfKey];
+  if (!Object.prototype.hasOwnProperty.call(workflows, safeWfKey)) {
+    console.log(`Available workflows for persona '${safeName}':`);
+    for (const [k, v] of Object.entries(workflows)) {
+      console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
+    }
+    return;
+  }
+
+  const wf = workflows[safeWfKey];
   const tier = wf.modelTier || 'default';
   console.log(`🚀 Running workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
   runPersona(safeName, wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), ''), tier);
@@ -341,6 +389,7 @@ export function parsePersonaArgs(argv) {
   let profile = 'headless';
   let template = 'data-analyst';
   let sessionId = null;
+  let title = null;
   const positionalArgs = [];
 
   for (let i = 1; i < argv.length; i++) {
@@ -377,6 +426,14 @@ export function parsePersonaArgs(argv) {
     } else if (arg.startsWith('--session=')) {
       sessionId = arg.slice(10);
       if (!sessionId) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg === '--title') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      title = argv[++i];
+    } else if (arg.startsWith('--title=')) {
+      title = arg.slice(8);
+      if (!title) throw new Error(`Missing value for option '${arg}'`);
     } else if (arg.startsWith('-')) {
       throw new Error(`Unknown option '${arg}'`);
     } else {
@@ -384,13 +441,13 @@ export function parsePersonaArgs(argv) {
     }
   }
 
-  return { command, tier, profile, template, sessionId, positionalArgs };
+  return { command, tier, profile, template, sessionId, title, positionalArgs };
 }
 
 // Direct CLI Execution
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename || '')) {
   try {
-    const { command, tier, profile, template, sessionId, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
+    const { command, tier, profile, template, sessionId, title, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
 
     switch (command) {
       case 'list':
@@ -410,7 +467,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
 
       case 'distill':
       case 'record':
-        distillPersona(positionalArgs[0], { sessionId });
+        distillPersona(positionalArgs[0], { sessionId, title });
         break;
 
       case 'apply':
@@ -485,6 +542,57 @@ function listSessions() {
   console.log('========================================================================');
 }
 
+function extractSessionInsights(rawText, maxChars = 4000) {
+  if (!rawText || typeof rawText !== 'string') return '';
+  const lines = rawText.split('\n');
+  const extractedPoints = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const entry = JSON.parse(trimmed);
+        if (entry.prompt || entry.user) {
+          extractedPoints.push(`* User Objective: ${entry.prompt || entry.user}`);
+        } else if (entry.summary || entry.title) {
+          extractedPoints.push(`* Key Milestone: ${entry.summary || entry.title}`);
+        } else if (entry.tool || entry.toolCall) {
+          const tName = entry.tool?.name || entry.toolCall?.name || 'tool';
+          extractedPoints.push(`* Tool Invocation: \`${tName}\``);
+        } else if (entry.text && entry.text.length < 200) {
+          extractedPoints.push(`* Insight: ${entry.text}`);
+        }
+      } catch {}
+    } else if (trimmed.startsWith('#') || trimmed.startsWith('*') || trimmed.startsWith('-')) {
+      extractedPoints.push(trimmed.slice(0, 150));
+    }
+  }
+
+  let formatted = '';
+  if (extractedPoints.length > 0) {
+    formatted = extractedPoints.slice(0, 30).join('\n');
+  } else {
+    formatted = rawText.slice(0, maxChars).replace(/```/g, "'''");
+  }
+
+  if (formatted.length > maxChars) {
+    formatted = formatted.slice(0, maxChars) + '\n... [truncated]';
+  }
+
+  return `<distilled_session_insights>\n${formatted}\n</distilled_session_insights>`;
+}
+
+function formatBoundedMemory(rawText, maxChars = 3000) {
+  if (!rawText || typeof rawText !== 'string') return '';
+  let clean = rawText.trim().replace(/```/g, "'''");
+  if (clean.length > maxChars) {
+    clean = clean.slice(0, maxChars) + '\n... [truncated]';
+  }
+  return `<distilled_memory_rules>\n${clean}\n</distilled_memory_rules>`;
+}
+
 function distillPersona(name, options = {}) {
   ensureDirs();
   const safeName = validateSlug(name, 'persona name');
@@ -513,6 +621,9 @@ function distillPersona(name, options = {}) {
     memoryNotes = scrubSecrets(fs.readFileSync(memoryFile, 'utf8'));
     console.log('📖 Ingested long-term session memories from config/MEMORY.md');
   }
+
+  const fencedSession = extractSessionInsights(sessionNotes);
+  const fencedMemory = formatBoundedMemory(memoryNotes);
 
   const rawTitle = options.title || safeName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   const cleanTitle = JSON.stringify(rawTitle.replace(/[\r\n\t]/g, ' ')).slice(1, -1);
@@ -597,7 +708,8 @@ You are a domain-specialized AI agent for ${cleanTitle}, distilled from refined 
    * Use **default** (\`deepseek-chat\`) for general iterative drafting.
    * Use **reasoning** (\`deepseek-r1\`) for complex multi-variable logic and proof verification.
    * Use **audit** (\`claude-3.5-sonnet\`) for precision code changes.
-${memoryNotes ? `\n## 🧠 Learned Context & Distilled Session Rules\n${memoryNotes}\n` : ''}
+${fencedMemory ? `\n## 🧠 Learned Context & Distilled Session Rules\n${fencedMemory}\n` : ''}
+${fencedSession ? `\n## 📜 Distilled Interactive Session Insights\n${fencedSession}\n` : ''}
 ## 📊 Output Schema
 * 📌 **Executive Summary**: 1-2 sentence core conclusion.
 * 🛠️ **Implementation / Deliverables**: Formatted code, tables, or findings.

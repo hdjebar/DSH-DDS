@@ -39,16 +39,22 @@ echo "🧹 DeepSeek Harness Workspace Reset"
 echo "========================================================"
 
 if [ "$HARD_RESET" = true ]; then
-  echo "⚠️  Mode: HARD RESET (All sessions, database caches and volumes will be reset)"
+  echo "⚠️  Mode: HARD RESET (All sessions, database caches and volumes will be permanently wiped)"
+  if [ "$FORCE" = false ]; then
+    read -rp "⚠️  Are you sure you want to PERMANENTLY DELETE all session histories and storage? [y/N]: " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      exit 0
+    fi
+  fi
 else
-  echo "ℹ️  Mode: SOFT RESET (Clearing ephemeral session logs and caches)"
-fi
-
-if [ "$FORCE" = false ]; then
-  read -rp "Are you sure you want to proceed? [y/N]: " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+  echo "ℹ️  Mode: SOFT RESET (Clearing temporary cache locks and sync files; sessions preserved)"
+  if [ "$FORCE" = false ]; then
+    read -rp "Proceed with soft cache reset? [y/N]: " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      exit 0
+    fi
   fi
 fi
 
@@ -56,13 +62,14 @@ fi
 echo "🛑 Stopping containers..."
 docker compose down || true
 
-# 2. Clear ephemeral caches
-echo "🧹 Clearing session data and temporary caches..."
-rm -rf config/sessions/* config/storages/* config/phoenix/*.db-wal config/phoenix/*.db-shm
-
+# 2. Clear caches according to mode
 if [ "$HARD_RESET" = true ]; then
-  echo "💥 Performing hard reset on containers and persistent storage..."
+  echo "💥 Performing hard reset on containers, persistent databases and session histories..."
+  rm -rf config/sessions/* config/storages/* config/phoenix/*.db-wal config/phoenix/*.db-shm config/*.tmp.yaml config/patch*.tmp.yaml config/models.cache.json config/sync_status.json
   docker compose down -v --remove-orphans || true
+else
+  echo "🧹 Clearing temporary caches and lock files (preserving chat sessions and storage)..."
+  rm -rf config/*.tmp.yaml config/patch*.tmp.yaml config/models.cache.json config/sync_status.json config/phoenix/*.db-wal config/phoenix/*.db-shm
 fi
 
 # 3. Restart and bootstrap environment
