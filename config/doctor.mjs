@@ -160,7 +160,7 @@ async function checkGitHubToken() {
 }
 
 async function checkMcpExecutables() {
-  console.log('\n🔍 [5/8] Model Context Protocol (MCP) Executables:');
+  console.log('\n🔍 [6/9] Model Context Protocol (MCP) Executables & Permissions:');
   const mcpBinaries = [
     { name: 'mcp-server-webresearch', label: 'Web Research MCP (fetch)' },
     { name: 'context7-mcp', label: 'Context7 Docs MCP (context7)' },
@@ -171,7 +171,12 @@ async function checkMcpExecutables() {
   for (const bin of mcpBinaries) {
     const isAvailable = whichSync(bin.name);
     if (isAvailable) {
-      pass(`MCP Binary: ${bin.name}`, `${bin.label} — resolved (${isAvailable})`);
+      try {
+        fs.accessSync(isAvailable, fs.constants.X_OK);
+        pass(`MCP Binary: ${bin.name}`, `${bin.label} — executable verified (${isAvailable})`);
+      } catch (e) {
+        fail(`MCP Binary: ${bin.name}`, `${bin.label} — file found at ${isAvailable} but lacks execute permissions`);
+      }
     } else {
       warn(`MCP Binary: ${bin.name}`, `${bin.label} — not found in host/container PATH`);
     }
@@ -192,7 +197,7 @@ function whichSync(cmd) {
 }
 
 async function checkModelSyncStatus() {
-  console.log('\n🔍 [6/8] Automated Model Sync Health:');
+  console.log('\n🔍 [7/9] Automated Model Sync Health:');
   const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
   const containerStatusFile = '/root/.dsh/sync_status.json';
   const target = fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile;
@@ -204,19 +209,21 @@ async function checkModelSyncStatus() {
         pass('Background Model Sync', `Active & Healthy (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0} at ${syncData.timestamp})`);
       } else if (syncData.status === 'running') {
         pass('Background Model Sync', `Sync in progress (${syncData.timestamp})`);
+      } else if (syncData.status === 'partial') {
+        warn('Background Model Sync', `Partial sync (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0}) — Warnings: ${(syncData.errors || []).join('; ')}`);
       } else {
-        warn('Background Model Sync', `Last sync failed: ${syncData.error || 'Unknown error'} (${syncData.timestamp})`);
+        fail('Background Model Sync', `Last sync failed: ${syncData.error || (syncData.errors || []).join('; ') || 'Unknown error'} (${syncData.timestamp})`);
       }
     } catch {
       warn('Background Model Sync', 'Could not parse sync_status.json');
     }
   } else {
-    pass('Background Model Sync', 'Initialized (awaiting first background interval)');
+    warn('Background Model Sync', 'Pending initial run (no sync_status.json generated yet)');
   }
 }
 
 async function checkPlugins() {
-  console.log('\n🔍 [7/8] Pre-Packaged DSH Plugins:');
+  console.log('\n🔍 [8/9] Pre-Packaged DSH Plugins:');
   const expectedPlugins = [
     '@liustack/modsearch',
     'dsh-find-plugin',
@@ -241,9 +248,9 @@ async function checkPlugins() {
           const modPath = path.join(nodeModulesPath, p);
           const isInstalled = fs.existsSync(modPath);
           if (isInstalled) {
-            pass(`Plugin: ${p}`, `v${deps[p]} (installed)`);
+            pass(`Plugin: ${p}`, `v${deps[p]} (installed in node_modules)`);
           } else {
-            pass(`Plugin: ${p}`, `v${deps[p]} (declared)`);
+            warn(`Plugin: ${p}`, `Declared in package.json (v${deps[p]}) but directory missing in node_modules`);
           }
         } else {
           warn(`Plugin: ${p}`, 'Not declared in profile package.json');
@@ -258,7 +265,7 @@ async function checkPlugins() {
 }
 
 async function checkStorage() {
-  console.log('\n🔍 [8/8] Storage & Volume Mounts:');
+  console.log('\n🔍 [9/9] Storage & Volume Mounts:');
   const dirs = [
     { path: '/root/.dsh', label: 'Config Directory (/root/.dsh)' },
     { path: '/workspaces', label: 'Workspaces Mount (/workspaces)' }
@@ -288,6 +295,7 @@ async function runDoctor() {
   await checkPhoenixTelemetry();
   await checkGoogleGemini();
   await checkOpenRouter();
+  await checkGitHubToken();
   await checkMcpExecutables();
   await checkModelSyncStatus();
   await checkPlugins();

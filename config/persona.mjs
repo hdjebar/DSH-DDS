@@ -39,93 +39,155 @@ function ensureDirs() {
   if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
 }
 
-function parsePersonaYaml(filePath) {
+export function parseYaml(yamlText) {
+  if (typeof yamlText !== 'string') return {};
+  
+  const lines = yamlText.split('\n');
+  const root = {};
+  const stack = [{ indent: -1, container: root, parent: null, parentKey: null }];
+
+  function parseScalar(val) {
+    if (val === undefined || val === null) return '';
+    val = val.trim();
+    if (val === '') return '';
+    if (val === 'true' || val === 'True') return true;
+    if (val === 'false' || val === 'False') return false;
+    if (val === 'null' || val === '~') return null;
+    if (/^-?\d+(\.\d+)?$/.test(val)) return Number(val);
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      return val.slice(1, -1);
+    }
+    if (val.startsWith('[') && val.endsWith(']')) {
+      return val.slice(1, -1).split(',').map(s => parseScalar(s.trim())).filter(s => s !== '');
+    }
+    return val;
+  }
+
+  function cleanLine(raw) {
+    let inSingle = false, inDouble = false;
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+      if (c === "'" && !inDouble) inSingle = !inSingle;
+      else if (c === '"' && !inSingle) inDouble = !inDouble;
+      else if (c === '#' && !inSingle && !inDouble) {
+        return raw.slice(0, i);
+      }
+    }
+    return raw;
+  }
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const rawLine = lines[lineIndex];
+    const withoutComment = cleanLine(rawLine);
+    if (!withoutComment.trim()) continue;
+
+    const indent = withoutComment.search(/\S/);
+    const trimmed = withoutComment.trim();
+
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+      stack.pop();
+    }
+
+    const currentContext = stack[stack.length - 1];
+
+    if (trimmed.startsWith('- ')) {
+      const itemContent = trimmed.slice(2).trim();
+
+      // If current container is an empty object from a preceding "key:", convert to Array
+      if (!Array.isArray(currentContext.container)) {
+        if (currentContext.parent && currentContext.parentKey) {
+          const arr = [];
+          currentContext.parent[currentContext.parentKey] = arr;
+          currentContext.container = arr;
+        } else {
+          currentContext.container = [];
+        }
+      }
+
+      if (itemContent.includes(': ') || itemContent.endsWith(':')) {
+        const itemObj = {};
+        currentContext.container.push(itemObj);
+        stack.push({ indent, container: itemObj, parent: currentContext.container, parentKey: currentContext.container.length - 1 });
+        
+        if (itemContent.includes(': ')) {
+          const colonIdx = itemContent.indexOf(': ');
+          const k = parseScalar(itemContent.slice(0, colonIdx));
+          const v = parseScalar(itemContent.slice(colonIdx + 2));
+          itemObj[k] = v;
+        } else if (itemContent.endsWith(':')) {
+          const k = parseScalar(itemContent.slice(0, -1));
+          itemObj[k] = {};
+          stack.push({ indent: indent + 2, container: itemObj[k], parent: itemObj, parentKey: k });
+        }
+      } else {
+        currentContext.container.push(parseScalar(itemContent));
+      }
+    } else if (trimmed.includes(':')) {
+      const colonIdx = trimmed.indexOf(':');
+      const key = parseScalar(trimmed.slice(0, colonIdx));
+      const rest = trimmed.slice(colonIdx + 1).trim();
+
+      if (!rest) {
+        const newObj = {};
+        if (Array.isArray(currentContext.container)) {
+          const wrapper = {};
+          wrapper[key] = newObj;
+          currentContext.container.push(wrapper);
+          stack.push({ indent, container: newObj, parent: wrapper, parentKey: key });
+        } else {
+          currentContext.container[key] = newObj;
+          stack.push({ indent, container: newObj, parent: currentContext.container, parentKey: key });
+        }
+      } else {
+        const val = parseScalar(rest);
+        if (Array.isArray(currentContext.container)) {
+          const wrapper = {};
+          wrapper[key] = val;
+          currentContext.container.push(wrapper);
+        } else {
+          currentContext.container[key] = val;
+        }
+      }
+    }
+  }
+
+  return root;
+}
+
+export function parsePersonaYaml(filePath) {
   if (!fs.existsSync(filePath)) return {};
   const content = fs.readFileSync(filePath, 'utf8');
-  const result = { models: {}, plugins: [], mcpServers: {}, workflows: {}, profiles: [] };
+  const doc = parseYaml(content);
+  
+  const result = {
+    name: doc.name || path.basename(path.dirname(filePath)),
+    title: doc.title || doc.name || '',
+    description: doc.description || '',
+    profiles: Array.isArray(doc.profiles) ? doc.profiles : (doc.profiles && typeof doc.profiles === 'object' ? Object.keys(doc.profiles) : ['web', 'headless', 'cli']),
+    models: {},
+    workflows: doc.workflows || {},
+    plugins: doc.plugins || [],
+    mcpServers: doc.mcpServers || {}
+  };
 
-  const nameM = content.match(/^name:\s*(.+)$/m);
-  if (nameM) result.name = nameM[1].trim();
-
-  const titleM = content.match(/^title:\s*["']?(.+?)["']?$/m);
-  if (titleM) result.title = titleM[1].trim();
-
-  const descM = content.match(/^description:\s*["']?(.+?)["']?$/m);
-  if (descM) result.description = descM[1].trim();
-
-  // Parse Execution Context Profiles (supports both list and dictionary formats)
-  const profilesMatch = content.match(/profiles:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
-  if (profilesMatch) {
-    const lines = profilesMatch[1].split('\n');
-    for (const line of lines) {
-      // List format: - web
-      const listM = line.match(/^\s*-\s*([a-zA-Z0-9_-]+)/);
-      if (listM) {
-        result.profiles.push(listM[1].trim());
-        continue;
-      }
-      // Dict format: web: or sandbox:
-      const dictM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
-      if (dictM && dictM[1] !== 'models' && dictM[1] !== 'plugins') {
-        result.profiles.push(dictM[1].trim());
+  if (doc.models && typeof doc.models === 'object') {
+    for (const [tier, cfg] of Object.entries(doc.models)) {
+      if (cfg && typeof cfg === 'object') {
+        result.models[tier] = {
+          provider: cfg.provider || 'openrouter',
+          model: cfg.model || 'deepseek/deepseek-chat',
+          temperature: typeof cfg.temperature === 'number' ? cfg.temperature : (parseFloat(cfg.temperature) || 0.2),
+          useCase: cfg.useCase || ''
+        };
       }
     }
   }
-  if (result.profiles.length === 0) {
-    result.profiles = ['web', 'headless', 'cli'];
-  }
 
-  // Parse Multi-Model Matrix
-  const modelsMatch = content.match(/models:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
-  if (modelsMatch) {
-    const lines = modelsMatch[1].split('\n');
-    let currentTier = null;
-    for (const line of lines) {
-      const tierM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
-      if (tierM) {
-        currentTier = tierM[1];
-        result.models[currentTier] = {};
-        continue;
-      }
-      if (currentTier) {
-        const pM = line.match(/^\s+provider:\s*(.+)$/);
-        if (pM) result.models[currentTier].provider = pM[1].trim();
-        const mM = line.match(/^\s+model:\s*(.+)$/);
-        if (mM) result.models[currentTier].model = mM[1].trim();
-        const tM = line.match(/^\s+temperature:\s*(.+)$/);
-        if (tM) result.models[currentTier].temperature = parseFloat(tM[1].trim());
-        const uM = line.match(/^\s+useCase:\s*["']?(.+?)["']?$/);
-        if (uM) result.models[currentTier].useCase = uM[1].trim();
-      }
-    }
-  } else {
-    // Fallback single model
-    const pM = content.match(/provider:\s*(.+)$/m);
-    const mM = content.match(/model:\s*(.+)$/m);
-    if (pM && mM) {
-      result.models.default = { provider: pM[1].trim(), model: mM[1].trim() };
-    }
-  }
-
-  // Parse Workflows
-  const wfMatch = content.match(/workflows:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
-  if (wfMatch) {
-    const lines = wfMatch[1].split('\n');
-    let currentWf = null;
-    for (const line of lines) {
-      const wfM = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
-      if (wfM) {
-        currentWf = wfM[1];
-        result.workflows[currentWf] = {};
-        continue;
-      }
-      if (currentWf) {
-        const tierM = line.match(/^\s+modelTier:\s*(.+)$/);
-        if (tierM) result.workflows[currentWf].modelTier = tierM[1].trim();
-        const cmdM = line.match(/^\s+command:\s*["']?(.+?)["']?$/);
-        if (cmdM) result.workflows[currentWf].command = cmdM[1].trim();
-      }
-    }
+  if (!result.models.default) {
+    result.models.default = {
+      provider: doc.provider || 'openrouter',
+      model: doc.model || 'deepseek/deepseek-chat'
+    };
   }
 
   return result;
@@ -189,7 +251,8 @@ function createPersona(name, templateName = 'data-analyst') {
 
   if (fs.existsSync(targetDir)) {
     console.error(`❌ Error: Persona '${safeName}' already exists at config/personas/${safeName}/`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
@@ -198,7 +261,8 @@ function createPersona(name, templateName = 'data-analyst') {
   const templateDir = path.join(TEMPLATES_DIR, safeTemplate);
   if (!fs.existsSync(templateDir)) {
     console.error(`❌ Error: Template '${safeTemplate}' not found in config/templates/personas/`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   for (const file of fs.readdirSync(templateDir)) {
@@ -228,7 +292,8 @@ function applyPersona(name, tier = 'default') {
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   if (!fs.existsSync(manifestPath)) {
     console.error(`❌ Persona '${safeName}' not found.`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const meta = parsePersonaYaml(manifestPath);
@@ -246,7 +311,8 @@ function applyPersona(name, tier = 'default') {
 function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   if (!name || !prompt) {
     console.error('❌ Usage: ./dsh.sh persona run <name> [--tier <tier>] [--profile <profile>] "<prompt>"');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const safeName = validateSlug(name, 'persona name');
@@ -280,10 +346,12 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
     const res = spawnSync('docker', dockerArgs, { stdio: 'inherit', shell: false });
     if (res.error) {
       console.error('❌ Execution failed:', res.error.message);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
     if (res.status !== 0) {
-      process.exit(res.status || 1);
+      process.exitCode = res.status || 1;
+      return;
     }
   } finally {
     if (hasPatch && fs.existsSync(tempPatchFile)) {

@@ -104,3 +104,51 @@ test('CLI Parser: rejects missing option values', () => {
 test('CLI Parser: rejects unknown options', () => {
   assert.throws(() => parsePersonaArgs(['run', 'data-analyst', '--unknown-flag', 'test']), /Unknown option '--unknown-flag'/);
 });
+
+test('Structured YAML Parser: handles nested mappings, quotes, comments and scalar types', async () => {
+  const { parseYaml } = await import('../config/persona.mjs');
+  const yaml = `
+# Top-level comment
+name: test-agent # inline comment
+version: "1.0"
+description: 'Specialized agent with "quotes" and symbols'
+enabled: true
+maxRetries: 5
+temperature: 0.75
+
+# Matrix configuration
+profiles:
+  - web
+  - headless
+  - cli
+
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "General querying and reasoning"
+  audit:
+    provider: anthropic
+    model: claude-3.5-sonnet
+
+workflows:
+  quick-check:
+    modelTier: default
+    command: "perform standard integrity check"
+`;
+
+  const parsed = parseYaml(yaml);
+  assert.equal(parsed.name, 'test-agent');
+  assert.equal(parsed.version, '1.0');
+  assert.equal(parsed.description, 'Specialized agent with "quotes" and symbols');
+  assert.equal(parsed.enabled, true);
+  assert.equal(parsed.maxRetries, 5);
+  assert.equal(parsed.temperature, 0.75);
+  assert.deepEqual(parsed.profiles, ['web', 'headless', 'cli']);
+  assert.equal(parsed.models.default.provider, 'openrouter');
+  assert.equal(parsed.models.default.model, 'deepseek/deepseek-chat');
+  assert.equal(parsed.models.default.temperature, 0.2);
+  assert.equal(parsed.models.audit.provider, 'anthropic');
+  assert.equal(parsed.workflows['quick-check'].command, 'perform standard integrity check');
+});

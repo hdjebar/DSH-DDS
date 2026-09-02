@@ -7,12 +7,43 @@ on:
     branches: [ main ]
 
 jobs:
-  static-analysis-and-tests:
-    name: Code Quality & Regression Tests
+  security-and-static-analysis:
+    name: Security Scans, Linting & Regression Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks Secret Detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Forbidden Files Policy Check
+        run: |
+          echo "Verifying no secret credentials or unauthorized database files are tracked..."
+          FORBIDDEN=$(git ls-files | grep -E '(\.env|\.pem|\.key|\.db|\.sqlite)$' | grep -v '\.env\.example' || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "❌ Found forbidden tracked files in git index:"
+            echo "$FORBIDDEN"
+            exit 1
+          fi
+          echo "✅ No sensitive files tracked in git index."
+
+      - name: ShellCheck Linting
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.'
+          ignore_paths: 'testinstall'
+          severity: warning
+
+      - name: Hadolint Dockerfile Linter
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          ignore: DL3008,DL3013
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -22,11 +53,6 @@ jobs:
       - name: Shell Syntax Validation
         run: |
           bash -n dsh.sh install_dsh.sh reset.sh
-          # Validate patched entrypoint syntax
-          node -e '
-            const fs = require("fs");
-            console.log("Validating syntax of scripts...");
-          '
 
       - name: Node.js Syntax Checks
         run: |
@@ -35,7 +61,7 @@ jobs:
           node --check config/sync_models.mjs
           node --check config/patch_translations.mjs
 
-      - name: Run Node.js Test Suite (CLI & Parity)
+      - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |
           node --test tests/*.test.mjs
 

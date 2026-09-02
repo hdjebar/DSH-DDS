@@ -35,19 +35,24 @@ load_env_safely() {
 }
 
 if [ -f "$DSH_INSTALL/.env" ]; then
+  chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
   echo "📝 Loading environment variables from $DSH_INSTALL/.env..."
   load_env_safely "$DSH_INSTALL/.env"
 elif [ -f ".env" ]; then
   echo "📝 Copying local .env to $DSH_INSTALL/.env and loading variables..."
   cp .env "$DSH_INSTALL/.env"
+  chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
   load_env_safely "$DSH_INSTALL/.env"
 else
   echo "⚙️  No .env file found. Setting up new configuration..."
   if [ -t 0 ]; then
-    echo "🔑 Please enter your API keys (you can leave blank and populate later in .env):"
-    read -rp "  • Google Gemini API Key [GEMINI_API_KEY]: " input_gemini
-    read -rp "  • OpenRouter API Key [OPENROUTER_API_KEY]: " input_openrouter
-    read -rp "  • GitHub Personal Access Token [GITHUB_PERSONAL_ACCESS_TOKEN]: " input_github
+    echo "🔑 Please enter your API keys (hidden input, or press Enter to skip and populate later):"
+    read -srp "  • Google Gemini API Key [GEMINI_API_KEY]: " input_gemini
+    echo ""
+    read -srp "  • OpenRouter API Key [OPENROUTER_API_KEY]: " input_openrouter
+    echo ""
+    read -srp "  • GitHub Personal Access Token [GITHUB_PERSONAL_ACCESS_TOKEN]: " input_github
+    echo ""
     read -rp "  • DSH Web Port [default 3080]: " input_port
     
     cat << EOF > "$DSH_INSTALL/.env"
@@ -58,7 +63,8 @@ OPENROUTER_API_KEY=${input_openrouter:-}
 GITHUB_PERSONAL_ACCESS_TOKEN=${input_github:-}
 PHOENIX_API_KEY=
 EOF
-    echo "✅ Generated $DSH_INSTALL/.env"
+    chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
+    echo "✅ Generated $DSH_INSTALL/.env (mode 0600)"
     load_env_safely "$DSH_INSTALL/.env"
   else
     cat << 'EOF' > "$DSH_INSTALL/.env"
@@ -69,7 +75,8 @@ OPENROUTER_API_KEY=
 GITHUB_PERSONAL_ACCESS_TOKEN=
 PHOENIX_API_KEY=
 EOF
-    echo "📝 Generated starter $DSH_INSTALL/.env template. You can populate keys anytime in .env."
+    chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
+    echo "📝 Generated starter $DSH_INSTALL/.env template (mode 0600). You can populate keys anytime in .env."
     load_env_safely "$DSH_INSTALL/.env"
   fi
 fi

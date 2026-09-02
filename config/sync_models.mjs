@@ -43,7 +43,7 @@ async function waitForPhoenix(maxRetries = 15) {
 async function fetchOpenRouterModels() {
   if (!OPENROUTER_API_KEY) {
     console.log('⚠️ OPENROUTER_API_KEY not set, skipping OpenRouter dynamic fetch.');
-    return [];
+    return { models: [], error: null, configured: false };
   }
   try {
     console.log('🔄 Fetching live model catalog from OpenRouter...');
@@ -51,23 +51,24 @@ async function fetchOpenRouterModels() {
       headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` }
     });
     if (!res.ok) {
-      console.error(`❌ OpenRouter API error: ${res.status} ${res.statusText}`);
-      return [];
+      const errText = `HTTP ${res.status}: ${res.statusText}`;
+      console.error(`❌ OpenRouter API error: ${errText}`);
+      return { models: [], error: errText, configured: true };
     }
     const data = await res.json();
     const models = data.data || [];
     console.log(`✅ Successfully fetched ${models.length} live models from OpenRouter.`);
-    return models;
+    return { models, error: null, configured: true };
   } catch (err) {
     console.error('❌ Failed to fetch OpenRouter models:', err.message);
-    return [];
+    return { models: [], error: err.message, configured: true };
   }
 }
 
 async function fetchGoogleModels() {
   if (!GEMINI_API_KEY) {
     console.log('⚠️ GEMINI_API_KEY not set, skipping Google AI Studio dynamic fetch.');
-    return [];
+    return { models: [], error: null, configured: false };
   }
   try {
     console.log('🔄 Fetching live model catalog from Google AI Studio...');
@@ -75,8 +76,9 @@ async function fetchGoogleModels() {
       headers: { 'x-goog-api-key': GEMINI_API_KEY }
     });
     if (!res.ok) {
-      console.error(`❌ Google AI Studio API error: ${res.status} ${res.statusText}`);
-      return [];
+      const errText = `HTTP ${res.status}: ${res.statusText}`;
+      console.error(`❌ Google AI Studio API error: ${errText}`);
+      return { models: [], error: errText, configured: true };
     }
     const data = await res.json();
     const raw = data.models || [];
@@ -90,10 +92,10 @@ async function fetchGoogleModels() {
         maxTokens: m.outputTokenLimit || 8192
       }));
     console.log(`✅ Successfully fetched ${models.length} active Gemini models from Google AI Studio.`);
-    return models;
+    return { models, error: null, configured: true };
   } catch (err) {
     console.error('❌ Failed to fetch Google models:', err.message);
-    return [];
+    return { models: [], error: err.message, configured: true };
   }
 }
 
@@ -107,7 +109,7 @@ async function syncToPhoenix(openRouterModels) {
     }
   `;
   try {
-    await fetch(`${PHOENIX_URL}/graphql`, {
+    const res = await fetch(`${PHOENIX_URL}/graphql`, {
       method: 'POST',
       headers: getPhoenixHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
@@ -128,7 +130,12 @@ async function syncToPhoenix(openRouterModels) {
         }
       })
     });
-  } catch {}
+    if (!res.ok) {
+      console.warn(`⚠️ Phoenix GraphQL sync returned HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`⚠️ Phoenix GraphQL sync connection error: ${err.message}`);
+  }
 }
 
 async function persistModelCache(openRouterModels, googleModels) {
@@ -181,10 +188,13 @@ async function main() {
   try {
     await waitForPhoenix();
 
-    const [openRouterModels, googleModels] = await Promise.all([
+    const [openRouterRes, googleRes] = await Promise.all([
       fetchOpenRouterModels(),
       fetchGoogleModels()
     ]);
+
+    const openRouterModels = openRouterRes.models || [];
+    const googleModels = googleRes.models || [];
 
     if (openRouterModels.length > 0) {
       await syncToPhoenix(openRouterModels);
@@ -203,13 +213,26 @@ async function main() {
       }
     } catch {}
 
-    updateSyncStatus('success', {
+    const errors = [];
+    if (openRouterRes.error) errors.push(`OpenRouter: ${openRouterRes.error}`);
+    if (googleRes.error) errors.push(`Gemini: ${googleRes.error}`);
+
+    let syncOutcome = 'success';
+    if (errors.length > 0) {
+      syncOutcome = (openRouterModels.length > 0 || googleModels.length > 0) ? 'partial' : 'failed';
+    }
+
+    updateSyncStatus(syncOutcome, {
       openRouterCount: openRouterModels.length,
-      geminiCount: googleModels.length
+      geminiCount: googleModels.length,
+      errors: errors.length > 0 ? errors : null
     });
 
     console.log('========================================================');
-    console.log(`🎉 Sync Complete: ${openRouterModels.length} OpenRouter & ${googleModels.length} Google Gemini models active.`);
+    console.log(`🎉 Sync Finished [${syncOutcome}]: ${openRouterModels.length} OpenRouter & ${googleModels.length} Google Gemini models active.`);
+    if (errors.length > 0) {
+      console.warn(`⚠️ Provider warnings: ${errors.join(', ')}`);
+    }
     console.log('========================================================');
   } catch (err) {
     updateSyncStatus('failed', { error: err.message });
