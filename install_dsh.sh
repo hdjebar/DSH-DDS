@@ -216,7 +216,7 @@ COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml* config
 
 RUN pnpm config set minimum-release-age 0 \
     && pnpm install \
-    && pnpm approve-builds --all || true \
+    && (pnpm approve-builds --all || true) \
     && pnpm prune --prod \
     && rm -rf /root/.cache /root/.npm
 

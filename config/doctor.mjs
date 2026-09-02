@@ -12,6 +12,16 @@ const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const GITHUB_TOKEN = (process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN || '').trim();
 const PHOENIX_URL = process.env.PHOENIX_URL || 'http://phoenix:6006';
+const PHOENIX_API_KEY = process.env.PHOENIX_API_KEY || '';
+
+function getPhoenixHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  if (PHOENIX_API_KEY) {
+    headers['Authorization'] = `Bearer ${PHOENIX_API_KEY}`;
+    headers['api_key'] = PHOENIX_API_KEY;
+  }
+  return headers;
+}
 
 let passCount = 0;
 let warnCount = 0;
@@ -60,7 +70,9 @@ async function checkDshEngine() {
 async function checkPhoenixTelemetry() {
   console.log('\n🔍 [2/7] Arize Phoenix Telemetry & Observability:');
   try {
-    const res = await fetch(`${PHOENIX_URL}/v1/projects`);
+    const res = await fetch(`${PHOENIX_URL}/v1/projects`, {
+      headers: getPhoenixHeaders()
+    });
     if (res.ok) {
       const data = await res.json();
       pass('Phoenix OTel Server', `Connected at ${PHOENIX_URL} (Projects: ${data.data?.length || 0})`);

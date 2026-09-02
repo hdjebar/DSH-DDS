@@ -12,11 +12,23 @@ import path from 'path';
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const PHOENIX_URL = process.env.PHOENIX_URL || 'http://phoenix:6006';
+const PHOENIX_API_KEY = process.env.PHOENIX_API_KEY || '';
+
+function getPhoenixHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  if (PHOENIX_API_KEY) {
+    headers['Authorization'] = `Bearer ${PHOENIX_API_KEY}`;
+    headers['api_key'] = PHOENIX_API_KEY;
+  }
+  return headers;
+}
 
 async function waitForPhoenix(maxRetries = 15) {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const res = await fetch(`${PHOENIX_URL}/v1/projects`);
+      const res = await fetch(`${PHOENIX_URL}/v1/projects`, {
+        headers: getPhoenixHeaders()
+      });
       if (res.ok) {
         console.log('✅ Arize Phoenix is ready.');
         return true;
@@ -97,7 +109,7 @@ async function syncToPhoenix(openRouterModels) {
   try {
     await fetch(`${PHOENIX_URL}/graphql`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getPhoenixHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         query: ensureProviderQuery,
         variables: {

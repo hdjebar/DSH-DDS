@@ -527,13 +527,31 @@ const rawArgs = process.argv.slice(2);
 const command = rawArgs[0] || 'list';
 
 let tier = 'default';
-let filteredArgs = [];
+let profile = 'headless';
+let template = 'data-analyst';
+let sessionId = null;
+const positionalArgs = [];
+
 for (let i = 1; i < rawArgs.length; i++) {
-  if (rawArgs[i] === '--tier' || rawArgs[i] === '-t' || rawArgs[i] === '--task-model') {
-    tier = rawArgs[i + 1] || 'default';
-    i++;
+  const arg = rawArgs[i];
+  if (arg === '--tier' || arg === '-t' || arg === '--task-model') {
+    tier = rawArgs[++i] || 'default';
+  } else if (arg.startsWith('--tier=')) {
+    tier = arg.split('=')[1] || 'default';
+  } else if (arg === '--profile' || arg === '-p') {
+    profile = rawArgs[++i] || 'headless';
+  } else if (arg.startsWith('--profile=')) {
+    profile = arg.split('=')[1] || 'headless';
+  } else if (arg === '--template') {
+    template = rawArgs[++i] || 'data-analyst';
+  } else if (arg.startsWith('--template=')) {
+    template = arg.split('=')[1] || 'data-analyst';
+  } else if (arg === '--session') {
+    sessionId = rawArgs[++i] || null;
+  } else if (arg.startsWith('--session=')) {
+    sessionId = arg.split('=')[1] || null;
   } else {
-    filteredArgs.push(rawArgs[i]);
+    positionalArgs.push(arg);
   }
 }
 
@@ -545,10 +563,7 @@ switch (command) {
 
   case 'create':
   case 'new': {
-    const name = filteredArgs[0];
-    let template = 'data-analyst';
-    const tIdx = rawArgs.indexOf('--template');
-    if (tIdx !== -1 && rawArgs[tIdx + 1]) template = rawArgs[tIdx + 1];
+    const name = positionalArgs[0];
     createPersona(name, template);
     break;
   }
@@ -560,36 +575,33 @@ switch (command) {
 
   case 'distill':
   case 'record': {
-    let sessionId = null;
-    const sIdx = rawArgs.indexOf('--session');
-    if (sIdx !== -1 && rawArgs[sIdx + 1]) sessionId = rawArgs[sIdx + 1];
-    distillPersona(filteredArgs[0], { sessionId });
+    const name = positionalArgs[0];
+    distillPersona(name, { sessionId });
     break;
   }
 
   case 'apply':
   case 'activate':
-    applyPersona(filteredArgs[0], tier);
+    applyPersona(positionalArgs[0], tier);
     break;
 
   case 'run': {
-    let profile = 'headless';
-    const pIdx = rawArgs.indexOf('--profile');
-    if (pIdx !== -1 && rawArgs[pIdx + 1]) profile = rawArgs[pIdx + 1];
-    runPersona(filteredArgs[0], filteredArgs[1], tier, profile);
+    const name = positionalArgs[0];
+    const prompt = positionalArgs.slice(1).join(' ');
+    runPersona(name, prompt, tier, profile);
     break;
   }
 
   case 'workflow':
   case 'wf':
-    runWorkflow(filteredArgs[0], filteredArgs[1]);
+    runWorkflow(positionalArgs[0], positionalArgs[1]);
     break;
 
   case 'show':
   case 'cat':
-    showPersona(filteredArgs[0]);
+    showPersona(positionalArgs[0]);
     break;
 
   default:
-    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> --template <tmpl> | distill <name> [--session <id>] | apply <name> | run <name> [--tier <tier>] [--profile <profile>] "<prompt>" | workflow <name> <wf>]');
+    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> [--template <tmpl>] | distill <name> [--session <id>] | apply <name> [--tier <tier>] | run <name> [--tier <tier>] [--profile <profile>] "<prompt>" | workflow <name> <wf>]');
 }

@@ -8,13 +8,13 @@ DeepSeek Harness within this Docker stack is designed with strict multi-layered 
 
 ### 1. Process & Filesystem Isolation
 * **Docker Container Boundary**: Agent execution occurs inside an isolated Linux container (`dsh-local`). The host filesystem is protected; only directories explicitly mounted (`./workspaces` and `./config`) are accessible.
-* **Workspace Boundary Containment**: The agent runtime enforces file operation boundaries restricted to `/workspaces`. System paths outside the workspace and configuration mounts are protected.
-* **Localhost Network Binding**: All services (`3080` for DSH Web UI and `6006` for Arize Phoenix) bind strictly to `127.0.0.1`, preventing exposure across local area networks (LAN / Wi-Fi).
+* **Workspace Scoping**: Personas are configured to read and write files within `/workspaces`. Host paths outside explicit mounts cannot be accessed by the container.
+* **Localhost Network Binding**: All exposed ports (`127.0.0.1:3080` for DSH Web UI and `127.0.0.1:6006` for Arize Phoenix) bind strictly to loopback interfaces, preventing external network and LAN exposure.
 
-### 2. Sandbox Permission Modes
-DeepSeek Harness enforces configurable sandbox access policies:
-* **`workspace-write` (Default)**: File creation, edits, and deletions are strictly restricted to `/workspaces`.
-* **`workspace-read` (Sandbox Profile)**: Read-only access to workspace files with `network: false` outbound egress restrictions.
+### 2. Hardening Recommendations for Untrusted Code
+For deployments evaluating untrusted code:
+* **Read-Only Workspace**: Mount workspaces with the `:ro` flag in `docker-compose.yml` when write access is not required.
+* **Capability Dropping**: Add `cap_drop: [ALL]` and `security_opt: [no-new-privileges:true]` to container definitions.
 
 ### 3. API Credential Protection
 * **Environment Variable Isolation**: Sensitive API keys (`GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, `PHOENIX_API_KEY`) are passed via environment variables and never written into version-controlled files.
