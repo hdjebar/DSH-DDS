@@ -47,24 +47,54 @@ else
   exit 1
 fi
 
-# Copy all canonical configuration scripts, personas, templates, and CLI tools if installing to an external directory
-if [ "$DSH_INSTALL" != "$(pwd)" ]; then
-  if [ -d "config" ]; then
-    echo "📦 Copying configuration scripts (.mjs), personas, and templates to $DSH_INSTALL/config/..."
-    mkdir -p "$DSH_INSTALL/config"
-    cp -rn config/* "$DSH_INSTALL/config/" 2>/dev/null || cp -r config/* "$DSH_INSTALL/config/"
+GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
+
+fetch_or_copy_file() {
+  local rel_path="$1"
+  local dest="$DSH_INSTALL/$rel_path"
+  if [ -f "$dest" ]; then
+    return 0
   fi
-  if [ -f "dsh.sh" ]; then
-    cp dsh.sh "$DSH_INSTALL/dsh.sh"
-    chmod +x "$DSH_INSTALL/dsh.sh"
+  mkdir -p "$(dirname "$dest")"
+  if [ -f "$rel_path" ]; then
+    cp "$rel_path" "$dest"
+  else
+    echo "⬇️  Downloading $rel_path from repository..."
+    curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest" 2>/dev/null || true
   fi
-  if [ -f "docker-compose.sandbox.yml" ]; then
-    cp docker-compose.sandbox.yml "$DSH_INSTALL/docker-compose.sandbox.yml"
-  fi
-  if [ -d "tests" ]; then
-    mkdir -p "$DSH_INSTALL/tests"
-    cp -r tests/* "$DSH_INSTALL/tests/"
-  fi
+}
+
+# Provision essential runtime scripts, personas, templates, and CLI tools
+echo "📦 Provisioning runtime engines, personas, and diagnostic tools..."
+fetch_or_copy_file "config/sync_models.mjs"
+fetch_or_copy_file "config/doctor.mjs"
+fetch_or_copy_file "config/persona.mjs"
+fetch_or_copy_file "config/patch_translations.mjs"
+fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
+fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/personas/sdmx-expert/workflow.sh"
+fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
+fetch_or_copy_file "config/personas/data-analyst/SKILL.md"
+fetch_or_copy_file "config/personas/data-analyst/workflow.sh"
+fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
+fetch_or_copy_file "config/templates/personas/base-template/SKILL.md"
+fetch_or_copy_file "config/templates/personas/base-template/workflow.sh"
+fetch_or_copy_file "config/templates/personas/data-analyst/persona.yaml"
+fetch_or_copy_file "config/templates/personas/data-analyst/SKILL.md"
+fetch_or_copy_file "config/templates/personas/data-analyst/workflow.sh"
+fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
+fetch_or_copy_file "dsh.sh"
+fetch_or_copy_file "docker-compose.sandbox.yml"
+
+if [ -f "$DSH_INSTALL/dsh.sh" ]; then
+  chmod +x "$DSH_INSTALL/dsh.sh"
+fi
+if [ -f "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh" ]; then
+  chmod +x "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh"
+fi
+if [ -f "$DSH_INSTALL/config/personas/data-analyst/workflow.sh" ]; then
+  chmod +x "$DSH_INSTALL/config/personas/data-analyst/workflow.sh"
 fi
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
