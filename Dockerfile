@@ -1,5 +1,5 @@
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:cab4bba47e6200c17fcd008d08f1ba39ad23c540991df98621ac2029332e9618 AS builder
+FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:8248608892731ecd291ddd7eccca2e516ecfedfff80b5cf5aa21be776d953a28 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -19,7 +19,7 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Minimal Production Runtime ───────────────────────────
-FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:cab4bba47e6200c17fcd008d08f1ba39ad23c540991df98621ac2029332e9618 AS runner
+FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:8248608892731ecd291ddd7eccca2e516ecfedfff80b5cf5aa21be776d953a28 AS runner
 
 # Copy static Astral uv and uvx binaries for lightweight Python MCP execution
 COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da394ee735de36b5815f8f1d22cb49be15 /uv /uvx /bin/
