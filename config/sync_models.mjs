@@ -131,10 +131,23 @@ async function syncToPhoenix(openRouterModels) {
       })
     });
     if (!res.ok) {
-      console.warn(`⚠️ Phoenix GraphQL sync returned HTTP ${res.status}`);
+      const msg = `HTTP ${res.status}: ${res.statusText}`;
+      console.warn(`⚠️ Phoenix GraphQL sync returned ${msg}`);
+      return { success: false, error: msg };
     }
+    const data = await res.json();
+    if (data.errors && data.errors.length > 0) {
+      const genuineErrors = data.errors.filter(e => !e.message?.toLowerCase().includes('already exists'));
+      if (genuineErrors.length > 0) {
+        const msg = genuineErrors.map(e => e.message).join(', ');
+        console.warn(`⚠️ Phoenix GraphQL error: ${msg}`);
+        return { success: false, error: msg };
+      }
+    }
+    return { success: true, error: null };
   } catch (err) {
     console.warn(`⚠️ Phoenix GraphQL sync connection error: ${err.message}`);
+    return { success: false, error: err.message };
   }
 }
 
@@ -186,7 +199,12 @@ async function main() {
   updateSyncStatus('running');
 
   try {
-    await waitForPhoenix();
+    const isPhoenixReady = await waitForPhoenix();
+    const errors = [];
+
+    if (!isPhoenixReady) {
+      errors.push(`Arize Phoenix: Unreachable at ${PHOENIX_URL}`);
+    }
 
     const [openRouterRes, googleRes] = await Promise.all([
       fetchOpenRouterModels(),
@@ -196,8 +214,11 @@ async function main() {
     const openRouterModels = openRouterRes.models || [];
     const googleModels = googleRes.models || [];
 
-    if (openRouterModels.length > 0) {
-      await syncToPhoenix(openRouterModels);
+    if (openRouterModels.length > 0 && isPhoenixReady) {
+      const phoenixSyncRes = await syncToPhoenix(openRouterModels);
+      if (!phoenixSyncRes.success && phoenixSyncRes.error) {
+        errors.push(`Phoenix GraphQL: ${phoenixSyncRes.error}`);
+      }
     }
 
     await persistModelCache(openRouterModels, googleModels);
@@ -213,7 +234,6 @@ async function main() {
       }
     } catch {}
 
-    const errors = [];
     if (openRouterRes.error) errors.push(`OpenRouter: ${openRouterRes.error}`);
     if (googleRes.error) errors.push(`Gemini: ${googleRes.error}`);
 

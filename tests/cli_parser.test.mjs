@@ -152,3 +152,19 @@ workflows:
   assert.equal(parsed.models.audit.provider, 'anthropic');
   assert.equal(parsed.workflows['quick-check'].command, 'perform standard integrity check');
 });
+
+test('Structured YAML Parser: handles block scalars (|) and inline flow mappings ({})', async () => {
+  const { parseYaml } = await import('../config/persona.mjs');
+  const yaml = `
+description: |
+  This is a multiline
+  block scalar documentation text.
+flow: { enabled: true, retries: 2, strategy: "exponential" }
+tags: [ai, deepseek, automation]
+`;
+
+  const parsed = parseYaml(yaml);
+  assert.equal(parsed.description.trim(), 'This is a multiline\nblock scalar documentation text.');
+  assert.deepEqual(parsed.flow, { enabled: true, retries: 2, strategy: 'exponential' });
+  assert.deepEqual(parsed.tags, ['ai', 'deepseek', 'automation']);
+});

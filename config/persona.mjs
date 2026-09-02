@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawnSync } from 'child_process';
+import YAML from 'yaml';
 
 const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
 const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
@@ -40,118 +41,13 @@ function ensureDirs() {
 }
 
 export function parseYaml(yamlText) {
-  if (typeof yamlText !== 'string') return {};
-  
-  const lines = yamlText.split('\n');
-  const root = {};
-  const stack = [{ indent: -1, container: root, parent: null, parentKey: null }];
-
-  function parseScalar(val) {
-    if (val === undefined || val === null) return '';
-    val = val.trim();
-    if (val === '') return '';
-    if (val === 'true' || val === 'True') return true;
-    if (val === 'false' || val === 'False') return false;
-    if (val === 'null' || val === '~') return null;
-    if (/^-?\d+(\.\d+)?$/.test(val)) return Number(val);
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      return val.slice(1, -1);
-    }
-    if (val.startsWith('[') && val.endsWith(']')) {
-      return val.slice(1, -1).split(',').map(s => parseScalar(s.trim())).filter(s => s !== '');
-    }
-    return val;
+  if (typeof yamlText !== 'string' || !yamlText.trim()) return {};
+  try {
+    return YAML.parse(yamlText) || {};
+  } catch (err) {
+    console.error('YAML parse error:', err.message);
+    return {};
   }
-
-  function cleanLine(raw) {
-    let inSingle = false, inDouble = false;
-    for (let i = 0; i < raw.length; i++) {
-      const c = raw[i];
-      if (c === "'" && !inDouble) inSingle = !inSingle;
-      else if (c === '"' && !inSingle) inDouble = !inDouble;
-      else if (c === '#' && !inSingle && !inDouble) {
-        return raw.slice(0, i);
-      }
-    }
-    return raw;
-  }
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const rawLine = lines[lineIndex];
-    const withoutComment = cleanLine(rawLine);
-    if (!withoutComment.trim()) continue;
-
-    const indent = withoutComment.search(/\S/);
-    const trimmed = withoutComment.trim();
-
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
-      stack.pop();
-    }
-
-    const currentContext = stack[stack.length - 1];
-
-    if (trimmed.startsWith('- ')) {
-      const itemContent = trimmed.slice(2).trim();
-
-      // If current container is an empty object from a preceding "key:", convert to Array
-      if (!Array.isArray(currentContext.container)) {
-        if (currentContext.parent && currentContext.parentKey) {
-          const arr = [];
-          currentContext.parent[currentContext.parentKey] = arr;
-          currentContext.container = arr;
-        } else {
-          currentContext.container = [];
-        }
-      }
-
-      if (itemContent.includes(': ') || itemContent.endsWith(':')) {
-        const itemObj = {};
-        currentContext.container.push(itemObj);
-        stack.push({ indent, container: itemObj, parent: currentContext.container, parentKey: currentContext.container.length - 1 });
-        
-        if (itemContent.includes(': ')) {
-          const colonIdx = itemContent.indexOf(': ');
-          const k = parseScalar(itemContent.slice(0, colonIdx));
-          const v = parseScalar(itemContent.slice(colonIdx + 2));
-          itemObj[k] = v;
-        } else if (itemContent.endsWith(':')) {
-          const k = parseScalar(itemContent.slice(0, -1));
-          itemObj[k] = {};
-          stack.push({ indent: indent + 2, container: itemObj[k], parent: itemObj, parentKey: k });
-        }
-      } else {
-        currentContext.container.push(parseScalar(itemContent));
-      }
-    } else if (trimmed.includes(':')) {
-      const colonIdx = trimmed.indexOf(':');
-      const key = parseScalar(trimmed.slice(0, colonIdx));
-      const rest = trimmed.slice(colonIdx + 1).trim();
-
-      if (!rest) {
-        const newObj = {};
-        if (Array.isArray(currentContext.container)) {
-          const wrapper = {};
-          wrapper[key] = newObj;
-          currentContext.container.push(wrapper);
-          stack.push({ indent, container: newObj, parent: wrapper, parentKey: key });
-        } else {
-          currentContext.container[key] = newObj;
-          stack.push({ indent, container: newObj, parent: currentContext.container, parentKey: key });
-        }
-      } else {
-        const val = parseScalar(rest);
-        if (Array.isArray(currentContext.container)) {
-          const wrapper = {};
-          wrapper[key] = val;
-          currentContext.container.push(wrapper);
-        } else {
-          currentContext.container[key] = val;
-        }
-      }
-    }
-  }
-
-  return root;
 }
 
 export function parsePersonaYaml(filePath) {
