@@ -20,7 +20,7 @@ prepare_sandbox_home() {
       --exclude='./sessions' \
       --exclude='./storages' \
       --exclude='./phoenix' \
-      -cf - . | tar -C "$DSH_HOME" -xf -
+      -cf - . | tar --no-same-owner -C "$DSH_HOME" -xf -
   fi
 
   mkdir -p "$DSH_HOME/profiles/web" "$DSH_HOME/profiles/node_modules" "$DSH_HOME/patch"
