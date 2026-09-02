@@ -110,3 +110,16 @@ jobs:
       - name: Entrypoint Script Syntax Assertion
         run: |
           docker run --rm --entrypoint /bin/sh dsh-local:latest -c "bash -n /app/entrypoint.sh"
+
+      - name: Prebuilt Hidden Dependencies Assertion (.pnpm & .bin)
+        run: |
+          docker run --rm --entrypoint /bin/sh dsh-local:latest -c "test -d /app/prebuilt-profiles/web/node_modules/.pnpm && test -d /app/prebuilt-profiles/web/node_modules/.bin"
+
+      - name: In-Container Persona Catalog Discovery Assertion
+        run: |
+          docker run --rm --entrypoint node -v "$PWD/config:/root/.dsh:ro" dsh-local:latest /root/.dsh/persona.mjs list | grep -q "sdmx-expert"
+
+      - name: Hardened Sandbox Read-Only Mounts Assertion
+        run: |
+          docker run --rm --entrypoint sh -v "$PWD/config:/root/.dsh:ro" dsh-local:latest -c 'touch /root/.dsh/test.txt 2>/dev/null && exit 1 || echo "✅ /root/.dsh is strictly read-only"'
+          docker run --rm --entrypoint sh -v "$PWD/workspaces:/workspaces:ro" dsh-local:latest -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is strictly read-only"'

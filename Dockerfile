@@ -66,7 +66,7 @@ const file = "/app/entrypoint.sh";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("sync_models.mjs")) {\
-    const syncHook = `# ── 2.7 Seed Pre-built Profile Dependencies ──\nif [ -d "/app/prebuilt-profiles/web/node_modules" ]; then\n  echo "[dsh] Seeding pre-built web profile dependencies (including .pnpm & .bin)..."\n  mkdir -p /root/.dsh/profiles/web/node_modules\n  cp -rn /app/prebuilt-profiles/web/node_modules/. /root/.dsh/profiles/web/node_modules/ 2>/dev/null || true\nfi\n\n# ── 2.8 Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
+    const syncHook = `# ── 2.7 Seed Pre-built Profile Dependencies ──\nif [ -d "/app/prebuilt-profiles/web" ]; then\n  echo "[dsh] Seeding pre-built web profile (dependencies & configuration)..."\n  mkdir -p /root/.dsh/profiles/web\n  cp -a /app/prebuilt-profiles/web/. /root/.dsh/profiles/web/ 2>/dev/null || true\nfi\n\n# ── 2.8 Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
     const anchor = "echo \"[proxy] 启动代理";\
     if (!content.includes(anchor)) {\
       content = syncHook + content;\

@@ -9,11 +9,9 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 function getYamlEngine() {
   try {
@@ -29,14 +27,13 @@ function getYamlEngine() {
 
 const YAML = getYamlEngine();
 
-// Ensure base path resolves correctly whether executed in container (/root/.dsh) or host (<workspace>/config)
-const CONFIG_ROOT = __dirname;
-const PERSONAS_DIR = path.resolve(CONFIG_ROOT, 'personas');
-const SKILLS_DIR = path.resolve(CONFIG_ROOT, 'skills');
-const TEMPLATES_DIR = path.resolve(CONFIG_ROOT, 'templates/personas');
-const SETTINGS_FILE = path.resolve(CONFIG_ROOT, 'settings.yaml');
-const CONFIG_DIR = CONFIG_ROOT;
-const SESSIONS_DIR = path.resolve(CONFIG_ROOT, 'sessions');
+const CONFIG_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PERSONAS_DIR = path.join(CONFIG_DIR, 'personas');
+const SKILLS_DIR = path.join(CONFIG_DIR, 'skills');
+const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates/personas');
+const SETTINGS_FILE = path.join(CONFIG_DIR, 'settings.yaml');
+const RUNTIME_DIR = process.env.DSH_RUNTIME_DIR || CONFIG_DIR;
+const SESSIONS_DIR = path.join(RUNTIME_DIR, 'sessions');
 
 function validateSlug(input, fieldName = 'name') {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
@@ -59,6 +56,8 @@ function ensureDirs() {
   if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true });
   if (!fs.existsSync(SKILLS_DIR)) fs.mkdirSync(SKILLS_DIR, { recursive: true });
   if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
+  if (!fs.existsSync(RUNTIME_DIR)) fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+  if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 }
 
 export function parseYaml(yamlText) {
@@ -241,7 +240,7 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
 
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   const tempPatchName = `patch.${process.pid}.${Date.now()}.tmp.yaml`;
-  const tempPatchFile = path.resolve(CONFIG_DIR, tempPatchName);
+  const tempPatchFile = path.join(RUNTIME_DIR, tempPatchName);
   let hasPatch = false;
 
   try {

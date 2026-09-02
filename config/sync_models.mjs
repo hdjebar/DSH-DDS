@@ -151,10 +151,18 @@ async function syncToPhoenix(openRouterModels) {
   }
 }
 
+function getRuntimeDir() {
+  if (process.env.DSH_RUNTIME_DIR) {
+    if (!fs.existsSync(process.env.DSH_RUNTIME_DIR)) {
+      try { fs.mkdirSync(process.env.DSH_RUNTIME_DIR, { recursive: true }); } catch {}
+    }
+    return process.env.DSH_RUNTIME_DIR;
+  }
+  return fs.existsSync('/root/.dsh') ? '/root/.dsh' : path.resolve(process.cwd(), 'config');
+}
+
 async function persistModelCache(openRouterModels, googleModels) {
-  const cacheFile = path.resolve(process.cwd(), 'config/models.cache.json');
-  const containerCacheFile = '/root/.dsh/models.cache.json';
-  const targetPath = fs.existsSync('/root/.dsh') ? containerCacheFile : cacheFile;
+  const targetPath = path.join(getRuntimeDir(), 'models.cache.json');
 
   const catalog = {
     updatedAt: new Date().toISOString(),
@@ -179,9 +187,7 @@ async function persistModelCache(openRouterModels, googleModels) {
 }
 
 function updateSyncStatus(status, data = {}) {
-  const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
-  const containerStatusFile = '/root/.dsh/sync_status.json';
-  const targetPath = fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile;
+  const targetPath = path.join(getRuntimeDir(), 'sync_status.json');
   const payload = {
     status,
     timestamp: new Date().toISOString(),
@@ -196,6 +202,13 @@ async function main() {
   console.log('========================================================');
   console.log('🚀 Dynamic Boot-Time Model Synchronization');
   console.log('========================================================');
+
+  if (process.env.DSH_DISABLE_MODEL_SYNC === '1') {
+    console.log('ℹ️ Model synchronization disabled via DSH_DISABLE_MODEL_SYNC=1 (sandbox mode).');
+    updateSyncStatus('disabled', { message: 'Model sync disabled in sandbox runtime' });
+    return;
+  }
+
   updateSyncStatus('running');
 
   try {

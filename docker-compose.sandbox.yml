@@ -22,22 +22,27 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=64m
-      - /run:rw,noexec,nosuid,size=16m
-      - /root/.cache:rw,noexec,nosuid,size=128m
-      - /root/.dsh/patch:rw,noexec,nosuid,size=16m
-      - /root/.dsh/sessions:rw,noexec,nosuid,size=32m
     volumes:
       # Read-only configuration and workspace mounting prevents untrusted code from modifying host files
       - ./config:/root/.dsh:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
+      - sandbox-web:/root/.dsh/profiles/web
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run:rw,noexec,nosuid,size=32m
+      - /root/.cache:rw,noexec,nosuid,size=128m
+    environment:
+      - DSH_RUNTIME_DIR=/run/dsh
+      - DSH_DISABLE_MODEL_SYNC=1
     networks:
       - sandbox-net
 
   phoenix:
     networks:
       - sandbox-net
+
+volumes:
+  sandbox-web:
 
 networks:
   sandbox-net:

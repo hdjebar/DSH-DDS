@@ -201,9 +201,12 @@ function whichSync(cmd) {
 
 async function checkModelSyncStatus() {
   console.log('\n🔍 [7/9] Automated Model Sync Health:');
+  const runtimeStatusFile = process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sync_status.json') : null;
   const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
   const containerStatusFile = '/root/.dsh/sync_status.json';
-  const target = fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile;
+  const target = (runtimeStatusFile && fs.existsSync(runtimeStatusFile))
+    ? runtimeStatusFile
+    : (fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile);
 
   if (fs.existsSync(target)) {
     try {
@@ -212,16 +215,18 @@ async function checkModelSyncStatus() {
         pass('Background Model Sync', `Active & Healthy (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0} at ${syncData.timestamp})`);
       } else if (syncData.status === 'running') {
         pass('Background Model Sync', `Sync in progress (${syncData.timestamp})`);
+      } else if (syncData.status === 'disabled') {
+        pass('Background Model Sync', `Disabled (isolated sandbox runtime)`);
       } else if (syncData.status === 'partial') {
         warn('Background Model Sync', `Partial sync (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0}) — Warnings: ${(syncData.errors || []).join('; ')}`);
       } else {
         fail('Background Model Sync', `Last sync failed: ${syncData.error || (syncData.errors || []).join('; ') || 'Unknown error'} (${syncData.timestamp})`);
       }
     } catch {
-      warn('Background Model Sync', 'Could not parse sync_status.json');
+      warn('Background Model Sync', 'Status file exists but could not be parsed');
     }
   } else {
-    warn('Background Model Sync', 'Pending initial run (no sync_status.json generated yet)');
+    warn('Background Model Sync', 'Not yet initialized (models will be synchronized automatically on boot)');
   }
 }
 
