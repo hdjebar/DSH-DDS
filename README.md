@@ -1,140 +1,224 @@
 # 🚀 DeepSeek Harness (DSH) — Multi-Provider Agent Operating Environment
 
 [![Docker](https://img.shields.io/badge/Docker-24.0+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![pnpm](https://img.shields.io/badge/pnpm-11+-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Docker Compose](https://img.shields.io/badge/Compose-2.24+-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![CI](https://github.com/hdjebar/DSH-DDS/actions/workflows/ci.yml/badge.svg)](https://github.com/hdjebar/DSH-DDS/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Arize Phoenix](https://img.shields.io/badge/Arize%20Phoenix-OTel%20Observability-purple)](https://github.com/Arize-ai/phoenix)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-An enterprise-grade, containerized autonomous agent runtime on **DeepSeek Harness (DSH)** paired with **Arize Phoenix** for local real-time OpenTelemetry observability and cost attribution. Built with a **pnpm multi-stage architecture**, native **Google Gemini Thought Signature Bridge**, dynamic **OpenRouter (420+ models)** auto-synchronization on every boot, and pre-packaged productivity plugins.
+> **Run AI coding agents locally, and see exactly what they cost.**  
+> A self-hosted Docker environment pairing DeepSeek Harness with an on-premise Arize Phoenix dashboard — every prompt, token, and dollar stays on your machine.
+
+*For developers, platform engineers, and AI teams who need agent observability without sending prompts to a third-party SaaS.*
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ ARIZE PHOENIX — LOCAL OPENTELEMETRY TRACE WATERFALL [http://localhost:6006]            │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ Trace: persona-execution [sdmx-expert]                         Latency: 1.84s   Cost: $0.0012 │
+│ ├─ [Span] agent-think: Gemini 3.7 Flash (thought_signature preserved)     420ms   $0.0003  │
+│ ├─ [Tool] mcp-fetch: GET https://lustat.statec.lu/rest/dataflow/...        310ms        -   │
+│ ├─ [Tool] mcp-sqlite-db: SELECT indicator, value FROM dataset_cache        45ms        -   │
+│ └─ [Span] agent-response: DeepSeek V3 (synthesize findings)               1065ms   $0.0009  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🌟 Key Architecture Highlights
+## ⚡ Quick Start
 
-* **⚡ Multi-Stage Lightweight Docker Build**: Two-stage Docker build utilizing `pnpm` for native compilation (`node-pty`) while stripping all build toolchains in the runner stage (< 1 MB writable layer).
-* **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
-* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (420+ models) and Google AI Studio (29+ models) on container boot, caching live pricing, context limits, and token specs into local DSH configuration and registering custom providers with Arize Phoenix for OTel trace capture.
-* **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
-* **🧩 10 Pre-Packaged English Plugins & 4 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, SQLite relational database analysis, visual MCP marketplace, and persistent unified memory.
-
----
-
-## 🎯 Design Motivation & Governance Rationale
-
-Modern enterprise AI deployments face three critical operational constraints:
-1. **Data Sovereignty & Regulatory Compliance (EU AI Act / DORA / NIS 2)**: Cloud-hosted telemetry often leaks sensitive prompts, internal code, and credentials to third-party SaaS vendors. This stack enforces a **100% local OpenTelemetry collector (Arize Phoenix)** running on an internal Docker bridge, retaining all telemetry spans, pricing, and prompt traces entirely on-premise.
-2. **AI FinOps & Model Arbitrage**: Hardcoding a single frontier LLM across all tasks introduces unacceptable cost and latency. By decoupling agent capabilities into **6-Layer Personas** with calibrated multi-model routing, trivial triage executes on lightweight flash models while expensive reasoning tiers are invoked selectively.
-3. **Reproducibility & Personas-as-Code**: Ad-hoc conversational prompt engineering creates fragile, unversioned workflows. DeepSeek Harness encapsulates domain skills, model matrices, execution profiles, and MCP tools into **version-controlled declarative packages (`persona.yaml` + `SKILL.md`)** subject to standard Git review and CI/CD validation.
+### Before You Start (Prerequisites)
+* **Docker Engine 24+ & Docker Compose v2.24+** (`docker compose version`) — Compose 2.24+ is required for the sandbox `!override` syntax.
+* **~4 GB free disk space** for the multi-stage image layers.
+* **API Credentials (Optional at install time)**: Google AI Studio (`GEMINI_API_KEY`) or OpenRouter (`OPENROUTER_API_KEY`). You can launch without keys and populate them in `.env` later.
 
 ---
 
-## 📚 Documentation Suite
+### Step 1: Choose Your Installation Path
 
-For comprehensive deep dives, architectural guides, and troubleshooting:
-
-* 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel pipelines.
-* 🎭 **[AI Agent Personas](docs/personas.md)** — Multi-Model Task Matrix, session recording, and automated persona distillation.
-* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature (Stanford, Google, Anthropic), and industry framework comparisons.
-* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
-* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
-* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 10 plugins and 4 MCP servers.
-* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
-* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` CLI matrix.
-* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — Step-by-step walkthrough: interactive chat, trace audit, and persona distillation.
-
----
-
-## 📦 Pre-Packaged Plugins & MCP Servers
-
-### 1. DSH Plugins (10 Pre-Installed)
-
-| Plugin | Service ID | Category | Purpose |
-| :--- | :--- | :--- | :--- |
-| **`@liustack/modsearch`** | `modsearch` | Search | Free integrated web search provider |
-| **`deepseek-flow`** | `deepseek-flow` | Workflows | Interactive visual canvas & DAG workflow designer |
-| **`dshmarket`** | `dsh-market` | Marketplace | Visual Plugin Marketplace (English Localized) |
-| **`dsh-find-plugin`** | `find-dsh-plugin` | Navigation | Workspace file and symbol finder |
-| **`dsh-mcp-panel`** | `mcp-panel` | Tools | Model Context Protocol (MCP) management panel |
-| **`dsh-mcp-market`** | `dsh-mcp-market` | Marketplace | Visual MCP Server Marketplace with 1-click install |
-| **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Models | Visual LLM provider and model manager |
-| **`dsh-model-sync`** | `model-sync` | Telemetry | Automated model sync and quota monitor widget |
-| **`dsh-mnemon`** | `mnemon` | Memory | Unified Multi-Workspace Memory Engine & Recall |
-| **`dsh-session-reader`** | `dsh-session-reader` | Inspection | Cross-session log and tool call inspector |
-
-### 2. Pre-Configured MCP Servers
-
-| MCP Server | Runner | Capabilities |
-| :--- | :--- | :--- |
-| **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, and live URL fetching |
-| **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
-| **`github`** | `github-mcp-server` (`v1.11.0`) | GitHub repository operations, PRs, issue management, and tree inspection |
-| **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, and tabular data analysis |
-
----
-
-## 🚀 Quick Start: Installation Options
-
-You can install and run DeepSeek Harness using either the **1-File Turnkey Installer** (no Git clone required) or by **Cloning the Repository**.
-
-### Option A: Turnkey 1-File Installer (Fresh Machine / Server)
-To set up a complete deployment on a new machine without cloning the git repository:
+#### Path A: Turnkey 1-File Installer (Recommended)
+*Best for evaluators and standalone servers — no Git clone required:*
 
 ```bash
 # 1. Download the standalone installer script
 curl -fsSL https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/install_dsh.sh -o install_dsh.sh
 chmod +x install_dsh.sh
 
-# 2. Run the installer
+# 2. Run the turnkey installer (scaffolds environment & prompts for keys)
 ./install_dsh.sh
 ```
 
-**How Option A handles `.env` & Configuration:**
-* 🔑 **Interactive Key Prompt**: If no `.env` file exists, the installer interactively prompts for your `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, and port.
-* 📝 **Populate Later**: You can press Enter to skip any key during installation; the script will generate a starter `.env` template that you can edit anytime later (`nano .env`).
-* 📦 **Automatic Scaffolding**: Automatically provisions the complete `config/` tree, 10 plugins, 4 offline MCP servers, and downloads the `./dsh.sh` Multi-Model Persona CLI wrapper.
+#### Path B: Clone the Repository
+*Best for developers modifying personas, Dockerfiles, or plugins:*
 
----
-
-### Option B: Clone the Repository (Developers & Customizers)
-
-#### 1. Clone & Enter Directory
 ```bash
 git clone https://github.com/hdjebar/DSH-DDS.git
 cd DSH-DDS
-```
 
-#### 2. Configure Environment Variables
-```bash
+# Configure environment variables
 cp .env.example .env
 nano .env
-```
-Configure your credentials in `.env`:
-```env
-DSH_PORT=3080
-GEMINI_API_KEY=your_google_ai_studio_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
-GITHUB_PERSONAL_ACCESS_TOKEN=your_github_personal_access_token
-PHOENIX_API_KEY=your_optional_phoenix_key
-```
 
-#### 3. Launch the Stack
-```bash
+# Launch the stack
 ./dsh.sh up
-# Or: docker compose up -d --build
 ```
 
-> [!TIP]
-> **Analyzing Untrusted Code?**  
-> When using DSH to analyze external or unverified code repositories, start with the sandbox override:
-> ```bash
-> docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
-> ```
+---
 
-#### 4. Run System Diagnostics
+### Step 2: Confirm It Worked (Success Gate)
+
+Run the automated diagnostic suite to verify container health, API credentials, and MCP permissions:
+
 ```bash
 ./dsh.sh doctor
 ```
+
+```text
+🩺 DeepSeek Harness Ecosystem Diagnostics (Doctor)
+========================================================
+🔍 [1/9] DeepSeek Harness Engine:        ✅ Listening on 127.0.0.1:3079 & 0.0.0.0:3080
+🔍 [2/9] Arize Phoenix Telemetry:        ✅ Connected at http://phoenix:6006
+🔍 [3/9] Google AI Studio Bridge:        ✅ Authenticated (gemini-3.7-flash live)
+🔍 [4/9] OpenRouter Gateway:             ✅ Authenticated (420+ models available)
+🔍 [5/9] GitHub MCP Token:               ✅ Authenticated
+🔍 [6/9] MCP Binaries & Permissions:     ✅ 4 servers verified (fetch, context7, github, sqlite-db)
+🔍 [7/9] Automated Model Sync:           ✅ Active & Healthy
+🔍 [8/9] Pre-Packaged Plugins:           ✅ 10 plugins installed & active
+🔍 [9/9] Storage & Volume Mounts:        ✅ /root/.dsh and /workspaces writable
+========================================================
+📊 Summary: 23 Passed | 0 Warnings | 0 Failed
+```
+
+*Nine suites report ✅ or ⚠️. (A ⚠️ on an optional provider you didn't configure is expected).*
+
+* **DeepSeek Harness Web UI**: [http://localhost:3080](http://localhost:3080)
+* **Arize Phoenix Telemetry**: [http://localhost:6006](http://localhost:6006)
+* *⏱️ Time to first value: ~10 minutes (mostly one-time Docker image build).*
+
+---
+
+### Step 3: Now Try (Next Steps)
+
+1. **Run your first persona**:
+   ```bash
+   ./dsh.sh persona run sdmx-expert "List top statistical indicators from STATEC"
+   ```
+2. **Inspect the live trace in Phoenix**: Open [http://localhost:6006](http://localhost:6006) to examine prompt spans, tool call latencies, and token costs.
+3. **Follow the guided walkthrough**: [End-to-End Testing Scenario](docs/testing-scenario.md).
+
+---
+
+## 💡 Why This Exists
+
+1. **Your prompts stay yours**: Cloud-hosted tracing tools send sensitive prompts, codebases, and credentials to external SaaS vendors. Phoenix runs locally on an internal Docker bridge (`127.0.0.1:6006`); no telemetry leaves your machine. Essential for EU AI Act, DORA, and NIS 2 data sovereignty.
+2. **One frontier model for every task is expensive**: Running every trivial tool execution through Claude 3.5 Sonnet or GPT-4o inflates costs. Personas decouple work into calibrated model tiers — flash models handle drafting while reasoning tiers are invoked selectively.
+3. **Prompt engineering in chat isn't reproducible**: Ad-hoc conversational prompt tweaks are easily lost. Personas encapsulate domain skills, model tiers, and MCP tools into **version-controlled declarative packages (`persona.yaml` + `SKILL.md`)** tracked directly in Git.
+
+---
+
+## 🌟 What It Gives You
+
+* **📊 100% Local Arize Phoenix Telemetry**: Integrated OpenTelemetry collector and dashboard visualizing agent trajectories, token waterfalls, latency bottlenecks, and exact invocation costs.
+* **🧠 Gemini Tool Calling That Doesn't 400**: Google AI Studio drops the reasoning `thought_signature` between multi-turn tool invocations, causing HTTP 400 errors. DSH patches the provider layer inline to preserve and replay reasoning signatures across multi-step turns.
+* **🔄 Automatic Dynamic Model Synchronization**: Queries OpenRouter (420+ models) and Google AI Studio (29+ models) on boot, caching live pricing, context limits, and token specs in local DSH configuration while registering custom providers with Arize Phoenix.
+* **🧩 10 Pre-Packaged Plugins & 4 Offline MCP Servers**: Web Search, Visual Workflow Canvas (`deepseek-flow`), Plugin Market, Context7 Docs, GitHub MCP operations, and SQLite relational database querying.
+* **🛡️ Hardened Sandbox Mode**: Drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation, and zero-egress network isolation for evaluating untrusted code.
+
+---
+
+## 🚫 What This Is Not
+
+* **Not a hosted cloud SaaS**: This is a self-hosted infrastructure stack. You run the Docker containers on your local workstation, VM, or private cloud.
+* **Not a multi-user shared service by default**: By default, DeepSeek Harness and Arize Phoenix bind strictly to loopback (`127.0.0.1`). If deploying for team access, configure reverse proxy authentication or set `PHOENIX_ENABLE_AUTH=true` with `PHOENIX_SECRET`.
+* **Not native Windows**: Runs as a standard Linux container environment via Docker Desktop or WSL2 on Windows, macOS, and Linux.
+
+---
+
+## 🎭 Personas-as-Code (Worked Example)
+
+Personas package instructions, model matrices, and MCP tools into clean, declarative YAML:
+
+```yaml
+# config/personas/sdmx-expert/persona.yaml
+name: sdmx-expert
+title: SDMX 2.1 Statistical Data Specialist
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+  coding:
+    provider: google
+    model: gemini-3.7-flash
+mcpServers:
+  fetch:
+    command: /usr/local/bin/mcp-server-webresearch
+  sqlite-db:
+    command: /root/.local/bin/mcp-server-sqlite
+    args: ["--db-path", "/workspaces/data.db"]
+```
+
+Execute personas directly via the unified CLI wrapper:
+```bash
+# Run with calibrated default tier
+./dsh.sh persona run sdmx-expert "Analyze inflation metrics for Luxembourg"
+
+# Force reasoning model tier (DeepSeek-R1)
+./dsh.sh persona run sdmx-expert --tier reasoning "Prove statistical correlation formula"
+```
+
+---
+
+## 📦 Pre-Packaged Plugins & MCP Servers
+
+### 1. Pre-Installed Plugins (10 Active)
+
+| Plugin | Service ID | Category | Purpose |
+| :--- | :--- | :--- | :--- |
+| **`@liustack/modsearch`** | `modsearch` | Search | Integrated free web search provider |
+| **`deepseek-flow`** | `deepseek-flow` | Workflows | Visual DAG canvas and workflow designer |
+| **`dshmarket`** | `dsh-market` | Marketplace | Visual Plugin Marketplace (English Localized) |
+| **`dsh-find-plugin`** | `find-dsh-plugin` | Navigation | Workspace file and symbol finder |
+| **`dsh-mcp-panel`** | `mcp-panel` | Tools | Model Context Protocol management panel |
+| **`dsh-mcp-market`** | `dsh-mcp-market` | Marketplace | Visual MCP Server Marketplace |
+| **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Models | Visual LLM provider and model manager |
+| **`dsh-model-sync`** | `model-sync` | Telemetry | Automated model sync and quota monitor |
+| **`dsh-mnemon`** | `mnemon` | Memory | Multi-Workspace Unified Memory Engine |
+| **`dsh-session-reader`** | `dsh-session-reader` | Inspection | Cross-session transcript and tool call reader |
+
+### 2. Pre-Configured MCP Tool Servers (4 Built-In)
+
+| MCP Server | Runner Executable | Capabilities |
+| :--- | :--- | :--- |
+| **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, live URL fetching |
+| **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
+| **`github`** | `github-mcp-server` (`v1.11.0`) | GitHub repository operations, PRs, and issue tracking |
+| **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, tabular analysis |
+
+---
+
+## 📚 Documentation Suite (Diátaxis Organization)
+
+Comprehensive guides organized by audience and operational goal:
+
+### 🚀 Getting Started & Evaluation
+* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — Step-by-step walkthrough: interactive chat, trace inspection, and persona distillation.
+* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
+
+### 🛠️ Daily Operations & Customization
+* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` command reference.
+* 🎭 **[AI Agent Personas Guide](docs/personas.md)** — Multi-Model Task Matrix, session recording, and automated persona distillation.
+* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
+
+### 🏛️ Architecture & Security Reference
+* 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
+* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 10 plugins and 4 MCP servers.
+* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policies, and network isolation.
+
+### 🔬 Theory & Research
+* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.
 
 ---
 
@@ -147,13 +231,9 @@ PHOENIX_API_KEY=your_optional_phoenix_key
 
 ---
 
-## 📁 Understanding the `config/` Directory & Persistent Storage
+## 📁 `config/` Directory & Persistent Storage
 
-In `docker-compose.yml`, the local `./config` folder on your host is bind-mounted to `/root/.dsh` inside the container.
-
-> [!NOTE]
-> **You do NOT need to create or configure the `config/` folder before installing.**
-> The installer or git repository automatically scaffolds everything. Once running, all your interactive work, chat sessions, learned agent memories, and custom personas are automatically saved into `./config` on your host machine so they **survive container rebuilds, updates, and restarts**.
+The local `./config` folder on the host is bind-mounted to `/root/.dsh` inside the container. All interactive chat histories, agent memories, and custom personas **survive container rebuilds, updates, and restarts**:
 
 ```text
 config/                          # Mounted directly to /root/.dsh in container
@@ -172,9 +252,7 @@ config/                          # Mounted directly to /root/.dsh in container
 │   └── <name>/SKILL.md
 └── profiles/
     ├── web/                     # Web profile package manifest (10 plugins + 4 MCP servers)
-    │   ├── package.json
-    │   └── cordis.patch.yml
-    ├── cli/                     # Interactive terminal profile
+    ├── cli/                     # Interactive terminal profile (@deepseek-ai/dsh-terminal)
     └── headless/                # One-shot autonomous CLI runner profile
 ```
 
@@ -182,14 +260,11 @@ config/                          # Mounted directly to /root/.dsh in container
 
 ## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
 
-When using DSH to analyze external or unverified code repositories, start with the sandbox override:
+When analyzing external or unverified code repositories, start with the sandbox override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 ```
-
-> [!WARNING]
-> **Mandatory Plugin Security Audit**: Any plugin or MCP server added to the environment **must be thoroughly audited** to avoid severe security issues. Third-party plugins execute in-process with runtime privileges and have access to workspace data, container memory, and API credentials. Unvetted plugins can introduce supply chain attacks, arbitrary code execution, or credential exfiltration risks.
 
 **Sandbox Protections:**
 * **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/root/.dsh` tree on every start.
@@ -198,10 +273,9 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 * **No New Privileges (`no-new-privileges:true`)**: Prevents privilege escalation inside the container.
 * **Zero-Egress Network**: Keeps DSH and Phoenix on an internal bridge without external network access.
 * **Persistent Session Data Only**: Preserves session transcripts and DSH JSON storage in the `sandbox-session-state` volume while profiles, patches, and caches remain disposable.
-* **Process & Resource Caps**: Limits container to 2 CPUs, 2GB RAM, and 150 PIDs.
+* **Resource Caps**: Constrains container to 2 CPUs, 2GB RAM, and 150 PIDs.
 
-Remove sandbox session history with:
-
+To destroy all transient sandbox session data:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 ```
@@ -210,7 +284,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 
 ## 🧪 Automated Regression & Supply-Chain Test Suite
 
-The repository includes a comprehensive regression and parity test suite built on Node.js test runner:
+The repository includes a comprehensive regression and parity test suite built on the Node.js test runner:
 
 ```bash
 # Run all regression & installer parity tests
@@ -219,108 +293,45 @@ node --test tests/*.test.mjs
 
 **What the test suite covers:**
 1. **CLI Argument Parser**: Validates `--option=value`, short flags (`-t`, `-p`), mixed ordering, prompts with quotes/spaces, and rejects malformed/unknown options.
-2. **Installer Parity Assertion**: Enforces byte-for-byte equality between `install_dsh.sh` templates and canonical repo files (`Dockerfile`, `docker-compose.yml`, `package.json`, `cordis.patch.yml`).
-3. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint `bash -n`, and runs `--network none` offline MCP smoke tests on every push.
+2. **YAML & Persona Schema Validation**: Validates structured YAML parsing and asserts patch validity across all 7 shipped personas.
+3. **Secret Scrubber**: Asserts redaction of Google AI Studio keys, GitHub fine-grained PATs, and Bearer tokens.
+4. **Installer Parity Assertion**: Dynamically asserts byte-for-byte synchronization between `install_dsh.sh` manifests and canonical repository files.
+5. **CI & Supply-Chain Hardening**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates ShellCheck and Hadolint, verifies entrypoint syntax, runs `npm audit`, and conducts `--network none` offline MCP smoke tests on every commit.
 
 ---
 
-## 🔄 Maintenance & Ecosystem Updates
+## 🔄 Maintenance & Operations
 
-### 1. Refreshing Models on Demand
-The container automatically synchronizes models on every boot. To trigger a manual resync without restarting:
+### 1. Resetting the Stack
+```bash
+# Soft Reset: Clears cache locks, temp files, and model sync without losing chat sessions
+./dsh.sh reset
+
+# Hard Reset: Confirms and wipes persistent databases and volume state
+./dsh.sh reset --hard
+```
+
+### 2. Manual Model Resync
 ```bash
 docker compose exec dsh node /root/.dsh/sync_models.mjs
 ```
 
-### 2. Updating DeepSeek Harness Core Image
-When upstream releases a new DSH base image:
+### 3. Backups & Disaster Recovery
 ```bash
-# 1. Pull latest upstream images
-docker compose pull
-
-# 2. Rebuild local layer with pre-packaged plugins and patches
-docker compose up -d --build
-```
-
-### 3. Updating DSH Plugins & MCP Servers
-To upgrade all installed Node.js plugins and MCP packages:
-```bash
-# Inside the container web profile
-docker compose exec dsh bash -c "cd /root/.dsh/profiles/web && pnpm update && pnpm prune --prod"
-
-# Restart container to load updated plugin bundles
-docker compose restart dsh
-```
-
-### 4. Updating Arize Phoenix
-To update the telemetry container to the latest Phoenix release:
-```bash
-docker compose pull phoenix
-docker compose up -d phoenix
-```
-*(All traces and custom provider settings remain preserved in `./config/phoenix`)*.
-
-### 5. Backups & Disaster Recovery
-To backup your complete workspace configurations, conversations, memories, and traces:
-```bash
-# Create a timestamped archive of your config and database state
+# Create timestamped archive of configuration, memories, and traces
 tar -czvf "dsh_backup_$(date +%Y%m%d_%H%M%S).tar.gz" config/ workspaces/ .env
-```
 
-To restore on a new machine:
-```bash
+# Restore on a new machine
 tar -xzvf dsh_backup_*.tar.gz
 docker compose up -d --build
 ```
 
-### 6. Health Checks & Diagnostics
-```bash
-# Check running container health
-docker compose ps
-
-# View unified real-time logs
-docker compose logs -f
-
-# View DSH agent logs specifically
-docker compose logs -f dsh
-
-# View Phoenix telemetry logs specifically
-docker compose logs -f phoenix
-```
-
 ---
 
-## 💻 CLI & Headless Automations
+## 🤝 Contributing & Changelog
 
-DeepSeek Harness includes powerful CLI runners for scripts, background jobs, and CI/CD:
-
-### Interactive Terminal Mode
-```bash
-docker compose exec -it dsh dsh --profile cli
-```
-
-### One-Shot Headless Execution
-Run a prompt autonomously and output results directly to stdout:
-```bash
-# Using default model (Gemini 3.7 Flash)
-docker compose exec dsh dsh --profile headless "summarize recent git commits in /workspaces"
-
-# On-the-fly model override with DeepSeek V3 (OpenRouter)
-docker compose exec dsh dsh --profile headless \
-  --patch <(echo "- id: agent-default-model
-  config:
-    provider: openrouter
-    model: deepseek/deepseek-chat") \
-  "audit security policies in /workspaces"
-```
-
----
-
-## 🔒 Security Best Practices
-
-- **Never commit `.env`**: Always verify that `.env` is listed in `.gitignore`.
-- **Fine-Grained GitHub Tokens**: When using the GitHub MCP server, restrict token scope to only the specific repositories needed.
-- **Set Usage Limits**: Configure billing hard caps in [Google AI Studio](https://aistudio.google.com/) and [OpenRouter](https://openrouter.ai/).
+* 📖 **[Contributing Guide](CONTRIBUTING.md)**: Review our 3-stage promotion lifecycle (`installtest/` → local canonical → `origin/main`), coding standards, and test runner workflows.
+* 📝 **[Changelog](CHANGELOG.md)**: Track release notes, security remediations, and audit findings.
 
 ---
 
