@@ -171,11 +171,17 @@ async function persistModelCache(openRouterModels, googleModels) {
   const targetPath = path.join(getRuntimeDir(), 'models.cache.json');
 
   const catalog = {
+    total: openRouterModels.length + googleModels.length,
     updatedAt: new Date().toISOString(),
+    lastSync: new Date().toISOString(),
     providers: {
       openrouter: {
         total: openRouterModels.length,
         models: openRouterModels.map(m => ({ id: m.id, name: m.name, context_length: m.context_length, pricing: m.pricing }))
+      },
+      google: {
+        total: googleModels.length,
+        models: googleModels
       },
       gemini: {
         total: googleModels.length,

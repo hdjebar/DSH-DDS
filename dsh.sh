@@ -78,10 +78,14 @@ case "$COMMAND" in
       if (fs.existsSync(file)) {
         try {
           const c = JSON.parse(fs.readFileSync(file, 'utf8'));
-          console.log(\`  • Total Active Models: \${c.total || 0}\`);
-          console.log(\`  • OpenRouter Models:   \${c.providers?.openrouter?.total || 0}\`);
-          console.log(\`  • Google Gemini:       \${c.providers?.google?.total || 0}\`);
-          console.log(\`  • Last Synchronized:   \${c.lastSync || 'unknown'}\`);
+          const orCount = c.providers?.openrouter?.total || 0;
+          const geminiCount = c.providers?.gemini?.total ?? c.providers?.google?.total ?? 0;
+          const total = c.total ?? (orCount + geminiCount);
+          const syncTime = c.updatedAt || c.lastSync || 'unknown';
+          console.log(\`  • Total Active Models: \${total}\`);
+          console.log(\`  • OpenRouter Models:   \${orCount}\`);
+          console.log(\`  • Google Gemini:       \${geminiCount}\`);
+          console.log(\`  • Last Synchronized:   \${syncTime}\`);
         } catch (e) {
           console.error('❌ Failed to parse models.cache.json:', e.message);
         }
