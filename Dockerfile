@@ -1,5 +1,5 @@
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM smanx/deepseek-harness:latest AS builder
+FROM smanx/deepseek-harness:1.1.0 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -19,7 +19,7 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Minimal Production Runtime ───────────────────────────
-FROM smanx/deepseek-harness:latest AS runner
+FROM smanx/deepseek-harness:1.1.0 AS runner
 
 # Retain pnpm for on-the-fly dynamic Web UI plugin installations
 RUN npm install -g pnpm && npm cache clean --force

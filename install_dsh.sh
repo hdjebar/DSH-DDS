@@ -162,7 +162,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
 }
 EOF
 
-# 4. Write Web Profile MCP Configuration (Pre-configured MCP Servers)
+# 4. Write Web Profile MCP Configuration (Pinned MCP Servers)
 cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
 # Your patch layer for this dsh profile, applied after every bundle layer:
 # a top-level YAML array of loader patch entries (id-targeted config
@@ -177,7 +177,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@mzxrai/mcp-webresearch'
+          - '@mzxrai/mcp-webresearch@^0.1.0'
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'
@@ -187,7 +187,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@upstash/context7-mcp'
+          - '@upstash/context7-mcp@^1.0.0'
 - insert:
     - id: mcp-github
       name: '@deepseek-ai/dsh-mcp-client'
@@ -197,14 +197,14 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@modelcontextprotocol/server-github'
+          - '@modelcontextprotocol/server-github@^0.6.0'
 # --- end dsh-mcp-market managed ---
 EOF
 
 # 5. Write Multi-Stage Dockerfile (pnpm builder + minimal runtime)
 cat << 'EOF' > "$DSH_INSTALL/Dockerfile"
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM smanx/deepseek-harness:latest AS builder
+FROM smanx/deepseek-harness:1.1.0 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -224,7 +224,7 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Minimal Production Runtime ───────────────────────────
-FROM smanx/deepseek-harness:latest AS runner
+FROM smanx/deepseek-harness:1.1.0 AS runner
 
 # Retain pnpm for on-the-fly dynamic Web UI plugin installations
 RUN npm install -g pnpm && npm cache clean --force
@@ -236,10 +236,14 @@ const file = "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendi
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("const googleExtraContentCache")) {\
+    const anchor1 = "const name = toolCall.function?.name ?? toolCall.custom?.name;";\
+    const anchor2 = "return {\\n                        id: tc.id,";\
+    if (!content.includes(anchor1)) throw new Error("pi-ai patch assertion failed: anchor1 not found");\
     content = "const googleExtraContentCache = new Map();\\n" + content;\
-    content = content.replace("const name = toolCall.function?.name ?? toolCall.custom?.name;", "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            const name = toolCall.function?.name ?? toolCall.custom?.name;");\
-    content = content.replace("return {\\n                        id: tc.id,", "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
+    content = content.replace(anchor1, "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            " + anchor1);\
+    content = content.replace(anchor2, "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
     fs.writeFileSync(file, content, "utf8");\
+    console.log("✅ pi-ai thought signature bridge applied successfully.");\
   }\
 }'
 
@@ -250,9 +254,15 @@ const file = "/app/entrypoint.sh";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("sync_models.mjs")) {\
-    const syncHook = "# ── 2.8 动态多模型自动同步 ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] 自动同步多提供商模型 (OpenRouter & Google AI Studio) ...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
-    content = content.replace("echo \"[proxy] 启动代理", syncHook + "echo \"[proxy] 启动代理");\
+    const syncHook = "# ── 2.8 Automated Multi-Provider Model Synchronization ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
+    const anchor = "echo \"[proxy] 启动代理";\
+    if (!content.includes(anchor)) {\
+      content = syncHook + content;\
+    } else {\
+      content = content.replace(anchor, syncHook + anchor);\
+    }\
     fs.writeFileSync(file, content, "utf8");\
+    console.log("✅ entrypoint model synchronization hook applied successfully.");\
   }\
 }'
 
@@ -268,7 +278,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ENTRYPOINT ["/app/entrypoint.sh"]
 EOF
 
-# 4. Write Production Docker Compose Layout with build and log rotation
+# 6. Write Production Docker Compose Layout with localhost port bindings and sanitized telemetry
 cat << 'EOF' > "$DSH_INSTALL/docker-compose.yml"
 services:
   dsh:
@@ -277,7 +287,7 @@ services:
     container_name: dsh-local
     restart: unless-stopped
     ports:
-      - "${DSH_PORT:-3080}:3080"
+      - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
       - ./config:/root/.dsh
       - ./workspaces:/workspaces
@@ -300,22 +310,15 @@ services:
         max-file: "3"
 
   phoenix:
-    image: arizephoenix/phoenix:latest
+    image: arizephoenix/phoenix:8.17.0
     container_name: dsh-phoenix
     restart: unless-stopped
     ports:
-      - "6006:6006"
+      - "127.0.0.1:6006:6006"
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - GOOGLE_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-${OPENROUTER_API_KEY:-}}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://openrouter.ai/api/v1}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - ./config/phoenix:/root/.phoenix
     logging:

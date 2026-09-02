@@ -452,7 +452,7 @@ workflows:
 
   // 3. Generate distilled SKILL.md
   const skillMd = `---
-name: ${name}
+name: ${safeName}
 description: ${cleanDesc}
 ---
 
@@ -485,10 +485,10 @@ WORKFLOW="\${1:-default}"
 
 case "$WORKFLOW" in
   default)
-    ./dsh.sh persona run ${name} "execute standard ${cleanTitle} workflow"
+    ./dsh.sh persona run ${safeName} "execute standard ${cleanTitle} workflow"
     ;;
   reasoning)
-    ./dsh.sh persona run ${name} --tier reasoning "perform deep ${cleanTitle} analysis"
+    ./dsh.sh persona run ${safeName} --tier reasoning "perform deep ${cleanTitle} analysis"
     ;;
   *)
     echo "Available workflows: default, reasoning"
@@ -498,14 +498,14 @@ esac
   fs.writeFileSync(path.join(targetDir, 'workflow.sh'), workflowSh, 'utf8');
   fs.chmodSync(path.join(targetDir, 'workflow.sh'), 0o755);
 
-  console.log(`✅ Successfully distilled and built persona package '\x1b[32m${name}\x1b[0m'!`);
-  console.log(`📁 Package Path:  config/personas/${name}/`);
-  console.log(`   ├── persona.yaml   (Multi-Model Matrix & MCPs)`);
+  console.log(`✅ Successfully distilled and built persona package '\x1b[32m${safeName}\x1b[0m'!`);
+  console.log(`📁 Package Path:  config/personas/${safeName}/`);
+  console.log(`   ├── persona.yaml   (Multi-Model Matrix, Profiles & MCPs)`);
   console.log(`   ├── SKILL.md       (Distilled rules & guidelines)`);
   console.log(`   └── workflow.sh    (Automated command recipes)`);
-  console.log(`📁 Active Skill:  config/skills/${name}/SKILL.md`);
+  console.log(`📁 Active Skill:  config/skills/${safeName}/SKILL.md`);
   console.log(`\n🚀 Ready to run:`);
-  console.log(`   ./dsh.sh persona run ${name} "<task>"`);
+  console.log(`   ./dsh.sh persona run ${safeName} "<task>"`);
   console.log('========================================================================');
 }
 
