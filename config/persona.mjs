@@ -8,7 +8,23 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawnSync } from 'child_process';
-import YAML from 'yaml';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+function getYamlEngine() {
+  try {
+    return require('yaml');
+  } catch {
+    try {
+      return require('/usr/local/lib/node_modules/yaml');
+    } catch {
+      return null;
+    }
+  }
+}
+
+const YAML = getYamlEngine();
 
 const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
 const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
@@ -43,7 +59,10 @@ function ensureDirs() {
 export function parseYaml(yamlText) {
   if (typeof yamlText !== 'string' || !yamlText.trim()) return {};
   try {
-    return YAML.parse(yamlText) || {};
+    if (YAML && typeof YAML.parse === 'function') {
+      return YAML.parse(yamlText) || {};
+    }
+    throw new Error('YAML parser library not initialized');
   } catch (err) {
     console.error('YAML parse error:', err.message);
     return {};

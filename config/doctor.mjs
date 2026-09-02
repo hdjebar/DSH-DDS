@@ -102,7 +102,8 @@ async function checkGoogleGemini() {
         model: 'gemini-3.7-flash',
         messages: [{ role: 'user', content: 'ping' }],
         max_tokens: 5
-      })
+      }),
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       pass('Google AI Studio API', 'Authenticated successfully (gemini-3.7-flash live)');
@@ -122,7 +123,8 @@ async function checkOpenRouter() {
   }
   try {
     const res = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` }
+      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` },
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       const data = await res.json();
@@ -146,7 +148,8 @@ async function checkGitHubToken() {
       headers: {
         Authorization: `Bearer ${GITHUB_TOKEN}`,
         'User-Agent': 'DSH-Doctor'
-      }
+      },
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       const user = await res.json();

@@ -308,10 +308,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da39
 # Copy official maintained GitHub MCP server binary
 COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
-# Pre-install pnpm, python3, and all MCP servers globally for zero-network runtime execution
+# Pre-install pnpm, yaml parser, python3, and all MCP servers globally for zero-network runtime execution
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    && npm install -g pnpm @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
+    && npm install -g pnpm yaml@2.7.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
     && /usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/.bin/playwright install-deps chromium \
     && rm -rf /var/lib/apt/lists/* \
@@ -319,6 +319,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
 
 ENV PATH="/root/.local/bin:${PATH}"
+ENV NODE_PATH="/usr/local/lib/node_modules:${NODE_PATH}"
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\
@@ -346,7 +347,7 @@ const file = "/app/entrypoint.sh";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("sync_models.mjs")) {\
-    const syncHook = `# ── 2.7 Seed Pre-built Profile Dependencies ──\nif [ -d "/app/prebuilt-profiles/web/node_modules" ]; then\n  echo "[dsh] Seeding pre-built web profile dependencies..."\n  mkdir -p /root/.dsh/profiles/web/node_modules\n  cp -rn /app/prebuilt-profiles/web/node_modules/* /root/.dsh/profiles/web/node_modules/ 2>/dev/null || true\nfi\n\n# ── 2.8 Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
+    const syncHook = `# ── 2.7 Seed Pre-built Profile Dependencies ──\nif [ -d "/app/prebuilt-profiles/web/node_modules" ]; then\n  echo "[dsh] Seeding pre-built web profile dependencies (including .pnpm & .bin)..."\n  mkdir -p /root/.dsh/profiles/web/node_modules\n  cp -rn /app/prebuilt-profiles/web/node_modules/. /root/.dsh/profiles/web/node_modules/ 2>/dev/null || true\nfi\n\n# ── 2.8 Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
     const anchor = "echo \"[proxy] 启动代理";\
     if (!content.includes(anchor)) {\
       content = syncHook + content;\
@@ -387,6 +388,7 @@ services:
     environment:
       - PORT=3080
       - NODE_ENV=production
+      - NODE_PATH=/usr/local/lib/node_modules:/root/.dsh/profiles/web/node_modules
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}

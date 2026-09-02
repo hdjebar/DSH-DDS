@@ -2,8 +2,9 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 #
-# Provides strict process containment, capability stripping, read-only workspace
-# mounts, resource constraints, and isolated internal networking.
+# Provides strict process containment, capability stripping (cap_drop: ALL),
+# read-only workspace containment (:ro), resource constraints (CPU/memory/pids limits),
+# and zero-egress internal networking (internal: true) to prevent data exfiltration.
 
 services:
   dsh:
@@ -25,7 +26,7 @@ services:
       - /run:rw,noexec,nosuid,size=16m
       - /root/.cache:rw,noexec,nosuid,size=128m
     volumes:
-      # Read-only workspaces mount to prevent host filesystem tampering
+      # Read-only workspace mounting prevents untrusted code from modifying host files
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
     networks:
       - sandbox-net
@@ -37,3 +38,4 @@ services:
 networks:
   sandbox-net:
     driver: bridge
+    internal: true
