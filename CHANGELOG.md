@@ -5,6 +5,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] - 2026-09-03
+
+### Added
+* **Supply-Chain Vulnerability Scanning (I-4)**: Integrated Aquasecurity Trivy container image vulnerability scanning into CI with severity filtering and CycloneDX SBOM assertions.
+* **Documentation Internal Link Guard (I-8)**: Added offline, zero-dependency Markdown internal link validation in CI covering all guides, tutorials, and schemas.
+* **Model Catalog Inspection CLI (I-5)**: Added `./dsh.sh models` command allowing operators to inspect cached model counts and live sync timestamps from `models.cache.json`.
+* **Phoenix Service Healthcheck & Startup Ordering (I-6)**: Provisioned Python-based urllib healthcheck on Arize Phoenix and bound `dsh` container startup to `condition: service_healthy`.
+* **Build Context Exclusion (I-1)**: Added `.dockerignore` to prevent `.env`, secrets, `.git`, telemetry databases, and sessions from being uploaded to the Docker daemon.
+
+### Changed
+* **Runtime UI State Isolation (I-2)**: Migrated tracked `config/settings.yaml` to `config/settings.default.yaml` template, adding `settings.yaml` to `.gitignore` and seeding it on boot to eliminate working tree dirtiness.
+* **Headless Non-Interactive TTY Guard (I-3)**: Added `-T` flag to all non-interactive `docker compose exec` calls (`run`, `headless`, `doctor`, `sync-models`, `models`) in `dsh.sh` to unblock CI, cron, and script pipelines.
+* **Translation Targets Cleanup (I-7)**: Removed uninstalled `dsh-persona-memory` entries from `config/patch_translations.mjs` in favor of `dsh-mnemon`.
+
+---
+
 ## [1.2.0] - 2026-09-02
 
 ### Added
