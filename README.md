@@ -84,10 +84,14 @@ To set up a complete deployment on a new machine without cloning the git reposit
 curl -fsSL https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/install_dsh.sh -o install_dsh.sh
 chmod +x install_dsh.sh
 
-# 2. Run the installer (will prompt interactively for your API keys and build the stack)
+# 2. Run the installer
 ./install_dsh.sh
 ```
-*The installer automatically provisions your `.env`, scaffolds the `config/` directory, compiles the multi-stage Docker image, installs all 10 plugins + 4 MCP servers, and starts the container stack.*
+
+**How Option A handles `.env` & Configuration:**
+* 🔑 **Interactive Key Prompt**: If no `.env` file exists, the installer interactively prompts for your `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, and port.
+* 📝 **Populate Later**: You can press Enter to skip any key during installation; the script will generate a starter `.env` template that you can edit anytime later (`nano .env`).
+* 📦 **Automatic Scaffolding**: Automatically provisions the complete `config/` tree, 10 plugins, 4 offline MCP servers, and downloads the `./dsh.sh` Multi-Model Persona CLI wrapper.
 
 ---
 
