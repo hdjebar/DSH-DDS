@@ -44,4 +44,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 testinstall/
+installtest/
 pnpm-debug.log*
