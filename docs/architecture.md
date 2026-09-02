@@ -29,7 +29,7 @@ flowchart TD
         subgraph MCP_Servers ["🔌 Integrated MCP Servers"]
             MCP_FETCH["fetch (@mzxrai/mcp-webresearch)"]
             MCP_CTX["context7 (@upstash/context7-mcp)"]
-            MCP_GH["github (@modelcontextprotocol/server-github)"]
+            MCP_GH["github (github-mcp-server)"]
         end
 
         subgraph LLM_Bridges ["🧠 Model Provider Orchestration"]

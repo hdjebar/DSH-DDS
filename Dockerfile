@@ -22,7 +22,10 @@ RUN pnpm config set minimum-release-age 0 \
 FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:cab4bba47e6200c17fcd008d08f1ba39ad23c540991df98621ac2029332e9618 AS runner
 
 # Copy static Astral uv and uvx binaries for lightweight Python MCP execution
-COPY --from=ghcr.io/astral-sh/uv:0.6.5 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da394ee735de36b5815f8f1d22cb49be15 /uv /uvx /bin/
+
+# Copy official maintained GitHub MCP server binary
+COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
 # Retain pnpm & python3 for on-the-fly dynamic Web UI plugin & MCP installations
 RUN apt-get update && apt-get install -y --no-install-recommends \

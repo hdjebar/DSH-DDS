@@ -60,11 +60,11 @@ The following Model Context Protocol (MCP) servers are configured across `config
 * **Transport**: `stdio` (`npx -y @upstash/context7-mcp@1.0.14`)
 * **Capabilities**: Up-to-date SDK and library documentation retrieval for developer frameworks.
 
-### 3. `mcp-github` (`@modelcontextprotocol/server-github@2025.4.8`)
-* **Transport**: `stdio` (`npx -y @modelcontextprotocol/server-github@2025.4.8`)
+### 3. `mcp-github` (`github-mcp-server:v1.11.0`)
+* **Transport**: `stdio` (`github-mcp-server stdio`)
+* **Source**: Official maintained GitHub MCP Server (`github/github-mcp-server:v1.11.0`) embedded as a native binary.
 * **Capabilities**: Full GitHub REST API operations (repositories, branches, pull requests, issues, file updates).
 * **Authentication**: Environment variable indirection via `${GITHUB_PERSONAL_ACCESS_TOKEN}`.
-* **Alternative**: Official GitHub Go server (`ghcr.io/github/github-mcp-server`).
 
 ### 4. `sqlite-db` (`mcp-server-sqlite@2025.4.25`)
 * **Transport**: `stdio` (`uvx mcp-server-sqlite@2025.4.25 --db-path /workspaces/data.db`)

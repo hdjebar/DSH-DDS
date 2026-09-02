@@ -223,7 +223,7 @@ workflows:
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (threat modeling & crypto verification)
   * `fast`: `openrouter/deepseek/deepseek-chat` (secret scanner)
   * `multimodal`: `gemini/gemini-3.7-flash` (architecture diagram review)
-* **MCP Tools**: `github` (`@modelcontextprotocol/server-github`), `fetch`
+* **MCP Tools**: `github` (`github-mcp-server:v1.11.0`), `fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
 * **Plugins**: `dsh-find-plugin`, `dsh-mnemon`
 * **Workflows**: Git diff security reviews, hardcoded secret and token leak detection.
 
