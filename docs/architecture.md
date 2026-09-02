@@ -27,9 +27,10 @@ flowchart TD
         end
 
         subgraph MCP_Servers ["🔌 Integrated MCP Servers"]
-            MCP_FETCH["fetch (@mzxrai/mcp-webresearch)"]
-            MCP_CTX["context7 (@upstash/context7-mcp)"]
+            MCP_FETCH["fetch (mcp-server-webresearch)"]
+            MCP_CTX["context7 (context7-mcp)"]
             MCP_GH["github (github-mcp-server)"]
+            MCP_SQL["sqlite-db (mcp-server-sqlite)"]
         end
 
         subgraph LLM_Bridges ["🧠 Model Provider Orchestration"]
@@ -79,7 +80,7 @@ flowchart TD
 ## 🏗️ Core Layers
 
 ### 1. Dual-Container Runtime Layer
-* **`dsh-local`**: Minimal production Node.js 24 image based on `smanx/deepseek-harness:latest`. Compiles native binaries (`node-pty`) via multi-stage `pnpm` and exposes proxy port `3080` bound strictly to `127.0.0.1`.
+* **`dsh-local`**: Minimal production Node.js 24 image based on pinned digest `smanx/deepseek-harness:0.1.1-rc.2`. Compiles native binaries (`node-pty`) via multi-stage `pnpm`, embeds prebuilt plugins and MCP binaries, and exposes proxy port `3080` bound strictly to `127.0.0.1`.
 * **`dsh-phoenix`**: Open-source Arize Phoenix instance (`arizephoenix/phoenix:20.5.0`) running uvicorn/Python on port `6006` bound strictly to `127.0.0.1` with embedded SQLite persistence.
 
 ### 2. Google Gemini Thought Signature Bridge

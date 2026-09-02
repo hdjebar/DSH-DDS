@@ -67,5 +67,5 @@ All Model Context Protocol (MCP) servers are pre-installed directly into the con
 * **Authentication**: Environment variable indirection via `${GITHUB_PERSONAL_ACCESS_TOKEN}`.
 
 ### 4. `sqlite-db` (`mcp-server-sqlite@2025.4.25`)
-* **Transport**: `stdio` (`uvx mcp-server-sqlite@2025.4.25 --db-path /workspaces/data.db`)
+* **Transport**: `stdio` (`mcp-server-sqlite --db-path /workspaces/data.db`)
 * **Capabilities**: Relational SQL querying, schema inspection, and metric aggregations across tabular datasets.

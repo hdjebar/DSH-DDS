@@ -69,7 +69,7 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 | **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, and live URL fetching |
 | **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
 | **`github`** | `github-mcp-server` (`github/github-mcp-server:v1.11.0`) | Repositories, PRs, issues, commits, and code search |
-| **`sqlite-db`** | `uvx` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, and tabular data analysis |
+| **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, and tabular data analysis |
 
 ---
 
