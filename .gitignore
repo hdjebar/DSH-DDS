@@ -26,6 +26,7 @@ config/profiles/web/.dsh-market/
 config/profiles/.dsh-market/
 config/.anonymous-user-id
 config/patch.tmp.yaml
+config/models.cache.json
 
 # OS & Editor Files
 .DS_Store

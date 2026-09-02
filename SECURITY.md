@@ -31,7 +31,6 @@ All reports will be acknowledged within 48 hours, and patches will be deployed f
 
 ### 1. Filesystem & Sandbox Isolation
 * **Workspace Boundary**: The agent runner is restricted to mounted workspace paths (`/workspaces/`). Core configuration mounts (`/root/.dsh/`) are managed as controlled volumes.
-* **Non-Root Execution Context**: Production container workloads isolate runtime state from host root filesystems.
 * **Sandbox Profile**: For untrusted code review, the `sandbox` profile enforces `network: false` (no outbound egress) and read-only filesystem policies.
 
 ### 2. Credential & Token Protection
@@ -40,5 +39,5 @@ All reports will be acknowledged within 48 hours, and patches will be deployed f
 * **Automated Distillation Sanitization**: The `./dsh.sh persona distill` engine automatically scrubs API keys (`sk-...`, `ghp_...`, Bearer tokens) from transcripts before generating persistent persona manifests.
 
 ### 3. Network & Proxy Architecture
-* **Localhost Binding**: The internal DSH kernel runs on `127.0.0.1:3079`, exposed exclusively through the proxy gateway on `0.0.0.0:3080`.
+* **Localhost Binding**: Host port exposure is strictly restricted to `127.0.0.1:3080` (DSH Gateway) and `127.0.0.1:6006` (Arize Phoenix), preventing unauthorized access across local area networks.
 * **Telemetry Isolation**: Arize Phoenix runs locally on `http://phoenix:6006` within an isolated Docker bridge network. Telemetry spans, prompt traces, and token pricing are stored in local SQLite databases without egress to third-party clouds.

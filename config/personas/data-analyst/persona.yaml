@@ -42,8 +42,8 @@ mcpServers:
     command: "uvx"
     args: ["mcp-server-sqlite@2025.4.25", "--db-path", "/workspaces/data.db"]
   fetch:
-    command: "npx"
-    args: ["-y", "@mzxrai/mcp-webresearch@0.1.7"]
+    command: "mcp-server-webresearch"
+    args: []
 
 workflows:
   summarize:

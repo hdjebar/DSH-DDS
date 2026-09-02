@@ -27,11 +27,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da39
 # Copy official maintained GitHub MCP server binary
 COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
-# Retain pnpm & python3 for on-the-fly dynamic Web UI plugin & MCP installations
+# Pre-install pnpm, python3, and MCP servers globally for zero-network runtime execution
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g pnpm && npm cache clean --force
+    && npm install -g pnpm @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
+    && npm cache clean --force
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\

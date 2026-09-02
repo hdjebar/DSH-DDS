@@ -50,14 +50,14 @@ This repository comes pre-packaged with **9 essential, pure English DSH plugins*
 
 ## 🔌 Pre-Configured Model Context Protocol (MCP) Servers
 
-The following Model Context Protocol (MCP) servers are configured across `config/profiles/web/cordis.patch.yml` and specialized persona packages:
+All Model Context Protocol (MCP) servers are pre-installed directly into the container image to guarantee zero-network runtime execution, predictable cold-starts, and supply-chain integrity (no `npx -y` dynamic fetching):
 
 ### 1. `mcp-fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
-* **Transport**: `stdio` (`npx -y @mzxrai/mcp-webresearch@0.1.7`)
+* **Transport**: `stdio` (`mcp-server-webresearch`)
 * **Capabilities**: `fetch(url)` — Extracts clean markdown and structured summaries from any public web page or technical documentation site.
 
 ### 2. `mcp-context7` (`@upstash/context7-mcp@1.0.14`)
-* **Transport**: `stdio` (`npx -y @upstash/context7-mcp@1.0.14`)
+* **Transport**: `stdio` (`context7-mcp`)
 * **Capabilities**: Up-to-date SDK and library documentation retrieval for developer frameworks.
 
 ### 3. `mcp-github` (`github-mcp-server:v1.11.0`)

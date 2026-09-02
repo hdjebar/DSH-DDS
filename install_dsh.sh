@@ -126,20 +126,21 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
     model: gemini-3.7-flash
 EOF
 
-# 3. Write Web Profile Plugin Manifest (9 Pre-Packaged Plugins)
+# 3. Write Web Profile Plugin Manifest (10 Pre-Packaged Plugins)
 cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
 {
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
     "@liustack/modsearch": "^5.10.0",
-    "dsh-better-sidebar": "^0.17.1",
+    "deepseek-flow": "^0.4.0",
     "dsh-find-plugin": "^0.3.7",
     "dsh-mcp-market": "^0.1.2",
-    "dsh-mcp-panel": "^0.6.2",
-    "dsh-mnemon": "^0.4.3",
+    "dsh-mcp-panel": "^0.6.3",
+    "dsh-mnemon": "^0.4.4",
     "dsh-model-sync": "^0.1.6",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
+    "dsh-session-reader": "^0.1.0",
     "dshmarket": "^1.39.0"
   },
   "dsh": {
@@ -147,15 +148,16 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "dshmarket",
         "@liustack/modsearch",
-        "dsh-better-sidebar",
+        "dshmarket",
         "dsh-find-plugin",
         "dsh-mcp-panel",
         "dsh-provider-model-configurator",
         "dsh-mnemon",
         "dsh-model-sync",
-        "dsh-mcp-market"
+        "dsh-mcp-market",
+        "dsh-session-reader",
+        "deepseek-flow"
       ]
     }
   }
@@ -174,20 +176,16 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
       config:
         serverName: fetch
         transport: stdio
-        command: npx
-        args:
-          - '-y'
-          - '@mzxrai/mcp-webresearch@0.1.7'
+        command: mcp-server-webresearch
+        args: []
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'
       config:
         serverName: context7
         transport: stdio
-        command: npx
-        args:
-          - '-y'
-          - '@upstash/context7-mcp@1.0.14'
+        command: context7-mcp
+        args: []
 - insert:
     - id: mcp-github
       name: '@deepseek-ai/dsh-mcp-client'
@@ -231,11 +229,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da39
 # Copy official maintained GitHub MCP server binary
 COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
-# Retain pnpm & python3 for on-the-fly dynamic Web UI plugin & MCP installations
+# Pre-install pnpm, python3, and MCP servers globally for zero-network runtime execution
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g pnpm && npm cache clean --force
+    && npm install -g pnpm @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
+    && npm cache clean --force
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\

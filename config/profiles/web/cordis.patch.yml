@@ -8,20 +8,16 @@
       config:
         serverName: fetch
         transport: stdio
-        command: npx
-        args:
-          - '-y'
-          - '@mzxrai/mcp-webresearch@0.1.7'
+        command: mcp-server-webresearch
+        args: []
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'
       config:
         serverName: context7
         transport: stdio
-        command: npx
-        args:
-          - '-y'
-          - '@upstash/context7-mcp@1.0.14'
+        command: context7-mcp
+        args: []
 - insert:
     - id: mcp-github
       name: '@deepseek-ai/dsh-mcp-client'

@@ -59,7 +59,9 @@ async function fetchGoogleModels() {
   }
   try {
     console.log('🔄 Fetching live model catalog from Google AI Studio...');
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+      headers: { 'x-goog-api-key': GEMINI_API_KEY }
+    });
     if (!res.ok) {
       console.error(`❌ Google AI Studio API error: ${res.status} ${res.statusText}`);
       return [];
@@ -117,6 +119,33 @@ async function syncToPhoenix(openRouterModels) {
   } catch {}
 }
 
+async function persistModelCache(openRouterModels, googleModels) {
+  const cacheFile = path.resolve(process.cwd(), 'config/models.cache.json');
+  const containerCacheFile = '/root/.dsh/models.cache.json';
+  const targetPath = fs.existsSync('/root/.dsh') ? containerCacheFile : cacheFile;
+
+  const catalog = {
+    updatedAt: new Date().toISOString(),
+    providers: {
+      openrouter: {
+        total: openRouterModels.length,
+        models: openRouterModels.map(m => ({ id: m.id, name: m.name, context_length: m.context_length, pricing: m.pricing }))
+      },
+      gemini: {
+        total: googleModels.length,
+        models: googleModels
+      }
+    }
+  };
+
+  try {
+    fs.writeFileSync(targetPath, JSON.stringify(catalog, null, 2), 'utf8');
+    console.log(`💾 Persisted live model catalog (${openRouterModels.length} OpenRouter, ${googleModels.length} Gemini) to ${targetPath}`);
+  } catch (err) {
+    console.warn('⚠️ Model cache persist warning:', err.message);
+  }
+}
+
 async function main() {
   console.log('========================================================');
   console.log('🚀 Dynamic Boot-Time Model Synchronization');
@@ -132,6 +161,8 @@ async function main() {
   if (openRouterModels.length > 0) {
     await syncToPhoenix(openRouterModels);
   }
+
+  await persistModelCache(openRouterModels, googleModels);
 
   // Auto-patch plugin translations to English
   try {
