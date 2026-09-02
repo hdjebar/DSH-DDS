@@ -175,13 +175,20 @@ async function checkPlugins() {
   ];
 
   const pkgPath = '/root/.dsh/profiles/web/package.json';
+  const nodeModulesPath = '/root/.dsh/profiles/web/node_modules';
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
       for (const p of expectedPlugins) {
         if (deps[p]) {
-          pass(`Plugin: ${p}`, `v${deps[p]}`);
+          const modPath = path.join(nodeModulesPath, p);
+          const isInstalled = fs.existsSync(modPath);
+          if (isInstalled) {
+            pass(`Plugin: ${p}`, `v${deps[p]} (installed)`);
+          } else {
+            pass(`Plugin: ${p}`, `v${deps[p]} (declared)`);
+          }
         } else {
           warn(`Plugin: ${p}`, 'Not declared in profile package.json');
         }
@@ -202,7 +209,14 @@ async function checkStorage() {
   ];
   for (const d of dirs) {
     if (fs.existsSync(d.path)) {
-      pass(d.label, 'Mounted and writable');
+      try {
+        const probeFile = path.join(d.path, `.probe_${Date.now()}.tmp`);
+        fs.writeFileSync(probeFile, 'ok', 'utf8');
+        fs.unlinkSync(probeFile);
+        pass(d.label, 'Mounted and writable (verified with I/O probe)');
+      } catch (err) {
+        warn(d.label, `Mounted but read-only / write failed (${err.message})`);
+      }
     } else {
       fail(d.label, 'Directory missing');
     }

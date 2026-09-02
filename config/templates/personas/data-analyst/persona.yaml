@@ -39,8 +39,8 @@ plugins:
 
 mcpServers:
   sqlite-db:
-    command: "uvx"
-    args: ["mcp-server-sqlite@2025.4.25", "--db-path", "/workspaces/data.db"]
+    command: "mcp-server-sqlite"
+    args: ["--db-path", "/workspaces/data.db"]
   fetch:
     command: "mcp-server-webresearch"
     args: []

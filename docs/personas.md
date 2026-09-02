@@ -169,11 +169,11 @@ models:
 # 🔌 Scoped Model Context Protocol (MCP) Servers
 mcpServers:
   fetch:
-    command: "npx"
-    args: ["-y", "@mzxrai/mcp-webresearch"]
+    command: "mcp-server-webresearch"
+    args: []
   context7:
-    command: "npx"
-    args: ["-y", "@upstash/context7-mcp"]
+    command: "context7-mcp"
+    args: []
 
 # 🧩 Dedicated Plugins
 plugins:
@@ -213,7 +213,7 @@ workflows:
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (statistical modeling & anomaly correlation)
   * `audit`: `openrouter/anthropic/claude-3.5-sonnet` (executive KPI summaries)
   * `fast`: `gemini/gemini-3.7-flash` (rapid CSV parsing)
-* **MCP Tools**: `sqlite-db` (`uvx mcp-server-sqlite@2025.4.25`), `fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
+* **MCP Tools**: `sqlite-db` (`mcp-server-sqlite@2025.4.25`), `fetch` (`mcp-server-webresearch@0.1.7`)
 * **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
 * **Workflows**: Table distribution summaries, database schema audits.
 
@@ -352,8 +352,8 @@ flowchart LR
 2. **Indirect Prompt Injection Protection**:
    * Content retrieved from external websites via `@mzxrai/mcp-webresearch` or public APIs could contain malicious prompt injection vectors. 
    * Distillation is **never automatically pushed to production**. It creates an uncommitted local package under `config/personas/<name>/` that requires explicit developer review (`git diff`) before being committed.
-3. **Sandbox Execution Constraints**:
-   * For personas running in the `sandbox` profile (`network: false`), MCP dependencies must be pre-installed/cached in the container image to prevent runtime `npx` download failures.
+3. **Predictable Cold-Starts & Air-Gapped Execution**:
+   * All standard MCP servers are pre-installed as local container binaries in `/usr/local/bin`, eliminating runtime network downloads.
 
 ---
 
