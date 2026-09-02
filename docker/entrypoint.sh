@@ -13,7 +13,10 @@ prepare_sandbox_home() {
 
   if [ -d "$config_source" ]; then
     tar -C "$config_source" \
-      --exclude='./profiles/web/node_modules' \
+      --exclude='node_modules' \
+      --exclude='*/node_modules' \
+      --exclude='*node_modules*' \
+      --exclude='*.pnpm*' \
       --exclude='./sessions' \
       --exclude='./storages' \
       --exclude='./phoenix' \
