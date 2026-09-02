@@ -9,8 +9,11 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function getYamlEngine() {
   try {
@@ -26,12 +29,14 @@ function getYamlEngine() {
 
 const YAML = getYamlEngine();
 
-const PERSONAS_DIR = path.resolve(process.cwd(), 'config/personas');
-const SKILLS_DIR = path.resolve(process.cwd(), 'config/skills');
-const TEMPLATES_DIR = path.resolve(process.cwd(), 'config/templates/personas');
-const SETTINGS_FILE = path.resolve(process.cwd(), 'config/settings.yaml');
-const CONFIG_DIR = path.resolve(process.cwd(), 'config');
-const SESSIONS_DIR = path.resolve(process.cwd(), 'config/sessions');
+// Ensure base path resolves correctly whether executed in container (/root/.dsh) or host (<workspace>/config)
+const CONFIG_ROOT = __dirname;
+const PERSONAS_DIR = path.resolve(CONFIG_ROOT, 'personas');
+const SKILLS_DIR = path.resolve(CONFIG_ROOT, 'skills');
+const TEMPLATES_DIR = path.resolve(CONFIG_ROOT, 'templates/personas');
+const SETTINGS_FILE = path.resolve(CONFIG_ROOT, 'settings.yaml');
+const CONFIG_DIR = CONFIG_ROOT;
+const SESSIONS_DIR = path.resolve(CONFIG_ROOT, 'sessions');
 
 function validateSlug(input, fieldName = 'name') {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
@@ -236,7 +241,7 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
 
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   const tempPatchName = `patch.${process.pid}.${Date.now()}.tmp.yaml`;
-  const tempPatchFile = path.resolve(process.cwd(), 'config', tempPatchName);
+  const tempPatchFile = path.resolve(CONFIG_DIR, tempPatchName);
   let hasPatch = false;
 
   try {

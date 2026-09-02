@@ -319,7 +319,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
 
 ENV PATH="/root/.local/bin:${PATH}"
-ENV NODE_PATH="/usr/local/lib/node_modules:${NODE_PATH}"
+ENV NODE_PATH="/usr/local/lib/node_modules"
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\
