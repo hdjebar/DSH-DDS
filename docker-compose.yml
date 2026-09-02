@@ -2,7 +2,6 @@ services:
   dsh:
     build: .
     image: dsh-local:latest
-    container_name: dsh-local
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
@@ -12,7 +11,7 @@ services:
     environment:
       - PORT=3080
       - NODE_ENV=production
-      - NODE_PATH=/usr/local/lib/node_modules:/root/.dsh/profiles/web/node_modules
+      - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
@@ -30,7 +29,6 @@ services:
 
   phoenix:
     image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
-    container_name: dsh-phoenix
     restart: unless-stopped
     ports:
       - "127.0.0.1:6006:6006"

@@ -181,10 +181,19 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 ```
 
 **Sandbox Protections:**
+* **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/root/.dsh` tree on every start.
 * **Read-Only Workspaces (`/workspaces:ro`)**: Protects host files from unauthorized modification.
 * **Linux Capability Stripping (`cap_drop: [ALL]`)**: Drops all privileged container capabilities.
 * **No New Privileges (`no-new-privileges:true`)**: Prevents privilege escalation inside the container.
+* **Zero-Egress Network**: Keeps DSH and Phoenix on an internal bridge without external network access.
+* **Persistent Session Data Only**: Preserves session transcripts and DSH JSON storage in the `sandbox-session-state` volume while profiles, patches, and caches remain disposable.
 * **Process & Resource Caps**: Limits container to 2 CPUs, 2GB RAM, and 150 PIDs.
+
+Remove sandbox session history with:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
+```
 
 ---
 

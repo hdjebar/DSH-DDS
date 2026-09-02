@@ -13,8 +13,10 @@ DeepSeek Harness within this Docker stack is designed with strict multi-layered 
 
 ### 2. Hardening Recommendations for Untrusted Code
 For deployments evaluating untrusted code:
-* **Read-Only Workspace**: Mount workspaces with the `:ro` flag in `docker-compose.yml` when write access is not required.
-* **Capability Dropping**: Add `cap_drop: [ALL]` and `security_opt: [no-new-privileges:true]` to container definitions.
+* Launch with `docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d`.
+* Host configuration is mounted read-only at `/opt/dsh-config` and copied into disposable tmpfs at `/root/.dsh`.
+* Workspaces remain read-only, all Linux capabilities are dropped, privilege escalation is disabled, and the internal network blocks egress.
+* Only session transcripts and DSH JSON storage persist in the `sandbox-session-state` volume. Executable configuration, profiles, patches, and caches do not persist across sandbox restarts.
 
 ### 3. API Credential Protection
 * **Environment Variable Isolation**: Sensitive API keys (`GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, `PHOENIX_API_KEY`) are passed via environment variables and never written into version-controlled files.

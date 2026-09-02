@@ -30,8 +30,8 @@ All reports will be acknowledged within 48 hours, and patches will be deployed f
 ## 🏛️ Security Architecture & Trust Boundaries
 
 ### 1. Container & Filesystem Isolation
-* **Host Filesystem Isolation**: Workloads run inside an isolated Docker container (`dsh-local`). Only explicitly mounted directories (`./workspaces` $\rightarrow$ `/workspaces` and `./config` $\rightarrow$ `/root/.dsh`) are accessible to the container.
-* **Workspace Scoping**: Personas operate on data mounted under `/workspaces/`. For strict untrusted code evaluation, operators can configure read-only volume mounts (`:ro`) and rootless Docker execution in `docker-compose.yml`.
+* **Host Filesystem Isolation**: Normal workloads mount `./workspaces` at `/workspaces` and `./config` at `/root/.dsh`. Sandbox mode instead mounts configuration read-only at `/opt/dsh-config` and reconstructs `/root/.dsh` in tmpfs.
+* **Workspace Scoping**: Sandbox workspaces are read-only. Only session transcripts and DSH JSON storage persist in a dedicated Docker volume; executable configuration and profiles remain disposable.
 
 ### 2. Credential & Token Protection
 * **Environment Indirection**: All Model Context Protocol (MCP) server definitions in `persona.yaml` or `cordis.patch.yml` must reference credentials via `${VAR_NAME}` syntax rather than literal values.

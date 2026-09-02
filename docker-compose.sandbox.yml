@@ -22,21 +22,23 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    volumes:
-      # Read-only configuration and workspace mounting prevents untrusted code from modifying host files
-      - ./config:/root/.dsh:ro
+    volumes: !override
+      # Configuration is copied into disposable tmpfs; only session data persists.
+      - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
-      - sandbox-profiles:/root/.dsh/profiles
-      - sandbox-storages:/root/.dsh/storages
+      - sandbox-session-state:/var/lib/dsh-state
     tmpfs:
       - /tmp:rw,size=64m
       - /run:rw,size=32m
       - /root/.cache:rw,size=128m
       - /root/.mnemon:rw,size=32m
-      - /root/.dsh/patch:rw,size=16m
-      - /root/.dsh/sessions:rw,size=32m
+      - /root/.dsh:rw,nosuid,nodev,size=512m
     environment:
+      - DSH_SANDBOX=1
+      - DSH_CONFIG_SOURCE=/opt/dsh-config
       - DSH_RUNTIME_DIR=/run/dsh
+      - DSH_SESSION_STATE_DIR=/var/lib/dsh-state
+      - DSH_SESSIONS_DIR=/root/.dsh/sessions
       - DSH_DISABLE_MODEL_SYNC=1
     networks:
       - sandbox-net
@@ -46,8 +48,7 @@ services:
       - sandbox-net
 
 volumes:
-  sandbox-profiles:
-  sandbox-storages:
+  sandbox-session-state:
 
 networks:
   sandbox-net:

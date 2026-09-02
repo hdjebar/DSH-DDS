@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
 
 ENV PATH="/root/.local/bin:${PATH}"
-ENV NODE_PATH="/usr/local/lib/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules"
+ENV NODE_PATH="/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules"
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\
@@ -59,28 +59,18 @@ if (fs.existsSync(file)) {\
   }\
 }' && node --check /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js
 
-# Patch entrypoint.sh and /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js to use --expose-internals for Cordis HMR and loader support
-RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces && \
-ln -sf /root/.dsh/profiles/web/node_modules /app/node_modules && \
-sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js && \
-ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh && \
-node -e '\
-const fs = require("fs");\
-const file = "/app/entrypoint.sh";\
-if (fs.existsSync(file)) {\
-  let content = fs.readFileSync(file, "utf8");\
-  if (!content.includes("sync_models.mjs")) {\
-    const syncHook = `# ── Pre-boot Seed Profiles, Dependencies & Directories ──\nmkdir -p /root/.dsh/profiles/web /root/.dsh/profiles/node_modules 2>/dev/null || true\nmkdir -p /root/.dsh/storages 2>/dev/null || true\nmkdir -p /run/dsh /tmp/dsh 2>/dev/null || true\nif [ -d "/app/prebuilt-profiles/web" ]; then\n  echo "[dsh] Seeding pre-built web profile (dependencies & configuration)..."\n  cp -a /app/prebuilt-profiles/web/. /root/.dsh/profiles/web/ 2>/dev/null || true\nfi\nln -sf /root/.dsh/profiles/web/node_modules /app/node_modules 2>/dev/null || true\n\n# ── Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ] && [ "\${DSH_DISABLE_MODEL_SYNC:-0}" != "1" ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
-    const anchor = "echo \"[dsh] 启动 DSH";\
-    if (!content.includes(anchor)) {\
-      content = syncHook + content;\
-    } else {\
-      content = content.replace(anchor, syncHook + anchor);\
-    }\
-    fs.writeFileSync(file, content, "utf8");\
-    console.log("✅ entrypoint startup hooks applied successfully.");\
-  }\
-}' && bash -n /app/entrypoint.sh
+# Preserve the upstream launcher and install the repository-owned bootstrap wrapper.
+RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
+    /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \
+    /opt/dsh-config /var/lib/dsh-state \
+    && mv /app/entrypoint.sh /app/entrypoint.upstream.sh \
+    && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh
+
+COPY docker/entrypoint.sh /usr/local/bin/dsh-entrypoint
+RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
+    && sh -n /usr/local/bin/dsh-entrypoint \
+    && sh -n /app/entrypoint.upstream.sh
 
 # Copy pre-compiled and pre-built plugins to both internal cache and default profile location
 COPY --from=builder /root/.dsh/profiles/web /app/prebuilt-profiles/web
@@ -88,7 +78,21 @@ COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /app/prebuilt-profiles/web/
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
 
-# Link profile node_modules globally into /usr/local/lib/node_modules and /app/node_modules
+# Complete profile peer dependencies from DSH's pinned runtime dependency tree.
+RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/*; do \
+      [ -e "$p" ] && [ ! -e "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" ] \
+        && ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" || true; \
+    done && \
+    for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@*/*; do \
+      if [ -e "$p" ]; then \
+        scope="$(basename "$(dirname "$p")")"; \
+        mkdir -p "/app/prebuilt-profiles/web/node_modules/$scope"; \
+        [ -e "/app/prebuilt-profiles/web/node_modules/$scope/$(basename "$p")" ] \
+          || ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$scope/$(basename "$p")"; \
+      fi; \
+    done
+
+# Link profile node_modules globally into /usr/local/lib/node_modules and /app/node_modules.
 RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$p" "/usr/local/lib/node_modules/$(basename "$p")" || true; done && \
     for p in /root/.dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
     ln -sf /root/.dsh/profiles/web/node_modules /app/node_modules
@@ -98,4 +102,4 @@ EXPOSE 3080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3080/').then(()=>process.exit(0)).catch(()=>process.exit(1))"
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/dsh-entrypoint"]

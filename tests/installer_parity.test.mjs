@@ -40,3 +40,9 @@ test('Installer Parity: docker-compose.yml template matches canonical docker-com
   const templated = match[1].trim();
   assert.equal(committed, templated, 'install_dsh.sh docker-compose.yml must match canonical file');
 });
+
+test('Installer Parity: bootstrap entrypoint is provisioned', () => {
+  const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+  assert.match(installScript, /fetch_or_copy_file "docker\/entrypoint\.sh"/);
+  assert.match(installScript, /chmod \+x "\$DSH_INSTALL\/docker\/entrypoint\.sh"/);
+});

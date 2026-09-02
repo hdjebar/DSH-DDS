@@ -52,7 +52,7 @@ function getRuntimeDir() {
 }
 
 const RUNTIME_DIR = getRuntimeDir();
-const SESSIONS_DIR = path.join(RUNTIME_DIR, 'sessions');
+const SESSIONS_DIR = process.env.DSH_SESSIONS_DIR || path.join(RUNTIME_DIR, 'sessions');
 
 function validateSlug(input, fieldName = 'name') {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
@@ -442,7 +442,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
 }
 
 function listSessions() {
-  const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
   console.log('========================================================================');
   console.log('📜 DeepSeek Harness Interactive Web & CLI Sessions');
   console.log('========================================================================');
@@ -495,8 +494,6 @@ function distillPersona(name, options = {}) {
   console.log('========================================================================');
 
   let sessionNotes = '';
-  const SESSIONS_DIR = path.join(CONFIG_DIR, 'sessions');
-
   if (options.sessionId && fs.existsSync(SESSIONS_DIR)) {
     const safeSessionId = validateSlug(options.sessionId, 'session ID');
     for (const ws of fs.readdirSync(SESSIONS_DIR)) {
@@ -640,5 +637,3 @@ esac
   console.log(`   ./dsh.sh persona run ${safeName} "<task>"`);
   console.log('========================================================================');
 }
-
-

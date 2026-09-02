@@ -109,7 +109,7 @@ jobs:
 
       - name: Entrypoint Script Syntax Assertion
         run: |
-          docker run --rm --entrypoint /bin/sh dsh-local:latest -c "bash -n /app/entrypoint.sh"
+          docker run --rm --entrypoint /bin/sh dsh-local:latest -c "sh -n /usr/local/bin/dsh-entrypoint && sh -n /app/entrypoint.upstream.sh"
 
       - name: Prebuilt Hidden Dependencies Assertion (.pnpm & .bin)
         run: |
@@ -117,25 +117,48 @@ jobs:
 
       - name: In-Container Persona Catalog Discovery Assertion
         run: |
-          docker run --rm --entrypoint node -e DSH_RUNTIME_DIR=/tmp/dsh -v "$PWD/config:/root/.dsh:ro" dsh-local:latest /root/.dsh/persona.mjs list | grep -q "sdmx-expert"
+          docker run --rm --read-only \
+            -e DSH_SANDBOX=1 \
+            -e DSH_CONFIG_SOURCE=/opt/dsh-config \
+            -e DSH_RUNTIME_DIR=/run/dsh \
+            -e DSH_SESSION_STATE_DIR=/var/lib/dsh-state \
+            -e DSH_SESSIONS_DIR=/root/.dsh/sessions \
+            -v "$PWD/config:/opt/dsh-config:ro" \
+            --tmpfs /root/.dsh:rw,nosuid,nodev,size=512m \
+            --tmpfs /run:rw,size=32m \
+            --tmpfs /var/lib/dsh-state:rw,size=32m \
+            dsh-local:latest node /root/.dsh/persona.mjs list | grep -q "sdmx-expert"
 
       - name: Hardened Sandbox Compose Stack Integration Test
         run: |
           cp .env.example .env
-          mkdir -p workspaces config/profiles/web/node_modules
+          mkdir -p workspaces
+
+          cleanup() {
+            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
+          }
+          trap cleanup EXIT
+
           docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
           
           echo "Waiting for DSH sandbox service to report healthy..."
-          for i in $(seq 1 30); do
+          healthy=0
+          for i in $(seq 1 90); do
             if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
               echo "✅ DSH sandbox container is healthy!"
+              healthy=1
               break
             fi
             sleep 1
           done
+          if [ "$healthy" -ne 1 ]; then
+            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps
+            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml logs dsh
+            exit 1
+          fi
           
           echo "Asserting sandbox read-only mounts..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /root/.dsh/test.txt 2>/dev/null && exit 1 || echo "✅ /root/.dsh is read-only"'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /opt/dsh-config/test.txt 2>/dev/null && exit 1 || echo "✅ /opt/dsh-config is read-only"'
           docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is read-only"'
 
           echo "Asserting zero-egress network isolation..."
@@ -144,4 +167,18 @@ jobs:
           echo "Asserting Phoenix observability connectivity..."
           docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh node -e "fetch('http://phoenix:6006/').then(r=>{ if(r.status===200) process.exit(0); else process.exit(1); })"
 
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
+          echo "Asserting session state persists across a sandbox restart..."
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /root/.dsh/sessions/ci-marker'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /root/.dsh/storages/ci-marker'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml restart dsh
+          healthy=0
+          for i in $(seq 1 90); do
+            if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          [ "$healthy" -eq 1 ]
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /root/.dsh/sessions/ci-marker
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /root/.dsh/storages/ci-marker
