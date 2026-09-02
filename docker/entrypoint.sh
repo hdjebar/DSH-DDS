@@ -55,12 +55,26 @@ else
   prepare_standard_home
 fi
 
+start_sync_watcher() {
+  (
+    while true; do
+      if [ -f "/tmp/dsh-sync.trigger" ]; then
+        rm -f "/tmp/dsh-sync.trigger"
+        echo "[dsh-daemon] In-session model sync triggered via /tmp/dsh-sync.trigger..."
+        node "$DSH_HOME/sync_models.mjs" || true
+      fi
+      sleep 2
+    done
+  ) &
+}
+
 if [ -f "$DSH_HOME/sync_models.mjs" ]; then
   if [ "${DSH_DISABLE_MODEL_SYNC:-0}" = "1" ]; then
     node "$DSH_HOME/sync_models.mjs" || true
   else
     echo "[dsh] Auto-synchronizing multi-provider models..."
     (node "$DSH_HOME/sync_models.mjs" || true) &
+    start_sync_watcher
   fi
 fi
 

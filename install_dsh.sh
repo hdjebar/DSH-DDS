@@ -382,7 +382,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm cache clean --force \
     && /usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/.bin/playwright install-deps chromium \
     && rm -rf /var/lib/apt/lists/* \
-    && uv tool install mcp-server-sqlite@2025.4.25 \
+    && uv tool install --with 'mcp<2.0.0' mcp-server-sqlite@2025.4.25 \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
 
 ENV PATH="/root/.local/bin:${PATH}"
