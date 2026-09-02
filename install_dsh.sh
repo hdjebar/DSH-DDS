@@ -177,7 +177,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@mzxrai/mcp-webresearch@^0.1.0'
+          - '@mzxrai/mcp-webresearch@0.1.7'
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'
@@ -187,7 +187,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@upstash/context7-mcp@^1.0.0'
+          - '@upstash/context7-mcp@1.0.14'
 - insert:
     - id: mcp-github
       name: '@deepseek-ai/dsh-mcp-client'
@@ -197,7 +197,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: npx
         args:
           - '-y'
-          - '@modelcontextprotocol/server-github@^0.6.0'
+          - '@modelcontextprotocol/server-github@0.6.2'
 # --- end dsh-mcp-market managed ---
 EOF
 

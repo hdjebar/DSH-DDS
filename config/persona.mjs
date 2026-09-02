@@ -438,7 +438,7 @@ plugins:
 mcpServers:
   fetch:
     command: "npx"
-    args: ["-y", "@mzxrai/mcp-webresearch@^0.1.0"]
+    args: ["-y", "@mzxrai/mcp-webresearch@0.1.7"]
 
 workflows:
   default-task:
