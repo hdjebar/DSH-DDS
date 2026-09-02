@@ -7,6 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +33,25 @@ const PERSONAS_DIR = path.join(CONFIG_DIR, 'personas');
 const SKILLS_DIR = path.join(CONFIG_DIR, 'skills');
 const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates/personas');
 const SETTINGS_FILE = path.join(CONFIG_DIR, 'settings.yaml');
-const RUNTIME_DIR = process.env.DSH_RUNTIME_DIR || CONFIG_DIR;
+
+function getRuntimeDir() {
+  if (process.env.DSH_RUNTIME_DIR) {
+    if (!fs.existsSync(process.env.DSH_RUNTIME_DIR)) {
+      try { fs.mkdirSync(process.env.DSH_RUNTIME_DIR, { recursive: true }); } catch {}
+    }
+    return process.env.DSH_RUNTIME_DIR;
+  }
+  try {
+    fs.accessSync(CONFIG_DIR, fs.constants.W_OK);
+    return CONFIG_DIR;
+  } catch {
+    const fallback = path.join(os.tmpdir(), 'dsh');
+    try { fs.mkdirSync(fallback, { recursive: true }); } catch {}
+    return fallback;
+  }
+}
+
+const RUNTIME_DIR = getRuntimeDir();
 const SESSIONS_DIR = path.join(RUNTIME_DIR, 'sessions');
 
 function validateSlug(input, fieldName = 'name') {
@@ -53,11 +72,11 @@ function scrubSecrets(text) {
 }
 
 function ensureDirs() {
-  if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true });
-  if (!fs.existsSync(SKILLS_DIR)) fs.mkdirSync(SKILLS_DIR, { recursive: true });
-  if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
-  if (!fs.existsSync(RUNTIME_DIR)) fs.mkdirSync(RUNTIME_DIR, { recursive: true });
-  if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+  try { if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true }); } catch {}
+  try { if (!fs.existsSync(SKILLS_DIR)) fs.mkdirSync(SKILLS_DIR, { recursive: true }); } catch {}
+  try { if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true }); } catch {}
+  try { if (!fs.existsSync(RUNTIME_DIR)) fs.mkdirSync(RUNTIME_DIR, { recursive: true }); } catch {}
+  try { if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true }); } catch {}
 }
 
 export function parseYaml(yamlText) {

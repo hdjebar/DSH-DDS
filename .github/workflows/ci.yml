@@ -117,9 +117,31 @@ jobs:
 
       - name: In-Container Persona Catalog Discovery Assertion
         run: |
-          docker run --rm --entrypoint node -v "$PWD/config:/root/.dsh:ro" dsh-local:latest /root/.dsh/persona.mjs list | grep -q "sdmx-expert"
+          docker run --rm --entrypoint node -e DSH_RUNTIME_DIR=/tmp/dsh -v "$PWD/config:/root/.dsh:ro" dsh-local:latest /root/.dsh/persona.mjs list | grep -q "sdmx-expert"
 
-      - name: Hardened Sandbox Read-Only Mounts Assertion
+      - name: Hardened Sandbox Compose Stack Integration Test
         run: |
-          docker run --rm --entrypoint sh -v "$PWD/config:/root/.dsh:ro" dsh-local:latest -c 'touch /root/.dsh/test.txt 2>/dev/null && exit 1 || echo "✅ /root/.dsh is strictly read-only"'
-          docker run --rm --entrypoint sh -v "$PWD/workspaces:/workspaces:ro" dsh-local:latest -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is strictly read-only"'
+          cp .env.example .env
+          mkdir -p workspaces config/profiles/web/node_modules
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+          
+          echo "Waiting for DSH sandbox service to report healthy..."
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
+              echo "✅ DSH sandbox container is healthy!"
+              break
+            fi
+            sleep 1
+          done
+          
+          echo "Asserting sandbox read-only mounts..."
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /root/.dsh/test.txt 2>/dev/null && exit 1 || echo "✅ /root/.dsh is read-only"'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is read-only"'
+
+          echo "Asserting zero-egress network isolation..."
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh node -e "fetch('https://example.com', { signal: AbortSignal.timeout(2000) }).then(()=>process.exit(1)).catch(()=>process.exit(0))"
+
+          echo "Asserting Phoenix observability connectivity..."
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh node -e "fetch('http://phoenix:6006/').then(r=>{ if(r.status===200) process.exit(0); else process.exit(1); })"
+
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
