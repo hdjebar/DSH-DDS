@@ -120,7 +120,7 @@ Run the automated diagnostic suite to verify container health, API credentials, 
 
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated OpenTelemetry collector and dashboard visualizing agent trajectories, token waterfalls, latency bottlenecks, and exact invocation costs.
 * **🧠 Gemini Tool Calling That Doesn't 400**: Google AI Studio drops the reasoning `thought_signature` between multi-turn tool invocations, causing HTTP 400 errors. DSH patches the provider layer inline to preserve and replay reasoning signatures across multi-step turns.
-* **🔄 Automatic Dynamic Model Synchronization**: Queries OpenRouter (420+ models) and Google AI Studio (29+ models) on boot, caching live pricing, context limits, and token specs in local DSH configuration while registering custom providers with Arize Phoenix.
+* **🔄 Automatic Dynamic Model Synchronization & Live Costing**: Queries OpenRouter (420+ models) and Google AI Studio (31+ models) on boot, caching live pricing, context limits, and token specs into local DSH configuration. Enables on-demand in-session `/sync-models` and real-time token cost comparisons across both Web and CLI profiles.
 * **🧩 10 Pre-Packaged Plugins & 4 Offline MCP Servers**: Web Search, Visual Workflow Canvas (`deepseek-flow`), Plugin Market, Context7 Docs, GitHub MCP operations, and SQLite relational database querying.
 * **🛡️ Hardened Sandbox Mode**: Drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation, and zero-egress network isolation for evaluating untrusted code.
 
@@ -311,10 +311,17 @@ node --test tests/*.test.mjs
 ./dsh.sh reset --hard
 ```
 
-### 2. Manual Model Resync
-```bash
-docker compose exec dsh node /root/.dsh/sync_models.mjs
-```
+### 2. Model Catalog Synchronization & Live Cost Tracking
+* **From Host CLI**:
+  ```bash
+  ./dsh.sh sync-models    # Triggers manual resync from OpenRouter & Google AI Studio
+  ./dsh.sh models         # Displays active model totals, breakdown, and sync timestamp
+  ```
+* **In-Session Slash Command (Web & CLI Profiles)**:
+  * Type `/sync-models` directly in the Web UI or interactive CLI to refresh the live pricing catalog.
+  * Ask the agent: *"What is the cost of deepseek-r1 vs claude-3.5-sonnet?"* to get real-time prompt/completion pricing per 1M tokens.
+* **Web UI Quota & Cost Rings (`dsh-model-sync`)**:
+  * Real-time balance and 5h/7d plan quota usage rings appear directly next to the web prompt composer.
 
 ### 3. Backups & Disaster Recovery
 ```bash
