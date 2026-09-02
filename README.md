@@ -14,7 +14,7 @@ An enterprise-grade, containerized autonomous agent runtime on **DeepSeek Harnes
 
 * **⚡ Multi-Stage Lightweight Docker Build**: Two-stage Docker build utilizing `pnpm` for native compilation (`node-pty`) while stripping all build toolchains in the runner stage (< 1 MB writable layer).
 * **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
-* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (420+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
+* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (420+ models) and Google AI Studio (29+ models) on container boot, caching live pricing, context limits, and token specs into local DSH configuration and registering custom providers with Arize Phoenix for OTel trace capture.
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
 * **🧩 10 Pre-Packaged English Plugins & 4 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, SQLite relational database analysis, visual MCP marketplace, and persistent unified memory.
 

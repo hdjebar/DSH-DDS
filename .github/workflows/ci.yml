@@ -55,11 +55,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
 
       - name: Install Hermetic Node Dependencies
         run: npm ci
+
+      - name: Dependency Vulnerability Audit
+        run: npm audit --audit-level=high
 
       - name: Shell Syntax Validation
         run: |

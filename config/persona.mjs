@@ -74,9 +74,9 @@ export function scrubSecrets(text) {
   if (!text || typeof text !== 'string') return text;
   return text
     .replace(/\b(sk-[a-zA-Z0-9-_]{20,})\b/g, '[REDACTED_API_KEY]')
-    .replace(/\b(AIza[0-9A-Za-z_-]{35})\b/g, '[REDACTED_GEMINI_KEY]')
+    .replace(/\b(AIza[0-9A-Za-z_-]{35,})\b/g, '[REDACTED_GEMINI_KEY]')
     .replace(/\b(ghp_[a-zA-Z0-9]{30,})\b/g, '[REDACTED_GITHUB_TOKEN]')
-    .replace(/\b(github_pat_[0-9a-zA-Z_]{82})\b/g, '[REDACTED_GITHUB_PAT]')
+    .replace(/\b(github_pat_[0-9a-zA-Z_]{82,})\b/g, '[REDACTED_GITHUB_PAT]')
     .replace(/\b(Bearer\s+[a-zA-Z0-9._-]{20,})\b/gi, 'Bearer [REDACTED_TOKEN]')
     .replace(/(api[_-]?key\s*[:=]\s*["']?)[a-zA-Z0-9_-]{16,}(["']?)/gi, '$1[REDACTED_KEY]$2');
 }
@@ -270,7 +270,18 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   // Derive container-accessible patch path
   let containerPatchDir = '/root/.dsh';
   if (process.env.DSH_RUNTIME_DIR) {
-    containerPatchDir = process.env.DSH_RUNTIME_DIR;
+    const resolvedRuntime = path.resolve(process.env.DSH_RUNTIME_DIR);
+    const resolvedConfig = path.resolve(CONFIG_DIR);
+    if (resolvedRuntime === resolvedConfig) {
+      containerPatchDir = '/root/.dsh';
+    } else if (resolvedRuntime.startsWith(resolvedConfig + path.sep)) {
+      const rel = path.relative(resolvedConfig, resolvedRuntime);
+      containerPatchDir = path.posix.join('/root/.dsh', rel.split(path.sep).join('/'));
+    } else {
+      console.error(`❌ Error: DSH_RUNTIME_DIR ('${process.env.DSH_RUNTIME_DIR}') is outside the container configuration mount ('${CONFIG_DIR}'). Cannot mount patch into container.`);
+      process.exitCode = 1;
+      return;
+    }
   } else if (RUNTIME_DIR !== CONFIG_DIR) {
     console.error(`❌ Error: RUNTIME_DIR ('${RUNTIME_DIR}') is not inside the container configuration mount ('${CONFIG_DIR}'). Cannot mount patch into container.`);
     process.exitCode = 1;
@@ -290,13 +301,6 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
       if (chosenModel) {
         console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
         let patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
-
-        // Wire persona plugins
-        if (Array.isArray(meta.plugins) && meta.plugins.length > 0) {
-          for (const plugin of meta.plugins) {
-            patchContent += `- id: ${plugin}\n  disabled: false\n`;
-          }
-        }
 
         // Wire persona MCP servers
         if (meta.mcpServers && typeof meta.mcpServers === 'object') {
@@ -361,7 +365,7 @@ function runWorkflow(name, workflowKey) {
     for (const [k, v] of Object.entries(workflows)) {
       console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
     }
-    return;
+    process.exit(1);
   }
 
   const wf = workflows[safeWfKey];
@@ -603,7 +607,7 @@ function distillPersona(name, options = {}) {
 
   let sessionNotes = '';
   if (options.sessionId && fs.existsSync(SESSIONS_DIR)) {
-    const safeSessionId = validateSlug(options.sessionId, 'session ID');
+    const safeSessionId = validateSessionId(options.sessionId);
     for (const ws of fs.readdirSync(SESSIONS_DIR)) {
       const sFile = path.join(SESSIONS_DIR, ws, safeSessionId);
       if (fs.existsSync(sFile)) {

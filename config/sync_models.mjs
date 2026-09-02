@@ -99,7 +99,7 @@ async function fetchGoogleModels() {
   }
 }
 
-async function syncToPhoenix(openRouterModels) {
+async function syncToPhoenix() {
   console.log('🔄 Ensuring OpenRouter custom provider in Arize Phoenix...');
   const ensureProviderQuery = `
     mutation CreateProvider($input: CreateGenerativeModelCustomProviderMutationInput!) {
@@ -234,7 +234,7 @@ async function main() {
     const googleModels = googleRes.models || [];
 
     if (openRouterModels.length > 0 && isPhoenixReady) {
-      const phoenixSyncRes = await syncToPhoenix(openRouterModels);
+      const phoenixSyncRes = await syncToPhoenix();
       if (!phoenixSyncRes.success && phoenixSyncRes.error) {
         errors.push(`Phoenix GraphQL: ${phoenixSyncRes.error}`);
       }

@@ -92,9 +92,11 @@ fetch_or_copy_file() {
   mkdir -p "$(dirname "$dest")"
   if [ -f "$rel_path" ]; then
     cp "$rel_path" "$dest"
-  else
     echo "⬇️  Downloading $rel_path from repository..."
-    curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest" 2>/dev/null || true
+    if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest"; then
+      echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
+      exit 1
+    fi
   fi
 }
 
@@ -470,7 +472,7 @@ services:
       - DSH_TELEMETRY_MODE=FULL
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-dsh_internal_phoenix_secret_32_bytes}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
     depends_on:
       - phoenix
     logging:
@@ -484,11 +486,14 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:6006:6006"
+    command:
+      - "-c"
+      - "import os, sys; os.environ.pop('PHOENIX_SECRET', None) if not os.environ.get('PHOENIX_SECRET') else None; from phoenix.server.main import main; sys.argv = ['phoenix', 'serve']; main()"
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-dsh_internal_phoenix_secret_32_bytes}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
     volumes:
       - ./config/phoenix:/root/.phoenix
