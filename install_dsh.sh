@@ -47,9 +47,24 @@ else
   exit 1
 fi
 
-# Copy profile lockfiles if installing to an external directory
-if [ "$DSH_INSTALL" != "$(pwd)" ] && [ -d "config/profiles/web" ]; then
-  cp -r config/profiles/web/* "$DSH_INSTALL/config/profiles/web/" 2>/dev/null || true
+# Copy all canonical configuration scripts, personas, templates, and CLI tools if installing to an external directory
+if [ "$DSH_INSTALL" != "$(pwd)" ]; then
+  if [ -d "config" ]; then
+    echo "📦 Copying configuration scripts (.mjs), personas, and templates to $DSH_INSTALL/config/..."
+    mkdir -p "$DSH_INSTALL/config"
+    cp -rn config/* "$DSH_INSTALL/config/" 2>/dev/null || cp -r config/* "$DSH_INSTALL/config/"
+  fi
+  if [ -f "dsh.sh" ]; then
+    cp dsh.sh "$DSH_INSTALL/dsh.sh"
+    chmod +x "$DSH_INSTALL/dsh.sh"
+  fi
+  if [ -f "docker-compose.sandbox.yml" ]; then
+    cp docker-compose.sandbox.yml "$DSH_INSTALL/docker-compose.sandbox.yml"
+  fi
+  if [ -d "tests" ]; then
+    mkdir -p "$DSH_INSTALL/tests"
+    cp -r tests/* "$DSH_INSTALL/tests/"
+  fi
 fi
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
