@@ -28,7 +28,7 @@ services:
         max-file: "3"
 
   phoenix:
-    image: arizephoenix/phoenix:20.5.0
+    image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
     container_name: dsh-phoenix
     restart: unless-stopped
     ports:

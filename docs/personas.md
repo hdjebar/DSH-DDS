@@ -213,7 +213,7 @@ workflows:
   * `reasoning`: `openrouter/deepseek/deepseek-r1` (statistical modeling & anomaly correlation)
   * `audit`: `openrouter/anthropic/claude-3.5-sonnet` (executive KPI summaries)
   * `fast`: `gemini/gemini-3.7-flash` (rapid CSV parsing)
-* **MCP Tools**: `sqlite-db` (`@modelcontextprotocol/server-sqlite`), `fetch` (`@mzxrai/mcp-webresearch`)
+* **MCP Tools**: `sqlite-db` (`uvx mcp-server-sqlite@2025.4.25`), `fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
 * **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
 * **Workflows**: Table distribution summaries, database schema audits.
 

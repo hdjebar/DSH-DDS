@@ -1,5 +1,5 @@
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM smanx/deepseek-harness:latest AS builder
+FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:cab4bba47e6200c17fcd008d08f1ba39ad23c540991df98621ac2029332e9618 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -19,10 +19,16 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Minimal Production Runtime ───────────────────────────
-FROM smanx/deepseek-harness:latest AS runner
+FROM smanx/deepseek-harness:0.1.1-rc.2@sha256:cab4bba47e6200c17fcd008d08f1ba39ad23c540991df98621ac2029332e9618 AS runner
 
-# Retain pnpm for on-the-fly dynamic Web UI plugin installations
-RUN npm install -g pnpm && npm cache clean --force
+# Copy static Astral uv and uvx binaries for lightweight Python MCP execution
+COPY --from=ghcr.io/astral-sh/uv:0.6.5 /uv /uvx /bin/
+
+# Retain pnpm & python3 for on-the-fly dynamic Web UI plugin & MCP installations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g pnpm && npm cache clean --force
 
 # Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
 RUN node -e '\
