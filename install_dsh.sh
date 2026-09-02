@@ -255,14 +255,14 @@ if (fs.existsSync(file)) {\
   }\
 }' && node --check /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js
 
-# Patch entrypoint.sh to automatically synchronize models on container boot
+# Patch entrypoint.sh to seed prebuilt dependencies and synchronize models on container boot
 RUN node -e '\
 const fs = require("fs");\
 const file = "/app/entrypoint.sh";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
   if (!content.includes("sync_models.mjs")) {\
-    const syncHook = "# ── 2.8 Automated Multi-Provider Model Synchronization ──\\nif [ -f /root/.dsh/sync_models.mjs ]; then\\n  echo \"[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)...\"\\n  (node /root/.dsh/sync_models.mjs || true) &\\nfi\\n\\n";\
+    const syncHook = `# ── 2.7 Seed Pre-built Profile Dependencies ──\nif [ ! -d "/root/.dsh/profiles/web/node_modules" ] && [ -d "/app/prebuilt-profiles/web/node_modules" ]; then\n  echo "[dsh] Seeding pre-built web profile dependencies..."\n  mkdir -p /root/.dsh/profiles/web\n  cp -rn /app/prebuilt-profiles/web/node_modules /root/.dsh/profiles/web/ 2>/dev/null || true\nfi\n\n# ── 2.8 Automated Multi-Provider Model Synchronization ──\nif [ -f /root/.dsh/sync_models.mjs ]; then\n  echo "[dsh] Auto-synchronizing multi-provider models (OpenRouter & Google AI Studio)..."\n  (node /root/.dsh/sync_models.mjs || true) &\nfi\n\n`;\
     const anchor = "echo \"[proxy] 启动代理";\
     if (!content.includes(anchor)) {\
       content = syncHook + content;\
@@ -270,11 +270,12 @@ if (fs.existsSync(file)) {\
       content = content.replace(anchor, syncHook + anchor);\
     }\
     fs.writeFileSync(file, content, "utf8");\
-    console.log("✅ entrypoint model synchronization hook applied successfully.");\
+    console.log("✅ entrypoint startup hooks applied successfully.");\
   }\
-}'
+}' && bash -n /app/entrypoint.sh
 
-# Copy pre-compiled and pre-built plugins
+# Copy pre-compiled and pre-built plugins to both internal cache and default profile location
+COPY --from=builder /root/.dsh/profiles/web /app/prebuilt-profiles/web
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
 

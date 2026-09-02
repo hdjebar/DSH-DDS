@@ -1,6 +1,6 @@
 # 🧩 DSH Plugins & Model Context Protocol (MCP) Guide
 
-This repository comes pre-packaged with **9 essential, pure English DSH plugins** and **3 pre-configured MCP servers** baked into the container image.
+This repository comes pre-packaged with **10 essential, pure English DSH plugins** and **4 pre-configured MCP servers** baked directly into the container image.
 
 ---
 
