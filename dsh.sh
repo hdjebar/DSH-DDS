@@ -23,6 +23,7 @@ print_help() {
   echo "  logs [service]    View real-time logs (e.g. ./dsh.sh logs dsh)"
   echo "  doctor            Run ecosystem health check & diagnostics"
   echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
+  echo "  models            Inspect cached model catalog & sync timestamp"
   echo "  cli               Launch interactive terminal matrix"
   echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
   echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
@@ -61,12 +62,33 @@ case "$COMMAND" in
 
   doctor)
     echo "🩺 Running DeepSeek Harness Diagnostics..."
-    docker compose exec dsh node /root/.dsh/doctor.mjs
+    docker compose exec -T dsh node /root/.dsh/doctor.mjs
     ;;
 
   sync-models)
     echo "🔄 Running Dynamic Model Synchronizer..."
-    docker compose exec dsh node /root/.dsh/sync_models.mjs
+    docker compose exec -T dsh node /root/.dsh/sync_models.mjs
+    ;;
+
+  models)
+    echo "📊 DeepSeek Harness Cached Model Catalog:"
+    docker compose exec -T dsh node -e "
+      import fs from 'fs';
+      const file = '/root/.dsh/models.cache.json';
+      if (fs.existsSync(file)) {
+        try {
+          const c = JSON.parse(fs.readFileSync(file, 'utf8'));
+          console.log(\`  • Total Active Models: \${c.total || 0}\`);
+          console.log(\`  • OpenRouter Models:   \${c.providers?.openrouter?.total || 0}\`);
+          console.log(\`  • Google Gemini:       \${c.providers?.google?.total || 0}\`);
+          console.log(\`  • Last Synchronized:   \${c.lastSync || 'unknown'}\`);
+        } catch (e) {
+          console.error('❌ Failed to parse models.cache.json:', e.message);
+        }
+      } else {
+        console.log('  ℹ️ No cached model catalog found. Run: ./dsh.sh sync-models');
+      }
+    "
     ;;
 
   cli)
@@ -80,7 +102,7 @@ case "$COMMAND" in
       echo "❌ Error: Please provide a prompt. Example: ./dsh.sh run 'summarize files'"
       exit 1
     fi
-    docker compose exec dsh dsh --profile headless "$@"
+    docker compose exec -T dsh dsh --profile headless "$@"
     ;;
 
   reset)

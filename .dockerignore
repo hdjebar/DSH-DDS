@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+config/sessions/
+config/storages/
+config/phoenix/
+config/models.cache.json
+config/sync_status.json
+**/node_modules
+installtest/
+*.md
+docs/
+tests/

@@ -29,6 +29,8 @@ config/patch*.tmp.yaml
 config/*.tmp.yaml
 config/models.cache.json
 config/sync_status.json
+config/settings.yaml
+!config/settings.default.yaml
 
 # OS & Editor Files
 .DS_Store

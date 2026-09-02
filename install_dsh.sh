@@ -107,7 +107,10 @@ fetch_or_copy_file "config/doctor.mjs"
 fetch_or_copy_file "config/persona.mjs"
 fetch_or_copy_file "config/patch_translations.mjs"
 fetch_or_copy_file "config/patch-pi-ai.mjs"
-fetch_or_copy_file "config/settings.yaml"
+fetch_or_copy_file "config/settings.default.yaml"
+if [ ! -f "$DSH_INSTALL/config/settings.yaml" ] && [ -f "$DSH_INSTALL/config/settings.default.yaml" ]; then
+  cp "$DSH_INSTALL/config/settings.default.yaml" "$DSH_INSTALL/config/settings.yaml"
+fi
 fetch_or_copy_file "dsh.sh"
 fetch_or_copy_file "reset.sh"
 fetch_or_copy_file "docker-compose.sandbox.yml"
@@ -474,7 +477,8 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
     depends_on:
-      - phoenix
+      phoenix:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -489,6 +493,12 @@ services:
     command:
       - "-c"
       - "import os, sys; os.environ.pop('PHOENIX_SECRET', None) if not os.environ.get('PHOENIX_SECRET') else None; from phoenix.server.main import main; sys.argv = ['phoenix', 'serve']; main()"
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3.13", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317

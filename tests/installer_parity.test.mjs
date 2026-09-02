@@ -79,7 +79,7 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'config/persona.mjs',
     'config/patch_translations.mjs',
     'config/patch-pi-ai.mjs',
-    'config/settings.yaml',
+    'config/settings.default.yaml',
     'dsh.sh',
     'reset.sh',
     'docker-compose.sandbox.yml',

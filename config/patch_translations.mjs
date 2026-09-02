@@ -4,22 +4,7 @@ import path from 'path';
 const WEB_NODE_MODULES = '/root/.dsh/profiles/web/node_modules';
 
 const TRANSLATIONS = [
-  // 1. dsh-persona-memory
-  {
-    file: path.join(WEB_NODE_MODULES, 'dsh-persona-memory/client/client.js'),
-    replacements: [
-      { from: /'记忆管理'/g, to: "'Persona Memory'" },
-      { from: /"记忆管理"/g, to: '"Persona Memory"' }
-    ]
-  },
-  {
-    file: path.join(WEB_NODE_MODULES, 'dsh-persona-memory/dist/index.js'),
-    replacements: [
-      { from: /'记忆管理'/g, to: "'Persona Memory'" },
-      { from: /"记忆管理"/g, to: '"Persona Memory"' }
-    ]
-  },
-  // 2. dsh-mnemon
+  // 1. dsh-mnemon
   {
     file: path.join(WEB_NODE_MODULES, 'dsh-mnemon/lib/client.js'),
     replacements: [

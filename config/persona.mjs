@@ -247,12 +247,22 @@ function applyPersona(name, tier = 'default') {
   const meta = parsePersonaYaml(manifestPath);
   const targetModel = meta.models[safeTier] || meta.models.default;
 
-  if (targetModel && fs.existsSync(SETTINGS_FILE)) {
-    let settings = fs.readFileSync(SETTINGS_FILE, 'utf8');
-    settings = settings.replace(/agent-default-model:\s*\n\s*provider:\s*\w+\s*\n\s*model:\s*[\w\-\/\.:]+/m,
-      `agent-default-model:\n  provider: ${targetModel.provider}\n  model: ${targetModel.model}`);
-    fs.writeFileSync(SETTINGS_FILE, settings, 'utf8');
-    console.log(`✅ Applied default model: ${targetModel.provider}/${targetModel.model} (${safeTier} tier) for persona '${safeName}'`);
+  if (targetModel) {
+    let settings = '';
+    if (fs.existsSync(SETTINGS_FILE)) {
+      settings = fs.readFileSync(SETTINGS_FILE, 'utf8');
+    } else {
+      const defaultSettings = path.join(CONFIG_DIR, 'settings.default.yaml');
+      if (fs.existsSync(defaultSettings)) {
+        settings = fs.readFileSync(defaultSettings, 'utf8');
+      }
+    }
+    if (settings) {
+      settings = settings.replace(/agent-default-model:\s*\n\s*provider:\s*\w+\s*\n\s*model:\s*[\w\-\/\.:]+/m,
+        `agent-default-model:\n  provider: ${targetModel.provider}\n  model: ${targetModel.model}`);
+      fs.writeFileSync(SETTINGS_FILE, settings, 'utf8');
+      console.log(`✅ Applied default model: ${targetModel.provider}/${targetModel.model} (${safeTier} tier) for persona '${safeName}'`);
+    }
   }
 }
 

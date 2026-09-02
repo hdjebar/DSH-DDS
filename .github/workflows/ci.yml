@@ -80,6 +80,31 @@ jobs:
         run: |
           node --test tests/*.test.mjs
 
+      - name: Validate Markdown Internal Links
+        run: |
+          node -e '
+            import fs from "fs";
+            import path from "path";
+            const files = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md", ...fs.readdirSync("docs").filter(f => f.endsWith(".md")).map(f => path.join("docs", f))];
+            let errors = 0;
+            for (const file of files) {
+              const content = fs.readFileSync(file, "utf8");
+              const links = content.matchAll(/\[(?:[^\]]+)\]\(([^)]+)\)/g);
+              for (const [_, target] of links) {
+                if (target.startsWith("http://") || target.startsWith("https://") || target.startsWith("#") || target.startsWith("mailto:")) continue;
+                const cleanTarget = target.split("#")[0];
+                if (!cleanTarget) continue;
+                const resolved = path.resolve(path.dirname(file), cleanTarget);
+                if (!fs.existsSync(resolved)) {
+                  console.error(`❌ Broken link in ${file}: "${target}" -> "${resolved}" not found`);
+                  errors++;
+                }
+              }
+            }
+            if (errors > 0) process.exit(1);
+            console.log(`✅ All internal documentation links verified across ${files.length} markdown files.`);
+          '
+
       - name: Validate Docker Compose Configuration
         run: |
           cp .env.example .env
@@ -99,6 +124,15 @@ jobs:
       - name: Build Docker Image (No Cache)
         run: |
           docker build --no-cache -t dsh-local:latest .
+
+      - name: Scan Docker Image for Known Vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: dsh-local:latest
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+          ignore-unfixed: true
 
       - name: Offline MCP Executable & Playwright Chromium Smoke Test (--network none)
         run: |

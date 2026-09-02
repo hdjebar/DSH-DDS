@@ -42,6 +42,9 @@ prepare_standard_home() {
     "$DSH_HOME/patch" \
     "$RUNTIME_DIR"
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
+    cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml"
+  fi
 }
 
 if [ "${DSH_SANDBOX:-0}" = "1" ]; then
