@@ -31,5 +31,5 @@
         command: npx
         args:
           - '-y'
-          - '@modelcontextprotocol/server-github@0.6.2'
+          - '@modelcontextprotocol/server-github@2025.4.8'
 # --- end dsh-mcp-market managed ---

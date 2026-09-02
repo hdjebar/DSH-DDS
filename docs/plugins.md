@@ -48,18 +48,24 @@ This repository comes pre-packaged with **9 essential, pure English DSH plugins*
 
 ---
 
-## 🔌 Pre-Configured MCP Servers
+## 🔌 Pre-Configured Model Context Protocol (MCP) Servers
 
-The following MCP servers are configured in `config/profiles/web/cordis.patch.yml`:
+The following Model Context Protocol (MCP) servers are configured across `config/profiles/web/cordis.patch.yml` and specialized persona packages:
 
-### 1. `mcp-fetch` (`@mzxrai/mcp-webresearch`)
-* **Commands**: `fetch(url)`
-* **Description**: Extracts clean markdown and summaries from any public web page or documentation site.
+### 1. `mcp-fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
+* **Transport**: `stdio` (`npx -y @mzxrai/mcp-webresearch@0.1.7`)
+* **Capabilities**: `fetch(url)` — Extracts clean markdown and structured summaries from any public web page or technical documentation site.
 
-### 2. `mcp-context7` (`@upstash/context7-mcp`)
-* **Commands**: Real-time SDK and library documentation retrieval.
-* **Description**: Delivers up-to-date documentation for hundreds of developer libraries directly to the agent.
+### 2. `mcp-context7` (`@upstash/context7-mcp@1.0.14`)
+* **Transport**: `stdio` (`npx -y @upstash/context7-mcp@1.0.14`)
+* **Capabilities**: Up-to-date SDK and library documentation retrieval for developer frameworks.
 
-### 3. `mcp-github` (`@modelcontextprotocol/server-github`)
-* **Commands**: Full GitHub REST API operations (repositories, pull requests, issues, file updates).
-* **Authentication**: Powered by `GITHUB_PERSONAL_ACCESS_TOKEN` in `.env`.
+### 3. `mcp-github` (`@modelcontextprotocol/server-github@2025.4.8`)
+* **Transport**: `stdio` (`npx -y @modelcontextprotocol/server-github@2025.4.8`)
+* **Capabilities**: Full GitHub REST API operations (repositories, branches, pull requests, issues, file updates).
+* **Authentication**: Environment variable indirection via `${GITHUB_PERSONAL_ACCESS_TOKEN}`.
+* **Alternative**: Official GitHub Go server (`ghcr.io/github/github-mcp-server`).
+
+### 4. `sqlite-db` (`mcp-server-sqlite@2025.4.25`)
+* **Transport**: `stdio` (`uvx mcp-server-sqlite@2025.4.25 --db-path /workspaces/data.db`)
+* **Capabilities**: Relational SQL querying, schema inspection, and metric aggregations across tabular datasets.

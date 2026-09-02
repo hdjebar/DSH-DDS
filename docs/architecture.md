@@ -79,8 +79,8 @@ flowchart TD
 ## 🏗️ Core Layers
 
 ### 1. Dual-Container Runtime Layer
-* **`dsh-local`**: Minimal production Node.js 24 image based on `smanx/deepseek-harness:1.1.0`. Compiles native binaries (`node-pty`) via multi-stage `pnpm` and exposes proxy port `3080` bound strictly to `127.0.0.1`.
-* **`dsh-phoenix`**: Open-source Arize Phoenix instance (`arizephoenix/phoenix:8.17.0`) running uvicorn/Python on port `6006` bound strictly to `127.0.0.1` with embedded SQLite persistence.
+* **`dsh-local`**: Minimal production Node.js 24 image based on `smanx/deepseek-harness:latest`. Compiles native binaries (`node-pty`) via multi-stage `pnpm` and exposes proxy port `3080` bound strictly to `127.0.0.1`.
+* **`dsh-phoenix`**: Open-source Arize Phoenix instance (`arizephoenix/phoenix:20.5.0`) running uvicorn/Python on port `6006` bound strictly to `127.0.0.1` with embedded SQLite persistence.
 
 ### 2. Google Gemini Thought Signature Bridge
 * In modern Gemini 3.x / 2.x Flash models, Google AI Studio generates reasoning tokens that require a proprietary `extra_content.google.thought_signature` when returning tool results in multi-turn conversations.

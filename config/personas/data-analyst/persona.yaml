@@ -39,8 +39,8 @@ plugins:
 
 mcpServers:
   sqlite-db:
-    command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-sqlite@0.6.2", "--db-path", "/workspaces/data.db"]
+    command: "uvx"
+    args: ["mcp-server-sqlite@2025.4.25", "--db-path", "/workspaces/data.db"]
   fetch:
     command: "npx"
     args: ["-y", "@mzxrai/mcp-webresearch@0.1.7"]

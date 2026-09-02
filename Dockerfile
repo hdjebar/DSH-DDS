@@ -1,5 +1,5 @@
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM smanx/deepseek-harness:1.1.0 AS builder
+FROM smanx/deepseek-harness:latest AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -19,7 +19,7 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Minimal Production Runtime ───────────────────────────
-FROM smanx/deepseek-harness:1.1.0 AS runner
+FROM smanx/deepseek-harness:latest AS runner
 
 # Retain pnpm for on-the-fly dynamic Web UI plugin installations
 RUN npm install -g pnpm && npm cache clean --force
@@ -30,17 +30,18 @@ const fs = require("fs");\
 const file = "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js";\
 if (fs.existsSync(file)) {\
   let content = fs.readFileSync(file, "utf8");\
-  if (!content.includes("const googleExtraContentCache")) {\
+  if (!content.includes("googleExtraContentCache")) {\
     const anchor1 = "const name = toolCall.function?.name ?? toolCall.custom?.name;";\
-    const anchor2 = "return {\\n                        id: tc.id,";\
-    if (!content.includes(anchor1)) throw new Error("pi-ai patch assertion failed: anchor1 not found");\
-    content = "const googleExtraContentCache = new Map();\\n" + content;\
-    content = content.replace(anchor1, "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\\n                            " + anchor1);\
-    content = content.replace(anchor2, "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\\n                    return {\\n                        ...(extra ? { extra_content: extra } : {}),\\n                        id: tc.id,");\
+    const anchor2 = "return {\n                        id: tc.id,";\
+    if (!content.includes(anchor1)) throw new Error("pi-ai anchor1 missing");\
+    if (!content.includes(anchor2)) throw new Error("pi-ai anchor2 missing");\
+    content = "const googleExtraContentCache = new Map();\n" + content;\
+    content = content.replace(anchor1, "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\n                            " + anchor1);\
+    content = content.replace(anchor2, "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\n                    return {\n                        ...(extra ? { extra_content: extra } : {}),\n                        id: tc.id,");\
     fs.writeFileSync(file, content, "utf8");\
     console.log("✅ pi-ai thought signature bridge applied successfully.");\
   }\
-}'
+}' && node --check /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js
 
 # Patch entrypoint.sh to automatically synchronize models on container boot
 RUN node -e '\
