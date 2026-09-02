@@ -11,7 +11,7 @@
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
-        "@deepseek-ai/dsh-cli",
+        "@deepseek-ai/dsh-terminal",
         "@liustack/modsearch",
         "dsh-find-plugin",
         "dsh-mnemon",

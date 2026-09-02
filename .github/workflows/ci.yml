@@ -71,6 +71,7 @@ jobs:
           node --check config/doctor.mjs
           node --check config/sync_models.mjs
           node --check config/patch_translations.mjs
+          node --check config/patch-pi-ai.mjs
 
       - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |
