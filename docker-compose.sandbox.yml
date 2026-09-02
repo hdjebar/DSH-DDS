@@ -1,0 +1,29 @@
+# ── Hardened Sandbox Runtime Override for Untrusted Code Evaluation ──
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+#
+# Provides strict process containment, capability stripping, and read-only host mounts.
+
+services:
+  dsh:
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+          pids: 150
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      # Read-only workspace mounting to prevent host tampering
+      - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro

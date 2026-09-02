@@ -158,40 +158,66 @@ async function persistModelCache(openRouterModels, googleModels) {
   }
 }
 
+function updateSyncStatus(status, data = {}) {
+  const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
+  const containerStatusFile = '/root/.dsh/sync_status.json';
+  const targetPath = fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile;
+  const payload = {
+    status,
+    timestamp: new Date().toISOString(),
+    ...data
+  };
+  try {
+    fs.writeFileSync(targetPath, JSON.stringify(payload, null, 2), 'utf8');
+  } catch {}
+}
+
 async function main() {
   console.log('========================================================');
   console.log('🚀 Dynamic Boot-Time Model Synchronization');
   console.log('========================================================');
+  updateSyncStatus('running');
 
-  await waitForPhoenix();
-
-  const [openRouterModels, googleModels] = await Promise.all([
-    fetchOpenRouterModels(),
-    fetchGoogleModels()
-  ]);
-
-  if (openRouterModels.length > 0) {
-    await syncToPhoenix(openRouterModels);
-  }
-
-  await persistModelCache(openRouterModels, googleModels);
-
-  // Auto-patch plugin translations to English
   try {
-    const patchScript = path.resolve(process.cwd(), 'config/patch_translations.mjs');
-    const containerPatchScript = '/root/.dsh/patch_translations.mjs';
-    if (fs.existsSync(containerPatchScript)) {
-      await import(containerPatchScript);
-    } else if (fs.existsSync(patchScript)) {
-      await import(patchScript);
-    }
-  } catch {}
+    await waitForPhoenix();
 
-  console.log('========================================================');
-  console.log(`🎉 Sync Complete: ${openRouterModels.length} OpenRouter & ${googleModels.length} Google Gemini models active.`);
-  console.log('========================================================');
+    const [openRouterModels, googleModels] = await Promise.all([
+      fetchOpenRouterModels(),
+      fetchGoogleModels()
+    ]);
+
+    if (openRouterModels.length > 0) {
+      await syncToPhoenix(openRouterModels);
+    }
+
+    await persistModelCache(openRouterModels, googleModels);
+
+    // Auto-patch plugin translations to English
+    try {
+      const patchScript = path.resolve(process.cwd(), 'config/patch_translations.mjs');
+      const containerPatchScript = '/root/.dsh/patch_translations.mjs';
+      if (fs.existsSync(containerPatchScript)) {
+        await import(containerPatchScript);
+      } else if (fs.existsSync(patchScript)) {
+        await import(patchScript);
+      }
+    } catch {}
+
+    updateSyncStatus('success', {
+      openRouterCount: openRouterModels.length,
+      geminiCount: googleModels.length
+    });
+
+    console.log('========================================================');
+    console.log(`🎉 Sync Complete: ${openRouterModels.length} OpenRouter & ${googleModels.length} Google Gemini models active.`);
+    console.log('========================================================');
+  } catch (err) {
+    updateSyncStatus('failed', { error: err.message });
+    console.error('❌ Model sync failed:', err.message);
+  }
 }
 
 main().catch(err => {
-  console.error('Sync warning:', err.message);
+  updateSyncStatus('failed', { error: err.message });
+  console.error('Fatal error during dynamic model sync:', err);
 });

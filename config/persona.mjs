@@ -254,34 +254,41 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   const safeTier = validateSlug(tier, 'model tier');
 
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
-  const tempPatchFile = path.resolve(process.cwd(), 'config/patch.tmp.yaml');
+  const tempPatchName = `patch.${process.pid}.${Date.now()}.tmp.yaml`;
+  const tempPatchFile = path.resolve(process.cwd(), 'config', tempPatchName);
   let hasPatch = false;
 
-  if (fs.existsSync(manifestPath)) {
-    const meta = parsePersonaYaml(manifestPath);
-    const chosenModel = meta.models[safeTier] || meta.models.default;
-    if (chosenModel) {
-      console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
-      const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
-      fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
-      hasPatch = true;
+  try {
+    if (fs.existsSync(manifestPath)) {
+      const meta = parsePersonaYaml(manifestPath);
+      const chosenModel = meta.models[safeTier] || meta.models.default;
+      if (chosenModel) {
+        console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
+        const patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
+        fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
+        hasPatch = true;
+      }
     }
-  }
 
-  const fullPrompt = `Using the ${safeName} skill, ${prompt}`;
-  const dockerArgs = ['compose', 'exec', 'dsh', 'dsh', '--profile', safeProfile];
-  if (hasPatch) {
-    dockerArgs.push('--patch', '/root/.dsh/patch.tmp.yaml');
-  }
-  dockerArgs.push(fullPrompt);
+    const fullPrompt = `Using the ${safeName} skill, ${prompt}`;
+    const dockerArgs = ['compose', 'exec', 'dsh', 'dsh', '--profile', safeProfile];
+    if (hasPatch) {
+      dockerArgs.push('--patch', `/root/.dsh/${tempPatchName}`);
+    }
+    dockerArgs.push(fullPrompt);
 
-  const res = spawnSync('docker', dockerArgs, { stdio: 'inherit', shell: false });
-  if (res.error) {
-    console.error('❌ Execution failed:', res.error.message);
-    process.exit(1);
-  }
-  if (res.status !== 0) {
-    process.exit(res.status || 1);
+    const res = spawnSync('docker', dockerArgs, { stdio: 'inherit', shell: false });
+    if (res.error) {
+      console.error('❌ Execution failed:', res.error.message);
+      process.exit(1);
+    }
+    if (res.status !== 0) {
+      process.exit(res.status || 1);
+    }
+  } finally {
+    if (hasPatch && fs.existsSync(tempPatchFile)) {
+      try { fs.unlinkSync(tempPatchFile); } catch {}
+    }
   }
 }
 
@@ -307,6 +314,125 @@ function runWorkflow(name, workflowKey) {
   const tier = wf.modelTier || 'default';
   console.log(`🚀 Running workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
   runPersona(safeName, wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), ''), tier);
+}
+
+function showPersona(name) {
+  const safeName = validateSlug(name, 'persona name');
+  const pDir = path.join(PERSONAS_DIR, safeName);
+  if (!fs.existsSync(pDir)) {
+    console.error(`❌ Persona '${safeName}' not found.`);
+    process.exit(1);
+  }
+  console.log(`=== config/personas/${safeName}/persona.yaml ===`);
+  if (fs.existsSync(path.join(pDir, 'persona.yaml'))) console.log(fs.readFileSync(path.join(pDir, 'persona.yaml'), 'utf8'));
+  console.log(`\n=== config/personas/${safeName}/SKILL.md ===`);
+  if (fs.existsSync(path.join(pDir, 'SKILL.md'))) console.log(fs.readFileSync(path.join(pDir, 'SKILL.md'), 'utf8'));
+}
+
+export function parsePersonaArgs(argv) {
+  const command = argv[0] || 'list';
+  let tier = 'default';
+  let profile = 'headless';
+  let template = 'data-analyst';
+  let sessionId = null;
+  const positionalArgs = [];
+
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--tier' || arg === '-t' || arg === '--task-model') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      tier = argv[++i];
+    } else if (arg.startsWith('--tier=')) {
+      tier = arg.slice(7);
+      if (!tier) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg === '--profile' || arg === '-p') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      profile = argv[++i];
+    } else if (arg.startsWith('--profile=')) {
+      profile = arg.slice(10);
+      if (!profile) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg === '--template') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      template = argv[++i];
+    } else if (arg.startsWith('--template=')) {
+      template = arg.slice(11);
+      if (!template) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg === '--session') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      sessionId = argv[++i];
+    } else if (arg.startsWith('--session=')) {
+      sessionId = arg.slice(10);
+      if (!sessionId) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg.startsWith('-')) {
+      throw new Error(`Unknown option '${arg}'`);
+    } else {
+      positionalArgs.push(arg);
+    }
+  }
+
+  return { command, tier, profile, template, sessionId, positionalArgs };
+}
+
+// Direct CLI Execution
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename || '')) {
+  try {
+    const { command, tier, profile, template, sessionId, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
+
+    switch (command) {
+      case 'list':
+      case 'ls':
+        listPersonas();
+        break;
+
+      case 'create':
+      case 'new':
+        createPersona(positionalArgs[0], template);
+        break;
+
+      case 'sessions':
+      case 'history':
+        listSessions();
+        break;
+
+      case 'distill':
+      case 'record':
+        distillPersona(positionalArgs[0], { sessionId });
+        break;
+
+      case 'apply':
+      case 'activate':
+        applyPersona(positionalArgs[0], tier);
+        break;
+
+      case 'run':
+        runPersona(positionalArgs[0], positionalArgs.slice(1).join(' '), tier, profile);
+        break;
+
+      case 'workflow':
+      case 'wf':
+        runWorkflow(positionalArgs[0], positionalArgs[1]);
+        break;
+
+      case 'show':
+      case 'cat':
+        showPersona(positionalArgs[0]);
+        break;
+
+      default:
+        console.log('Usage: ./dsh.sh persona [list | sessions | create <name> [--template <tmpl>] | distill <name> [--session <id>] | apply <name> [--tier <tier>] | run <name> [--tier <tier>] [--profile <profile>] "<prompt>" | workflow <name> <wf>]');
+    }
+  } catch (err) {
+    console.error(`❌ Error: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 function listSessions() {
@@ -509,99 +635,4 @@ esac
   console.log('========================================================================');
 }
 
-function showPersona(name) {
-  const safeName = validateSlug(name, 'persona name');
-  const pDir = path.join(PERSONAS_DIR, safeName);
-  if (!fs.existsSync(pDir)) {
-    console.error(`❌ Persona '${safeName}' not found.`);
-    process.exit(1);
-  }
-  console.log(`=== config/personas/${safeName}/persona.yaml ===`);
-  if (fs.existsSync(path.join(pDir, 'persona.yaml'))) console.log(fs.readFileSync(path.join(pDir, 'persona.yaml'), 'utf8'));
-  console.log(`\n=== config/personas/${safeName}/SKILL.md ===`);
-  if (fs.existsSync(path.join(pDir, 'SKILL.md'))) console.log(fs.readFileSync(path.join(pDir, 'SKILL.md'), 'utf8'));
-}
 
-// Argument Parsing
-const rawArgs = process.argv.slice(2);
-const command = rawArgs[0] || 'list';
-
-let tier = 'default';
-let profile = 'headless';
-let template = 'data-analyst';
-let sessionId = null;
-const positionalArgs = [];
-
-for (let i = 1; i < rawArgs.length; i++) {
-  const arg = rawArgs[i];
-  if (arg === '--tier' || arg === '-t' || arg === '--task-model') {
-    tier = rawArgs[++i] || 'default';
-  } else if (arg.startsWith('--tier=')) {
-    tier = arg.split('=')[1] || 'default';
-  } else if (arg === '--profile' || arg === '-p') {
-    profile = rawArgs[++i] || 'headless';
-  } else if (arg.startsWith('--profile=')) {
-    profile = arg.split('=')[1] || 'headless';
-  } else if (arg === '--template') {
-    template = rawArgs[++i] || 'data-analyst';
-  } else if (arg.startsWith('--template=')) {
-    template = arg.split('=')[1] || 'data-analyst';
-  } else if (arg === '--session') {
-    sessionId = rawArgs[++i] || null;
-  } else if (arg.startsWith('--session=')) {
-    sessionId = arg.split('=')[1] || null;
-  } else {
-    positionalArgs.push(arg);
-  }
-}
-
-switch (command) {
-  case 'list':
-  case 'ls':
-    listPersonas();
-    break;
-
-  case 'create':
-  case 'new': {
-    const name = positionalArgs[0];
-    createPersona(name, template);
-    break;
-  }
-
-  case 'sessions':
-  case 'history':
-    listSessions();
-    break;
-
-  case 'distill':
-  case 'record': {
-    const name = positionalArgs[0];
-    distillPersona(name, { sessionId });
-    break;
-  }
-
-  case 'apply':
-  case 'activate':
-    applyPersona(positionalArgs[0], tier);
-    break;
-
-  case 'run': {
-    const name = positionalArgs[0];
-    const prompt = positionalArgs.slice(1).join(' ');
-    runPersona(name, prompt, tier, profile);
-    break;
-  }
-
-  case 'workflow':
-  case 'wf':
-    runWorkflow(positionalArgs[0], positionalArgs[1]);
-    break;
-
-  case 'show':
-  case 'cat':
-    showPersona(positionalArgs[0]);
-    break;
-
-  default:
-    console.log('Usage: ./dsh.sh persona [list | sessions | create <name> [--template <tmpl>] | distill <name> [--session <id>] | apply <name> [--tier <tier>] | run <name> [--tier <tier>] [--profile <profile>] "<prompt>" | workflow <name> <wf>]');
-}

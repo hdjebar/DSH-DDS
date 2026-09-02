@@ -159,8 +159,64 @@ async function checkGitHubToken() {
   }
 }
 
+async function checkMcpExecutables() {
+  console.log('\n🔍 [5/8] Model Context Protocol (MCP) Executables:');
+  const mcpBinaries = [
+    { name: 'mcp-server-webresearch', label: 'Web Research MCP (fetch)' },
+    { name: 'context7-mcp', label: 'Context7 Docs MCP (context7)' },
+    { name: 'github-mcp-server', label: 'GitHub MCP Server (github)' },
+    { name: 'mcp-server-sqlite', label: 'SQLite DB MCP (sqlite-db)' }
+  ];
+
+  for (const bin of mcpBinaries) {
+    const isAvailable = whichSync(bin.name);
+    if (isAvailable) {
+      pass(`MCP Binary: ${bin.name}`, `${bin.label} — resolved (${isAvailable})`);
+    } else {
+      warn(`MCP Binary: ${bin.name}`, `${bin.label} — not found in host/container PATH`);
+    }
+  }
+}
+
+function whichSync(cmd) {
+  const pathDirs = (process.env.PATH || '').split(':').concat(['/root/.local/bin', '/usr/local/bin']);
+  for (const dir of pathDirs) {
+    const candidate = path.join(dir, cmd);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function checkModelSyncStatus() {
+  console.log('\n🔍 [6/8] Automated Model Sync Health:');
+  const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
+  const containerStatusFile = '/root/.dsh/sync_status.json';
+  const target = fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile;
+
+  if (fs.existsSync(target)) {
+    try {
+      const syncData = JSON.parse(fs.readFileSync(target, 'utf8'));
+      if (syncData.status === 'success') {
+        pass('Background Model Sync', `Active & Healthy (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0} at ${syncData.timestamp})`);
+      } else if (syncData.status === 'running') {
+        pass('Background Model Sync', `Sync in progress (${syncData.timestamp})`);
+      } else {
+        warn('Background Model Sync', `Last sync failed: ${syncData.error || 'Unknown error'} (${syncData.timestamp})`);
+      }
+    } catch {
+      warn('Background Model Sync', 'Could not parse sync_status.json');
+    }
+  } else {
+    pass('Background Model Sync', 'Initialized (awaiting first background interval)');
+  }
+}
+
 async function checkPlugins() {
-  console.log('\n🔍 [6/7] Pre-Packaged DSH Plugins:');
+  console.log('\n🔍 [7/8] Pre-Packaged DSH Plugins:');
   const expectedPlugins = [
     '@liustack/modsearch',
     'dsh-find-plugin',
@@ -202,7 +258,7 @@ async function checkPlugins() {
 }
 
 async function checkStorage() {
-  console.log('\n🔍 [7/7] Storage & Volume Mounts:');
+  console.log('\n🔍 [8/8] Storage & Volume Mounts:');
   const dirs = [
     { path: '/root/.dsh', label: 'Config Directory (/root/.dsh)' },
     { path: '/workspaces', label: 'Workspaces Mount (/workspaces)' }
@@ -232,7 +288,8 @@ async function runDoctor() {
   await checkPhoenixTelemetry();
   await checkGoogleGemini();
   await checkOpenRouter();
-  await checkGitHubToken();
+  await checkMcpExecutables();
+  await checkModelSyncStatus();
   await checkPlugins();
   await checkStorage();
 

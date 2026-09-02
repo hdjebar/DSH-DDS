@@ -169,7 +169,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
 # Your patch layer for this dsh profile, applied after every bundle layer:
 # a top-level YAML array of loader patch entries (id-targeted config
 # overrides, disables, and insert lists; `!!js` expressions allowed).
-# --- dsh-mcp-market managed (auto-generated) ---
+# --- dsh-mcp-market managed (auto-generated; do not edit) ---
 - insert:
     - id: mcp-fetch
       name: '@deepseek-ai/dsh-mcp-client'
