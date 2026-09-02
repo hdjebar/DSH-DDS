@@ -1,4 +1,4 @@
-# 🚀 DeepSeek Harness (DSH) — Docker Deployment Stack
+# 🚀 DeepSeek Harness (DSH) — Multi-Provider Agent Operating Environment
 
 [![Docker](https://img.shields.io/badge/Docker-24.0+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![pnpm](https://img.shields.io/badge/pnpm-11+-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
@@ -6,15 +6,15 @@
 [![Arize Phoenix](https://img.shields.io/badge/Arize%20Phoenix-OTel%20Observability-purple)](https://github.com/Arize-ai/phoenix)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-An enterprise-grade, lightweight, and production-ready Docker deployment stack for **DeepSeek Harness (DSH)** paired with **Arize Phoenix** for local real-time OpenTelemetry observability. Built with a **pnpm multi-stage architecture**, native **Google Gemini Thought Signature Bridge**, dynamic **OpenRouter (420+ models)** auto-synchronization on every boot, and pre-packaged productivity plugins.
+An enterprise-grade, containerized autonomous agent runtime on **DeepSeek Harness (DSH)** paired with **Arize Phoenix** for local real-time OpenTelemetry observability and cost attribution. Built with a **pnpm multi-stage architecture**, native **Google Gemini Thought Signature Bridge**, dynamic **OpenRouter (420+ models)** auto-synchronization on every boot, and pre-packaged productivity plugins.
 
 ---
 
 ## 🌟 Key Architecture Highlights
 
-* **⚡ Multi-Stage Lightweight Docker Build**: Two-stage Docker build utilizing `pnpm` for native compilation (`node-pty`) while stripping all build toolchains in the runner stage ($< 1\text{ MB}$ writable layer).
+* **⚡ Multi-Stage Lightweight Docker Build**: Two-stage Docker build utilizing `pnpm` for native compilation (`node-pty`) while stripping all build toolchains in the runner stage (< 1 MB writable layer).
 * **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
-* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (419+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
+* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (420+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
 * **🧩 10 Pre-Packaged English Plugins & 4 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, SQLite relational database analysis, visual MCP marketplace, and persistent unified memory.
 
@@ -142,7 +142,7 @@ PHOENIX_API_KEY=your_optional_phoenix_key
 
 | Service | Local URL | Container Port | Purpose |
 | :--- | :--- | :--- | :--- |
-| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (proxy) $\rightarrow$ `3079` (engine) | Interactive AI Agent Workbench |
+| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (proxy) → `3079` (engine) | Interactive AI Agent Workbench |
 | **Arize Phoenix Telemetry** | **[http://localhost:6006](http://localhost:6006)** | `6006` | Real-time LLM Traces, Spans & Token Costs |
 
 ---
@@ -160,7 +160,7 @@ config/                          # Mounted directly to /root/.dsh in container
 ├── cordis.patch.yml             # LLM provider routing & plugin config overlay
 ├── settings.yaml                # Agent defaults, active model tier & UI preferences
 ├── sync_models.mjs              # Dynamic OpenRouter & Google model synchronizer
-├── doctor.mjs                   # Automated 8-suite diagnostic engine (./dsh.sh doctor)
+├── doctor.mjs                   # Automated 9-suite diagnostic engine (./dsh.sh doctor)
 ├── persona.mjs                  # Multi-Model Persona CLI & Session Distiller
 ├── MEMORY.md                    # Long-term agent memory across sessions (dsh-mnemon)
 ├── phoenix/                     # Persistent Arize Phoenix SQLite database (/root/.phoenix)
