@@ -68,26 +68,43 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 | :--- | :--- | :--- |
 | **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, and live URL fetching |
 | **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
-| **`github`** | `github-mcp-server` (`github/github-mcp-server:v1.11.0`) | Repositories, PRs, issues, commits, and code search |
 | **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, and tabular data analysis |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start: Installation Options
 
-### 1. Clone the Repository
+You can install and run DeepSeek Harness using either the **1-File Turnkey Installer** (no Git clone required) or by **Cloning the Repository**.
+
+### Option A: Turnkey 1-File Installer (Fresh Machine / Server)
+To set up a complete deployment on a new machine without cloning the git repository:
+
+```bash
+# 1. Download the standalone installer script
+curl -fsSL https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/install_dsh.sh -o install_dsh.sh
+chmod +x install_dsh.sh
+
+# 2. Run the installer (will prompt interactively for your API keys and build the stack)
+./install_dsh.sh
+```
+*The installer automatically provisions your `.env`, scaffolds the `config/` directory, compiles the multi-stage Docker image, installs all 10 plugins + 4 MCP servers, and starts the container stack.*
+
+---
+
+### Option B: Clone the Repository (Developers & Customizers)
+
+#### 1. Clone & Enter Directory
 ```bash
 git clone https://github.com/hdjebar/DSH-DDS.git
 cd DSH-DDS
 ```
 
-### 2. Configure Environment Variables
-Copy `.env.example` to `.env` and insert your credentials:
+#### 2. Configure Environment Variables
 ```bash
 cp .env.example .env
+nano .env
 ```
-
-Edit `.env`:
+Configure your credentials in `.env`:
 ```env
 DSH_PORT=3080
 GEMINI_API_KEY=your_google_ai_studio_api_key
@@ -96,48 +113,90 @@ GITHUB_PERSONAL_ACCESS_TOKEN=your_github_personal_access_token
 PHOENIX_API_KEY=your_optional_phoenix_key
 ```
 
-### 3. Deploy Stack
-
-#### Option A: Turnkey Script (Supports Separating Boot & Target Directories)
+#### 3. Launch the Stack
 ```bash
-# Optional: Specify target installation directory
-export DSH_INSTALL="$HOME/dsh"
-
-chmod +x install_dsh.sh
-./install_dsh.sh
+./dsh.sh up
+# Or: docker compose up -d --build
 ```
 
-#### Option B: Direct Docker Compose
+#### 4. Run System Diagnostics
 ```bash
-docker compose up -d --build
+./dsh.sh doctor
 ```
-
-### 4. Access Web Interfaces
-
-| Service | URL | Purpose |
-| :--- | :--- | :--- |
-| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | Interactive AI Agent Interface |
-| **Arize Phoenix Dashboard** | **[http://localhost:6006](http://localhost:6006)** | Real-Time Agent Traces & Telemetry |
 
 ---
 
-## 📂 Project Structure
+## 🌐 Web Interfaces & Endpoints
+
+| Service | Local URL | Container Port | Purpose |
+| :--- | :--- | :--- | :--- |
+| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (proxy) $\rightarrow$ `3079` (engine) | Interactive AI Agent Workbench |
+| **Arize Phoenix Telemetry** | **[http://localhost:6006](http://localhost:6006)** | `6006` | Real-time LLM Traces, Spans & Token Costs |
+
+---
+
+## 📁 Understanding the `config/` Directory & Persistent Storage
+
+In `docker-compose.yml`, the local `./config` folder on your host is bind-mounted to `/root/.dsh` inside the container.
+
+> [!NOTE]
+> **You do NOT need to create or configure the `config/` folder before installing.**
+> The installer or git repository automatically scaffolds everything. Once running, all your interactive work, chat sessions, learned agent memories, and custom personas are automatically saved into `./config` on your host machine so they **survive container rebuilds, updates, and restarts**.
 
 ```text
-├── .env.example           # Template for environment configuration
-├── .gitignore             # Git ignore rules for secrets and temporary database locks
-├── Dockerfile             # Multi-stage pnpm build & patched runtime container
-├── docker-compose.yml     # Container services, networks, and persistent volume mounts
-├── install_dsh.sh         # Turnkey bootstrap and deployment script
-├── README.md              # Project documentation
-├── config/
-│   ├── cordis.patch.yml   # LLM provider routing & plugin config overlay
-│   ├── settings.yaml      # Agent defaults and UI preferences
-│   ├── sync_models.mjs    # Dynamic OpenRouter & Google model synchronizer
-│   ├── phoenix/           # Persistent Arize Phoenix SQLite database & traces
-│   └── profiles/
-│       ├── web/           # Web profile package manifest, lockfiles & MCP config
-│       ├── cli/           # Interactive terminal profile
+config/                          # Mounted directly to /root/.dsh in container
+├── cordis.patch.yml             # LLM provider routing & plugin config overlay
+├── settings.yaml                # Agent defaults, active model tier & UI preferences
+├── sync_models.mjs              # Dynamic OpenRouter & Google model synchronizer
+├── doctor.mjs                   # Automated 8-suite diagnostic engine (./dsh.sh doctor)
+├── persona.mjs                  # Multi-Model Persona CLI & Session Distiller
+├── MEMORY.md                    # Long-term agent memory across sessions (dsh-mnemon)
+├── phoenix/                     # Persistent Arize Phoenix SQLite database (/root/.phoenix)
+├── sessions/                    # Historical chat transcripts & tool call logs (dsh-session-reader)
+├── personas/                    # Active custom persona packages (persona.yaml, SKILL.md)
+│   ├── sdmx-expert/             # Pre-configured SDMX 2.1 statistical data expert
+│   └── data-analyst/            # Pre-configured tabular & SQLite data analyst
+├── skills/                      # Active agent skill definitions loaded at runtime
+│   └── <name>/SKILL.md
+└── profiles/
+    ├── web/                     # Web profile package manifest (10 plugins + 4 MCP servers)
+    │   ├── package.json
+    │   └── cordis.patch.yml
+    ├── cli/                     # Interactive terminal profile
+    └── headless/                # One-shot autonomous CLI runner profile
+```
+
+---
+
+## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
+
+For evaluating untrusted scripts or running in air-gapped environments, launch the stack with the sandbox compose override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+```
+
+**Sandbox Protections:**
+* **Read-Only Workspaces (`/workspaces:ro`)**: Protects host files from unauthorized modification.
+* **Linux Capability Stripping (`cap_drop: [ALL]`)**: Drops all privileged container capabilities.
+* **No New Privileges (`no-new-privileges:true`)**: Prevents privilege escalation inside the container.
+* **Process & Resource Caps**: Limits container to 2 CPUs, 2GB RAM, and 150 PIDs.
+
+---
+
+## 🧪 Automated Regression & Supply-Chain Test Suite
+
+The repository includes a comprehensive regression and parity test suite built on Node.js test runner:
+
+```bash
+# Run all regression & installer parity tests
+node --test tests/*.test.mjs
+```
+
+**What the test suite covers:**
+1. **CLI Argument Parser**: Validates `--option=value`, short flags (`-t`, `-p`), mixed ordering, prompts with quotes/spaces, and rejects malformed/unknown options.
+2. **Installer Parity Assertion**: Enforces byte-for-byte equality between `install_dsh.sh` templates and canonical repo files (`Dockerfile`, `docker-compose.yml`, `package.json`, `cordis.patch.yml`).
+3. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint `bash -n`, and runs `--network none` offline MCP smoke tests on every push.           # Interactive terminal profile
 │       └── headless/      # One-shot autonomous CLI runner profile
 └── workspaces/            # Mounted directory for your code projects
 ```
