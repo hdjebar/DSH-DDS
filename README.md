@@ -16,7 +16,7 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 * **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
 * **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (419+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
-* **🧩 10 Pre-Packaged English Plugins & 3 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, visual MCP marketplace, and persistent unified memory.
+* **🧩 10 Pre-Packaged English Plugins & 4 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, SQLite relational database analysis, visual MCP marketplace, and persistent unified memory.
 
 ---
 
@@ -38,7 +38,7 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature (Stanford, Google, Anthropic), and industry framework comparisons.
 * 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 * ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
-* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 10 plugins and 3 MCP servers.
+* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Comprehensive guide to all 10 plugins and 4 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policy, and token isolation.
 * 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` CLI matrix.
 * 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — Step-by-step walkthrough: interactive chat, trace audit, and persona distillation.
@@ -68,6 +68,7 @@ For comprehensive deep dives, architectural guides, and troubleshooting:
 | :--- | :--- | :--- |
 | **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, and live URL fetching |
 | **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
+| **`github`** | `github-mcp-server` (`v1.11.0`) | GitHub repository operations, PRs, issue management, and tree inspection |
 | **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, and tabular data analysis |
 
 ---
