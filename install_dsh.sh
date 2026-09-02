@@ -42,9 +42,36 @@ elif [ -f ".env" ]; then
   cp .env "$DSH_INSTALL/.env"
   load_env_safely "$DSH_INSTALL/.env"
 else
-  echo "⚠️  No .env file found in current directory or target folder."
-  echo "👉 Please create a .env file with your GEMINI_API_KEY first."
-  exit 1
+  echo "⚙️  No .env file found. Setting up new configuration..."
+  if [ -t 0 ]; then
+    echo "🔑 Please enter your API keys (you can leave blank and populate later in .env):"
+    read -rp "  • Google Gemini API Key [GEMINI_API_KEY]: " input_gemini
+    read -rp "  • OpenRouter API Key [OPENROUTER_API_KEY]: " input_openrouter
+    read -rp "  • GitHub Personal Access Token [GITHUB_PERSONAL_ACCESS_TOKEN]: " input_github
+    read -rp "  • DSH Web Port [default 3080]: " input_port
+    
+    cat << EOF > "$DSH_INSTALL/.env"
+# DeepSeek Harness + Arize Phoenix Environment Configuration
+DSH_PORT=${input_port:-3080}
+GEMINI_API_KEY=${input_gemini:-}
+OPENROUTER_API_KEY=${input_openrouter:-}
+GITHUB_PERSONAL_ACCESS_TOKEN=${input_github:-}
+PHOENIX_API_KEY=
+EOF
+    echo "✅ Generated $DSH_INSTALL/.env"
+    load_env_safely "$DSH_INSTALL/.env"
+  else
+    cat << 'EOF' > "$DSH_INSTALL/.env"
+# DeepSeek Harness + Arize Phoenix Environment Configuration
+DSH_PORT=3080
+GEMINI_API_KEY=
+OPENROUTER_API_KEY=
+GITHUB_PERSONAL_ACCESS_TOKEN=
+PHOENIX_API_KEY=
+EOF
+    echo "📝 Generated starter $DSH_INSTALL/.env template. You can populate keys anytime in .env."
+    load_env_safely "$DSH_INSTALL/.env"
+  fi
 fi
 
 GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
