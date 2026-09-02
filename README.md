@@ -188,6 +188,9 @@ When using DSH to analyze external or unverified code repositories, start with t
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 ```
 
+> [!WARNING]
+> **Mandatory Plugin Security Audit**: Any plugin or MCP server added to the environment **must be thoroughly audited** to avoid severe security issues. Third-party plugins execute in-process with runtime privileges and have access to workspace data, container memory, and API credentials. Unvetted plugins can introduce supply chain attacks, arbitrary code execution, or credential exfiltration risks.
+
 **Sandbox Protections:**
 * **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/root/.dsh` tree on every start.
 * **Read-Only Workspaces (`/workspaces:ro`)**: Protects host files from unauthorized modification.

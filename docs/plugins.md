@@ -2,6 +2,9 @@
 
 This repository comes pre-packaged with **10 essential, pure English DSH plugins** and **4 pre-configured MCP servers** baked directly into the container image.
 
+> [!WARNING]
+> **Mandatory Security Audit for Additional Plugins**: Any new plugin or MCP server added to this stack **must be strictly audited** before installation. Plugins execute in-process with the Node.js runtime and have access to container memory, mounted workspaces, and environment API credentials. Never install unvetted or untrusted plugins without reviewing their source code and dependencies.
+
 ---
 
 ## 📦 Pre-Packaged DSH Plugins

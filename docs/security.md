@@ -110,11 +110,30 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 
 ---
 
+## ⚠️ Mandatory Plugin & Supply Chain Auditing Policy
+
+Plugins and MCP tool servers in DeepSeek Harness execute directly within the Node.js container runtime with full access to mounted workspaces, environment variables, and system tools.
+
+### Why Every Added Plugin Must Be Audited
+* **In-Process Runtime Execution**: DSH plugins load as dynamic Node.js/Cordis modules. An unvetted or malicious plugin executes with the same privileges as the agent itself.
+* **Credential Protection**: Although environment variables are protected from external network traffic, any in-process plugin can access `process.env` (including `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, and `GITHUB_PERSONAL_ACCESS_TOKEN`).
+* **Supply Chain Attack Vectors**: Third-party npm packages can introduce compromised lifecycle scripts (`preinstall`, `postinstall`), unvetted transitive dependencies, or covert data-exfiltration logic.
+
+### Pre-Installation Audit Checklist
+Before adding any community plugin to `config/profiles/web/package.json` or installing via `dshmarket`:
+1. **Source Code Inspection**: Review the plugin's source repository for obfuscated code, arbitrary `eval()`, or unexpected HTTP/WebSocket outbound connections.
+2. **Lifecycle Scripts Verification**: Ensure the package's `package.json` does not declare suspicious `preinstall`, `install`, or `postinstall` hooks.
+3. **Lockfile & Version Pinning**: Always pin strict versions in `package.json` and verify that dependencies resolve deterministically via `pnpm-lock.yaml`.
+4. **Static Sandbox Policy**: When evaluating untrusted external code, never install new or unverified plugins dynamically; keep the plugin set minimal, fixed, and fully vetted.
+
+---
+
 ## 📋 Security Best Practices Checklist
 
 - [x] Ensure `.env` is never committed to Git (verified in `.gitignore`).
 - [x] Keep `.env` permissions set to `0600` (`chmod 0600 .env`).
 - [x] Use fine-grained GitHub PATs scoped strictly to individual repositories.
 - [x] Enforce `docker-compose.sandbox.yml` when handling untrusted code or external inputs.
+- [x] Thoroughly audit all third-party plugins and MCP servers before adding them to the environment.
 - [x] Set spending caps on API provider accounts to prevent FinOps anomalies.
 - [x] Run `./dsh.sh doctor` to regularly audit credentials, permissions, and network bindings.
