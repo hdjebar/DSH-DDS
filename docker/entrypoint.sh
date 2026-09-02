@@ -31,6 +31,7 @@ prepare_sandbox_home() {
 
   # Fill missing image-owned profile files without replacing operator configuration.
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  patch_dsh_bash_local
 }
 
 prepare_standard_home() {
@@ -44,6 +45,22 @@ prepare_standard_home() {
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
   if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
     cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml"
+  fi
+  patch_dsh_bash_local
+}
+
+patch_dsh_bash_local() {
+  target="/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-bash-local/lib/index.js"
+  if [ -f "$target" ]; then
+    node -e '
+      const fs = require("fs");
+      const f = process.argv[1];
+      let c = fs.readFileSync(f, "utf8");
+      if (!c.includes("mkdirSync(spec.workdir")) {
+        c = c.replace("spawnSpec(spec, argv, stdoutMaxBytes, signal) {", "spawnSpec(spec, argv, stdoutMaxBytes, signal) {\n\t\tif (spec.workdir && !existsSync(spec.workdir)) { try { mkdirSync(spec.workdir, { recursive: true }); } catch {} }");
+        fs.writeFileSync(f, c, "utf8");
+      }
+    ' "$target" 2>/dev/null || true
   fi
 }
 
