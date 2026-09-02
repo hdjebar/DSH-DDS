@@ -19,7 +19,7 @@ services:
       - DSH_TELEMETRY_MODE=FULL
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-dsh_internal_phoenix_secret_32_bytes}
     depends_on:
       - phoenix
     logging:
@@ -37,7 +37,7 @@ services:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-dsh_internal_phoenix_secret_32_bytes}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
     volumes:
       - ./config/phoenix:/root/.phoenix
