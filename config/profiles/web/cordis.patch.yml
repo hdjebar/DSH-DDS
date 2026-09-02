@@ -27,4 +27,14 @@
         command: github-mcp-server
         args:
           - stdio
+- insert:
+    - id: mcp-sqlite-db
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: sqlite-db
+        transport: stdio
+        command: mcp-server-sqlite
+        args:
+          - --db-path
+          - /root/.dsh/storages/dsh-analysis.db
 # --- end dsh-mcp-market managed ---

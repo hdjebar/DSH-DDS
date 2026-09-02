@@ -14,7 +14,7 @@ An enterprise-grade, lightweight, and production-ready Docker deployment stack f
 
 * **⚡ Multi-Stage Lightweight Docker Build**: Two-stage Docker build utilizing `pnpm` for native compilation (`node-pty`) while stripping all build toolchains in the runner stage ($< 1\text{ MB}$ writable layer).
 * **🧠 Native Gemini Thought Signature Bridge**: Eliminates HTTP 400 errors when using Google AI Studio (`gemini-3.7-flash` / `gemini-3.6-flash`) by dynamically preserving and returning Google's reasoning `thought_signature` across multi-turn tool calling steps.
-* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter (419+ models) and Google AI Studio (29+ models) on container boot, syncing live pricing, context limits, and token specs into both DSH and Arize Phoenix.
+* **🔄 Automatic Dynamic Model Synchronization**: Automatically queries OpenRouter and Google AI Studio on container boot, persisting live pricing, context limits and token specs to a local model catalog (`config/models.cache.json`) and registering the OpenRouter provider in Arize Phoenix for trace attribution.
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated local OpenTelemetry collector and web dashboard visualizing agent trajectories, tool waterfalls, token consumption, and model latency without sending data to external clouds.
 * **🧩 10 Pre-Packaged English Plugins & 4 MCP Servers**: Pre-baked with Visual Workflow Canvas (`deepseek-flow`), Web Search, Plugin Market, Model Configurator, Context7 Docs, GitHub MCP operations, SQLite relational database analysis, visual MCP marketplace, and persistent unified memory.
 
@@ -153,7 +153,7 @@ config/                          # Mounted directly to /root/.dsh in container
 ├── cordis.patch.yml             # LLM provider routing & plugin config overlay
 ├── settings.yaml                # Agent defaults, active model tier & UI preferences
 ├── sync_models.mjs              # Dynamic OpenRouter & Google model synchronizer
-├── doctor.mjs                   # Automated 8-suite diagnostic engine (./dsh.sh doctor)
+├── doctor.mjs                   # Automated 9-suite diagnostic engine (./dsh.sh doctor)
 ├── persona.mjs                  # Multi-Model Persona CLI & Session Distiller
 ├── MEMORY.md                    # Long-term agent memory across sessions (dsh-mnemon)
 ├── phoenix/                     # Persistent Arize Phoenix SQLite database (/root/.phoenix)
@@ -176,6 +176,9 @@ config/                          # Mounted directly to /root/.dsh in container
 ## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
 
 For evaluating untrusted scripts or running in air-gapped environments, launch the stack with the sandbox compose override:
+
+> [!NOTE]
+> The sandbox override uses the `!override` YAML tag and therefore requires **Docker Compose v2.24 or newer** (`docker compose version`).
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
@@ -210,10 +213,8 @@ node --test tests/*.test.mjs
 **What the test suite covers:**
 1. **CLI Argument Parser**: Validates `--option=value`, short flags (`-t`, `-p`), mixed ordering, prompts with quotes/spaces, and rejects malformed/unknown options.
 2. **Installer Parity Assertion**: Enforces byte-for-byte equality between `install_dsh.sh` templates and canonical repo files (`Dockerfile`, `docker-compose.yml`, `package.json`, `cordis.patch.yml`).
-3. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint `bash -n`, and runs `--network none` offline MCP smoke tests on every push.           # Interactive terminal profile
-│       └── headless/      # One-shot autonomous CLI runner profile
-└── workspaces/            # Mounted directory for your code projects
-```
+3. **Provisioning Completeness**: Asserts that every persona, skill, template and profile file shipped in the repository is also provisioned by `install_dsh.sh`, so a turnkey install cannot silently drift from a git clone.
+4. **CI Pipeline**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates entrypoint syntax, audits dependencies, and runs `--network none` offline MCP smoke tests on every push.
 
 ---
 
@@ -314,6 +315,7 @@ docker compose exec dsh dsh --profile headless \
 - **Never commit `.env`**: Always verify that `.env` is listed in `.gitignore`.
 - **Fine-Grained GitHub Tokens**: When using the GitHub MCP server, restrict token scope to only the specific repositories needed.
 - **Set Usage Limits**: Configure billing hard caps in [Google AI Studio](https://aistudio.google.com/) and [OpenRouter](https://openrouter.ai/).
+- **Phoenix is unauthenticated by default**: the telemetry dashboard on port `6006` holds full prompt and trace history and is protected only by its `127.0.0.1` binding. Before exposing it beyond localhost, set `PHOENIX_ENABLE_AUTH=true` and a 32+ character `PHOENIX_SECRET` in `.env`.
 
 ---
 

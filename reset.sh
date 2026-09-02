@@ -6,11 +6,17 @@ set -euo pipefail
 
 FORCE=false
 HARD_RESET=false
+PURGE_SESSIONS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --hard|-H)
       HARD_RESET=true
+      PURGE_SESSIONS=true
+      shift
+      ;;
+    --sessions|-S)
+      PURGE_SESSIONS=true
       shift
       ;;
     --force|-f|-y)
@@ -21,8 +27,12 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: ./reset.sh [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  (default)     Soft reset: clears session histories, cache locks, and temp files"
-      echo "  --hard, -H    Hard reset: stops containers, wipes session/storage databases and rebuilds"
+      echo "  (default)     Soft reset: restarts the stack and clears temp patches and Phoenix WAL"
+      echo "                files only. Chat sessions and agent storage are PRESERVED."
+      echo "  --sessions,-S Also DELETE all chat transcripts (config/sessions) and agent"
+      echo "                storage (config/storages). This is not recoverable."
+      echo "  --hard, -H    Everything --sessions does, plus removes Docker volumes"
+      echo "                (docker compose down -v) before rebuilding."
       echo "  --force, -f   Bypass confirmation prompt"
       echo "  --help, -h    Show this help message"
       exit 0
@@ -39,9 +49,15 @@ echo "🧹 DeepSeek Harness Workspace Reset"
 echo "========================================================"
 
 if [ "$HARD_RESET" = true ]; then
-  echo "⚠️  Mode: HARD RESET (All sessions, database caches and volumes will be reset)"
+  echo "⚠️  Mode: HARD RESET"
+  echo "   Will DELETE: config/sessions/*, config/storages/*, and all Docker volumes."
+elif [ "$PURGE_SESSIONS" = true ]; then
+  echo "⚠️  Mode: SESSION PURGE"
+  echo "   Will DELETE: config/sessions/*, config/storages/*. Docker volumes are kept."
 else
-  echo "ℹ️  Mode: SOFT RESET (Clearing ephemeral session logs and caches)"
+  echo "ℹ️  Mode: SOFT RESET"
+  echo "   Will DELETE: temp patch files and Phoenix WAL/SHM files only."
+  echo "   Chat transcripts and agent storage are PRESERVED (use --sessions to clear them)."
 fi
 
 if [ "$FORCE" = false ]; then
@@ -57,8 +73,14 @@ echo "🛑 Stopping containers..."
 docker compose down || true
 
 # 2. Clear ephemeral caches
-echo "🧹 Clearing session data and temporary caches..."
-rm -rf config/sessions/* config/storages/* config/phoenix/*.db-wal config/phoenix/*.db-shm
+echo "🧹 Clearing temporary patch files and database journals..."
+rm -f config/patch.*.tmp.yaml config/*.tmp.yaml
+rm -f config/phoenix/*.db-wal config/phoenix/*.db-shm
+
+if [ "$PURGE_SESSIONS" = true ]; then
+  echo "🗑️  Deleting chat transcripts and agent storage..."
+  rm -rf config/sessions/* config/storages/*
+fi
 
 if [ "$HARD_RESET" = true ]; then
   echo "💥 Performing hard reset on containers and persistent storage..."

@@ -4,6 +4,10 @@ set -euo pipefail
 # 🚀 DSH Universal CLI Control Script
 # Provides intuitive commands for managing DeepSeek Harness, Phoenix, and agents.
 
+# Resolve the repository root so subcommands work from any working directory.
+DSH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DSH_ROOT"
+
 COMMAND="${1:-help}"
 
 case "$COMMAND" in
@@ -60,17 +64,17 @@ case "$COMMAND" in
 
   reset)
     shift || true
-    ./reset.sh "$@"
+    "$DSH_ROOT/reset.sh" "$@"
     ;;
 
   persona)
     shift || true
-    node config/persona.mjs "$@"
+    node "$DSH_ROOT/config/persona.mjs" "$@"
     ;;
 
   sessions|session)
     shift || true
-    node config/persona.mjs sessions "$@"
+    node "$DSH_ROOT/config/persona.mjs" sessions "$@"
     ;;
 
   status)
@@ -79,6 +83,10 @@ case "$COMMAND" in
     ;;
 
   help|--help|-h|*)
+    if [ "$COMMAND" != "help" ] && [ "$COMMAND" != "--help" ] && [ "$COMMAND" != "-h" ]; then
+      echo "❌ Unknown command '$COMMAND'." >&2
+      EXIT_CODE=1
+    fi
     echo "========================================================"
     echo "⚡ DeepSeek Harness (DSH) CLI Controller"
     echo "========================================================"
@@ -98,5 +106,6 @@ case "$COMMAND" in
     echo "  reset             Safely clear caches & restart stack"
     echo "  status            Show container health status"
     echo "========================================================"
+    exit "${EXIT_CODE:-0}"
     ;;
 esac

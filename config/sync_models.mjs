@@ -99,7 +99,10 @@ async function fetchGoogleModels() {
   }
 }
 
-async function syncToPhoenix(openRouterModels) {
+// Registers the OpenRouter provider in Phoenix so traces attribute to it. Phoenix
+// resolves the model catalog itself from the provider's base URL; the local catalog
+// is persisted separately by persistModelCache().
+async function syncToPhoenix() {
   console.log('🔄 Ensuring OpenRouter custom provider in Arize Phoenix...');
   const ensureProviderQuery = `
     mutation CreateProvider($input: CreateGenerativeModelCustomProviderMutationInput!) {
@@ -121,7 +124,9 @@ async function syncToPhoenix(openRouterModels) {
             provider: 'openrouter',
             clientConfig: {
               openai: {
-                openaiAuthenticationMethod: { apiKey: 'DSH_INDEPENDENT_GATEWAY' },
+                // Deliberate placeholder: the real OPENROUTER_API_KEY is never forwarded to
+              // Phoenix. DSH calls OpenRouter directly; Phoenix only records the traces.
+              openaiAuthenticationMethod: { apiKey: 'DSH_INDEPENDENT_GATEWAY' },
                 openaiClientKwargs: { baseUrl: 'https://openrouter.ai/api/v1' },
                 openaiApiType: 'CHAT_COMPLETIONS'
               }
@@ -228,7 +233,7 @@ async function main() {
     const googleModels = googleRes.models || [];
 
     if (openRouterModels.length > 0 && isPhoenixReady) {
-      const phoenixSyncRes = await syncToPhoenix(openRouterModels);
+      const phoenixSyncRes = await syncToPhoenix();
       if (!phoenixSyncRes.success && phoenixSyncRes.error) {
         errors.push(`Phoenix GraphQL: ${phoenixSyncRes.error}`);
       }

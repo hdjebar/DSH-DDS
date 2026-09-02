@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   security-and-static-analysis:
     name: Security Scans, Linting & Regression Tests
@@ -48,11 +55,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
 
       - name: Install Hermetic Node Dependencies
         run: npm ci
+
+      - name: Dependency Vulnerability Audit
+        run: npm audit --audit-level=high
 
       - name: Shell Syntax Validation
         run: |
@@ -64,6 +74,7 @@ jobs:
           node --check config/doctor.mjs
           node --check config/sync_models.mjs
           node --check config/patch_translations.mjs
+          node --check config/patch-pi-ai.mjs
 
       - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |

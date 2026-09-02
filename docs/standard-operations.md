@@ -18,7 +18,7 @@ This document provides a reference for everyday operations, CLI commands, headle
 | **`./dsh.sh persona [cmd]`** | Manages AI Personas (`list`, `create`, `distill`, `run`, `workflow`). |
 | **`./dsh.sh cli`** | Opens an interactive terminal session inside the container. |
 | **`./dsh.sh run "<prompt>"`** | Runs a one-shot autonomous task in headless mode. |
-| **`./dsh.sh reset`** | Clears session caches and restarts the stack cleanly. |
+| **`./dsh.sh reset`** | Clears temp patch files and DB journals, then restarts the stack. Transcripts are preserved; add `--sessions` to delete them or `--hard` to also drop Docker volumes. |
 | **`./dsh.sh status`** | Shows running container health status. |
 
 ---

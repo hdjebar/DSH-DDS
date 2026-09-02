@@ -116,6 +116,6 @@ To measure persona execution characteristics without external cloud dependencies
 
 A key innovation in this architecture is **Conversational Distillation** (`./dsh.sh persona distill <name>`), which converts interactive chat sessions into permanent persona packages. This introduces an explicit security model:
 
-1. **Secret Redaction**: The distiller automatically scans session transcripts and strips recognized credentials (`sk-...`, `ghp_...`, Bearer tokens) before writing manifests.
+1. **Secret Redaction**: The distiller automatically scans session transcripts and strips recognized credentials (`sk-...`, `AIza...`, `ghp_...`/`github_pat_...`, Bearer tokens) before writing manifests.
 2. **Human-in-the-Loop Review Gate**: Distillation creates a draft package in `config/personas/<name>/`. It is **never automatically executed or committed**; developers must review the resulting `git diff` to guard against indirect prompt injection from untrusted web pages retrieved during interactive sessions.
 3. **Environment Indirection**: MCP tool configurations reference credentials exclusively via `${ENV_VAR}` variables rather than embedded secrets.

@@ -35,7 +35,10 @@ services:
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+      # Phoenix gates its UI on PHOENIX_ENABLE_AUTH + PHOENIX_SECRET. Leave
+      # PHOENIX_SECRET empty for an unauthenticated, loopback-only dashboard.
+      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
     volumes:
       - ./config/phoenix:/root/.phoenix
     logging:

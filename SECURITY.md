@@ -36,7 +36,7 @@ All reports will be acknowledged within 48 hours, and patches will be deployed f
 ### 2. Credential & Token Protection
 * **Environment Indirection**: All Model Context Protocol (MCP) server definitions in `persona.yaml` or `cordis.patch.yml` must reference credentials via `${VAR_NAME}` syntax rather than literal values.
 * **Zero Hardcoded Secrets**: The repository strictly enforces that `.env` is ignored by `.gitignore`. The included `.env.example` provides non-functional structural placeholders.
-* **Automated Distillation Sanitization**: The `./dsh.sh persona distill` engine automatically scrubs API keys (`sk-...`, `ghp_...`, Bearer tokens) from transcripts before generating persistent persona manifests.
+* **Automated Distillation Sanitization**: The `./dsh.sh persona distill` engine automatically scrubs API keys (`sk-...`, `AIza...`, `ghp_...`/`github_pat_...`, Bearer tokens) from transcripts before generating persistent persona manifests.
 
 ### 3. Network & Proxy Architecture
 * **Localhost Binding**: Host port exposure is strictly restricted to `127.0.0.1:3080` (DSH Gateway) and `127.0.0.1:6006` (Arize Phoenix), preventing unauthorized access across local area networks.

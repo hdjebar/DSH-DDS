@@ -6,8 +6,8 @@ A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker
 1. **Domain Skill (`SKILL.md`)**: Operational guidelines, domain rules, code patterns, and structured output schemas.
 2. **Provider & Calibrated Models (`models`)**: A **Multi-Model Task-Routing Matrix** assigning optimal models per task type (e.g. Default, Deep Reasoning, Precision Coding/Audit, Fast Indexing, Multimodal).
 3. **Execution Context Profiles (`profiles`)**: Defined runtime execution environments (e.g. `web` for interactive visual canvas & widgets, `headless` for automated CI/CD batch runs, `cli` for terminal TUI, `sandbox` for isolated security).
-4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
-5. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
+4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch). Applied at run time — `persona run` and `persona workflow` inject these as loader `insert` entries alongside the selected model tier.
+5. **Declared Plugins (`plugins`)**: The DSH plugins a persona expects (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`). This list is **declarative documentation**, not an installer: plugin bundles are resolved per profile from `config/profiles/<profile>/package.json` at image build time. Add the plugin there if the persona needs it.
 6. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
 
 ---
@@ -301,15 +301,15 @@ models:                                # [Required] Dictionary of task-to-model 
 
 # 🔌 Scoped Model Context Protocol (MCP) Servers
 mcpServers:                            # [Optional] Dictionary of MCP tool definitions
-  <server-name>:
-    command: "npx|python|docker"       # Command binary
+  <server-name>:                       # Injected as loader id `mcp-<server-name>`
+    command: "npx|python|docker"       # Command binary (must be on PATH in the container)
     args: ["-y", "@scope/package"]     # Arguments
     env:                               # Environment variable indirection
       TOKEN: "${SECRET_ENV_VAR}"       # (Never hardcode secrets directly)
 
-# 🧩 Dedicated Plugins
-plugins:                               # [Optional] List of DSH plugins required
-  - "plugin-id-or-npm-name"
+# 🧩 Declared Plugins (documentation only — see note below)
+plugins:                               # [Optional] Plugins this persona expects to be present
+  - "plugin-id-or-npm-name"            # Install them via config/profiles/<profile>/package.json
 
 # 🤖 Executable Automation Recipes
 workflows:                             # [Optional] Dictionary of named execution recipes
@@ -348,7 +348,7 @@ flowchart LR
 ```
 
 1. **Automated Secret Scrubbing**:
-   * The distiller automatically sanitizes session transcripts, stripping strings matching API key patterns (`sk-...`, `ghp_...`, `Bearer ...`) and environment credentials before writing `persona.yaml` and `SKILL.md`.
+   * The distiller automatically sanitizes session transcripts, stripping strings matching API key patterns (`sk-...`, `AIza...`, `ghp_...`/`github_pat_...`, `Bearer ...`) and environment credentials before writing `persona.yaml` and `SKILL.md`.
 2. **Indirect Prompt Injection Protection**:
    * Content retrieved from external websites via `@mzxrai/mcp-webresearch` or public APIs could contain malicious prompt injection vectors. 
    * Distillation is **never automatically pushed to production**. It creates an uncommitted local package under `config/personas/<name>/` that requires explicit developer review (`git diff`) before being committed.
@@ -465,12 +465,12 @@ git commit -m "feat(persona): add sdmx-engineer distilled from ESTAT/LUSTAT inte
 | **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
 | **`./dsh.sh persona list`** | Lists all personas with their full **Task-to-Model Matrix**, execution profiles, and starter templates. |
 | **`./dsh.sh persona create <name> [--template <tmpl>]`** | Generates a new 6-layer persona package in `config/personas/<name>/`. |
-| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills an interactive web/CLI session into a permanent 6-layer persona package. |
+| **`./dsh.sh persona distill <name> [--session <id>] [--title <title>]`** | Distills an interactive web/CLI session into a permanent 6-layer persona package. |
 | **`./dsh.sh persona run <name> [--tier <tier>] [--profile <profile>] "<prompt>"`** | Executes persona in target profile with calibrated model tier. |
 | **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a declared automation workflow recipe. |
 | **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets persona default model and active skill as default in Web UI. |
 | **`./dsh.sh persona create <name> --template <template>`** | Scaffolds a complete persona package from a pre-built template. |
-| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
+| **`./dsh.sh persona distill <name> [--session <id>] [--title <title>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
 | **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets the persona's specified model tier as the active workspace default. |
 | **`./dsh.sh persona run <name> [--tier <tier>] "<prompt>"`** | Executes a one-shot task using the persona's designated model tier (e.g. `reasoning`, `coding`, `fast`). |
 | **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a pre-configured automation recipe using its calibrated model tier. |

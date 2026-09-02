@@ -14,6 +14,21 @@ const GITHUB_TOKEN = (process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GI
 const PHOENIX_URL = process.env.PHOENIX_URL || 'http://phoenix:6006';
 const PHOENIX_API_KEY = process.env.PHOENIX_API_KEY || '';
 
+// Provider error envelopes can echo request metadata, so bodies are redacted and
+// truncated before they are printed to the console.
+function safeErrorBody(text) {
+  if (!text || typeof text !== 'string') return '';
+  const redacted = text
+    .replace(/\bsk-[a-zA-Z0-9-_]{20,}\b/g, '[REDACTED]')
+    .replace(/\bAIza[a-zA-Z0-9_-]{30,}\b/g, '[REDACTED]')
+    .replace(/\bgithub_pat_[a-zA-Z0-9_]{20,}\b/g, '[REDACTED]')
+    .replace(/\bgh[pousr]_[a-zA-Z0-9]{30,}\b/g, '[REDACTED]')
+    .replace(/\bBearer\s+[a-zA-Z0-9._-]{20,}/gi, 'Bearer [REDACTED]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return redacted.length > 300 ? `${redacted.slice(0, 300)}…` : redacted;
+}
+
 function getPhoenixHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
   if (PHOENIX_API_KEY) {
@@ -43,7 +58,7 @@ function fail(title, detail = '') {
 }
 
 async function checkDshEngine() {
-  console.log('\n🔍 [1/7] DeepSeek Harness Engine:');
+  console.log('\n🔍 [1/9] DeepSeek Harness Engine:');
   try {
     const res = await fetch('http://127.0.0.1:3079/');
     if (res.ok) {
@@ -68,7 +83,7 @@ async function checkDshEngine() {
 }
 
 async function checkPhoenixTelemetry() {
-  console.log('\n🔍 [2/7] Arize Phoenix Telemetry & Observability:');
+  console.log('\n🔍 [2/9] Arize Phoenix Telemetry & Observability:');
   try {
     const res = await fetch(`${PHOENIX_URL}/v1/projects`, {
       headers: getPhoenixHeaders()
@@ -85,7 +100,7 @@ async function checkPhoenixTelemetry() {
 }
 
 async function checkGoogleGemini() {
-  console.log('\n🔍 [3/7] Google AI Studio & Thought Signature Bridge:');
+  console.log('\n🔍 [3/9] Google AI Studio & Thought Signature Bridge:');
   if (!GEMINI_API_KEY) {
     warn('GEMINI_API_KEY', 'Not set in environment (Google Gemini models disabled)');
     return;
@@ -108,7 +123,7 @@ async function checkGoogleGemini() {
     if (res.ok) {
       pass('Google AI Studio API', 'Authenticated successfully (gemini-3.7-flash live)');
     } else {
-      fail('Google AI Studio API', `HTTP ${res.status}: ${await res.text()}`);
+      fail('Google AI Studio API', `HTTP ${res.status}: ${safeErrorBody(await res.text())}`);
     }
   } catch (err) {
     fail('Google AI Studio API', `Connection failed (${err.message})`);
@@ -116,7 +131,7 @@ async function checkGoogleGemini() {
 }
 
 async function checkOpenRouter() {
-  console.log('\n🔍 [4/7] OpenRouter LLM Gateway:');
+  console.log('\n🔍 [4/9] OpenRouter LLM Gateway:');
   if (!OPENROUTER_API_KEY) {
     warn('OPENROUTER_API_KEY', 'Not set in environment (OpenRouter models disabled)');
     return;
@@ -130,7 +145,7 @@ async function checkOpenRouter() {
       const data = await res.json();
       pass('OpenRouter API', `Authenticated successfully (${data.data?.length || 0} models available)`);
     } else {
-      fail('OpenRouter API', `HTTP ${res.status}: ${await res.text()}`);
+      fail('OpenRouter API', `HTTP ${res.status}: ${safeErrorBody(await res.text())}`);
     }
   } catch (err) {
     fail('OpenRouter API', `Connection failed (${err.message})`);
@@ -138,7 +153,7 @@ async function checkOpenRouter() {
 }
 
 async function checkGitHubToken() {
-  console.log('\n🔍 [5/7] GitHub MCP Authentication:');
+  console.log('\n🔍 [5/9] GitHub MCP Authentication:');
   if (!GITHUB_TOKEN) {
     warn('GITHUB_PERSONAL_ACCESS_TOKEN', 'Not set in environment (GitHub MCP will be unauthenticated)');
     return;

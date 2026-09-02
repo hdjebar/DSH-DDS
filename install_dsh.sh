@@ -83,6 +83,8 @@ fi
 
 GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
 
+PROVISION_FAILURES=0
+
 fetch_or_copy_file() {
   local rel_path="$1"
   local dest="$DSH_INSTALL/$rel_path"
@@ -92,10 +94,14 @@ fetch_or_copy_file() {
   mkdir -p "$(dirname "$dest")"
   if [ -f "$rel_path" ]; then
     cp "$rel_path" "$dest"
-  else
-    echo "⬇️  Downloading $rel_path from repository..."
-    curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest" 2>/dev/null || true
+    return 0
   fi
+  if curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest"; then
+    return 0
+  fi
+  rm -f "$dest"
+  echo "⚠️  Could not provision $rel_path" >&2
+  PROVISION_FAILURES=$((PROVISION_FAILURES + 1))
 }
 
 # Provision essential runtime scripts, personas, templates, and CLI tools
@@ -104,36 +110,71 @@ fetch_or_copy_file "config/sync_models.mjs"
 fetch_or_copy_file "config/doctor.mjs"
 fetch_or_copy_file "config/persona.mjs"
 fetch_or_copy_file "config/patch_translations.mjs"
-fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
-fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
-fetch_or_copy_file "config/personas/sdmx-expert/workflow.sh"
-fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
-fetch_or_copy_file "config/personas/data-analyst/SKILL.md"
-fetch_or_copy_file "config/personas/data-analyst/workflow.sh"
-fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
-fetch_or_copy_file "config/templates/personas/base-template/SKILL.md"
-fetch_or_copy_file "config/templates/personas/base-template/workflow.sh"
-fetch_or_copy_file "config/templates/personas/data-analyst/persona.yaml"
-fetch_or_copy_file "config/templates/personas/data-analyst/SKILL.md"
-fetch_or_copy_file "config/templates/personas/data-analyst/workflow.sh"
-fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
-fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
+fetch_or_copy_file "config/patch-pi-ai.mjs"
+fetch_or_copy_file "config/settings.yaml"
 fetch_or_copy_file "dsh.sh"
+fetch_or_copy_file "reset.sh"
 fetch_or_copy_file "docker-compose.sandbox.yml"
 fetch_or_copy_file "docker/entrypoint.sh"
+fetch_or_copy_file "config/personas/data-analyst/SKILL.md"
+fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
+fetch_or_copy_file "config/personas/data-analyst/workflow.sh"
+fetch_or_copy_file "config/personas/devops-sre/SKILL.md"
+fetch_or_copy_file "config/personas/devops-sre/persona.yaml"
+fetch_or_copy_file "config/personas/devops-sre/workflow.sh"
+fetch_or_copy_file "config/personas/mlops-engineer/SKILL.md"
+fetch_or_copy_file "config/personas/mlops-engineer/persona.yaml"
+fetch_or_copy_file "config/personas/mlops-engineer/workflow.sh"
+fetch_or_copy_file "config/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/personas/persona-creator/persona.yaml"
+fetch_or_copy_file "config/personas/persona-creator/workflow.sh"
+fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
+fetch_or_copy_file "config/personas/sdmx-expert/workflow.sh"
+fetch_or_copy_file "config/personas/security-auditor/SKILL.md"
+fetch_or_copy_file "config/personas/security-auditor/persona.yaml"
+fetch_or_copy_file "config/personas/security-auditor/workflow.sh"
+fetch_or_copy_file "config/personas/stats-engineer/SKILL.md"
+fetch_or_copy_file "config/personas/stats-engineer/persona.yaml"
+fetch_or_copy_file "config/personas/stats-engineer/workflow.sh"
+fetch_or_copy_file "config/profiles/cli/cordis.yml"
+fetch_or_copy_file "config/profiles/cli/package.json"
+fetch_or_copy_file "config/profiles/cli/pnpm-lock.yaml"
+fetch_or_copy_file "config/profiles/headless/cordis.patch.yml"
+fetch_or_copy_file "config/profiles/headless/cordis.yml"
+fetch_or_copy_file "config/profiles/headless/package.json"
+fetch_or_copy_file "config/profiles/headless/pnpm-workspace.yaml"
+fetch_or_copy_file "config/profiles/web/cordis.yml"
+fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
+fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
+fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
+fetch_or_copy_file "config/skills/devops-sre/SKILL.md"
+fetch_or_copy_file "config/skills/mlops-engineer/SKILL.md"
+fetch_or_copy_file "config/skills/persona-creator/SKILL.md"
+fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/skills/security-auditor/SKILL.md"
+fetch_or_copy_file "config/skills/stats-engineer/SKILL.md"
+fetch_or_copy_file "config/templates/personas/base-template/SKILL.md"
+fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
+fetch_or_copy_file "config/templates/personas/base-template/workflow.sh"
+fetch_or_copy_file "config/templates/personas/data-analyst/SKILL.md"
+fetch_or_copy_file "config/templates/personas/data-analyst/persona.yaml"
+fetch_or_copy_file "config/templates/personas/data-analyst/workflow.sh"
+fetch_or_copy_file "config/templates/personas/devops-sre/SKILL.md"
+fetch_or_copy_file "config/templates/personas/devops-sre/persona.yaml"
+fetch_or_copy_file "config/templates/personas/devops-sre/workflow.sh"
+fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
+fetch_or_copy_file "config/templates/personas/persona-creator/workflow.sh"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/SKILL.md"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/persona.yaml"
+fetch_or_copy_file "config/templates/personas/sdmx-expert/workflow.sh"
+fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
+fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
+fetch_or_copy_file "config/templates/personas/security-auditor/workflow.sh"
 
-if [ -f "$DSH_INSTALL/dsh.sh" ]; then
-  chmod +x "$DSH_INSTALL/dsh.sh"
-fi
-if [ -f "$DSH_INSTALL/docker/entrypoint.sh" ]; then
-  chmod +x "$DSH_INSTALL/docker/entrypoint.sh"
-fi
-if [ -f "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh" ]; then
-  chmod +x "$DSH_INSTALL/config/personas/sdmx-expert/workflow.sh"
-fi
-if [ -f "$DSH_INSTALL/config/personas/data-analyst/workflow.sh" ]; then
-  chmod +x "$DSH_INSTALL/config/personas/data-analyst/workflow.sh"
-fi
+# Every provisioned shell script must stay executable.
+find "$DSH_INSTALL" -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
 cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
@@ -278,6 +319,16 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: github-mcp-server
         args:
           - stdio
+- insert:
+    - id: mcp-sqlite-db
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: sqlite-db
+        transport: stdio
+        command: mcp-server-sqlite
+        args:
+          - --db-path
+          - /root/.dsh/storages/dsh-analysis.db
 # --- end dsh-mcp-market managed ---
 EOF
 
@@ -429,7 +480,10 @@ services:
     environment:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+      # Phoenix gates its UI on PHOENIX_ENABLE_AUTH + PHOENIX_SECRET. Leave
+      # PHOENIX_SECRET empty for an unauthenticated, loopback-only dashboard.
+      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
+      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
     volumes:
       - ./config/phoenix:/root/.phoenix
     logging:
@@ -438,6 +492,13 @@ services:
         max-size: "10m"
         max-file: "3"
 EOF
+
+if [ "$PROVISION_FAILURES" -gt 0 ]; then
+  echo "=========================================================="
+  echo "❌ $PROVISION_FAILURES file(s) could not be provisioned (see warnings above)."
+  echo "   The installation is incomplete. Check network access to $GITHUB_RAW and re-run."
+  exit 1
+fi
 
 echo "=========================================================="
 echo "✅ Architecture built cleanly at: $DSH_INSTALL"
