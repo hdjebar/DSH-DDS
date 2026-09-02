@@ -30,9 +30,10 @@ COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa0
 # Pre-install pnpm, python3, and all MCP servers globally for zero-network runtime execution
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    && rm -rf /var/lib/apt/lists/* \
     && npm install -g pnpm @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
+    && /usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/.bin/playwright install-deps chromium \
+    && rm -rf /var/lib/apt/lists/* \
     && uv tool install mcp-server-sqlite@2025.4.25 \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
 

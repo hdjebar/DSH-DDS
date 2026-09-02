@@ -85,12 +85,23 @@ jobs:
         run: |
           docker build --no-cache -t dsh-local:latest .
 
-      - name: Offline MCP Executable Smoke Test (--network none)
+      - name: Offline MCP Executable & Playwright Chromium Smoke Test (--network none)
         run: |
           echo "Verifying all 4 standalone MCP binaries execute with ZERO network connectivity..."
           docker run --rm --network none --entrypoint github-mcp-server dsh-local:latest --version
           docker run --rm --network none --entrypoint mcp-server-sqlite dsh-local:latest --help
           docker run --rm --network none --entrypoint /bin/sh dsh-local:latest -c "which mcp-server-webresearch context7-mcp github-mcp-server mcp-server-sqlite"
+
+          echo "Verifying Playwright Chromium headless launch and close..."
+          docker run --rm --network none --entrypoint node dsh-local:latest -e "
+            const { chromium } = require('/usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/playwright');
+            (async () => {
+              const browser = await chromium.launch({ headless: true });
+              const page = await browser.newPage();
+              console.log('✅ Playwright Chromium launched and initialized cleanly offline!');
+              await browser.close();
+            })();
+          "
 
       - name: Entrypoint Script Syntax Assertion
         run: |
