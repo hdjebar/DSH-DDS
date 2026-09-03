@@ -205,6 +205,104 @@ test('Declarative Orchestrator: enforces read and write allowlists with director
   }
 });
 
+test('Declarative Orchestrator: detects and rejects symlink traversal escapes (F-02)', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-symlink-test-'));
+  const allowedDir = path.join(tmpRoot, 'allowed');
+  const outsideDir = path.join(tmpRoot, 'outside');
+  fs.mkdirSync(allowedDir, { recursive: true });
+  fs.mkdirSync(outsideDir, { recursive: true });
+
+  const pivotLink = path.join(allowedDir, 'pivot');
+  try {
+    fs.symlinkSync(outsideDir, pivotLink, 'dir');
+  } catch (err) {
+    // Skip if environment doesn't allow symlinks
+    return;
+  }
+
+  const meta = {
+    name: 'symlink-attacker',
+    rbac: {
+      role: 'restricted',
+      permissions: {
+        filesystem: {
+          read: [allowedDir],
+          write: [allowedDir],
+          deny: []
+        }
+      }
+    },
+    workflows: {
+      symlink_escape_wf: {
+        steps: [
+          {
+            name: 'Escape via Pivot Symlink',
+            action: 'write_report',
+            destination: path.join(pivotLink, 'escaped.json')
+          }
+        ]
+      }
+    }
+  };
+
+  try {
+    const engine = new DeclarativeWorkflowEngine(meta);
+    await assert.rejects(
+      async () => {
+        await engine.executeWorkflow('symlink_escape_wf');
+      },
+      /RBAC_SYMLINK_ESCAPE/
+    );
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Declarative Orchestrator: capability adapters perform real cryptographic hashing (F-04)', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-hash-test-'));
+  const sampleFile = path.join(tmpDir, 'evidence.txt');
+  fs.writeFileSync(sampleFile, 'Immutable Audit Evidence Payload', 'utf8');
+
+  const meta = {
+    name: 'forensic-investigator',
+    rbac: {
+      role: 'forensics',
+      permissions: {
+        filesystem: {
+          read: [tmpDir],
+          write: [tmpDir],
+          deny: []
+        }
+      }
+    },
+    workflows: {
+      investigation_wf: {
+        steps: [
+          {
+            name: 'Compute Evidence Hashes',
+            action: 'forensic_investigation',
+            scope: tmpDir
+          }
+        ]
+      }
+    }
+  };
+
+  try {
+    const engine = new DeclarativeWorkflowEngine(meta);
+    const result = await engine.executeWorkflow('investigation_wf');
+    assert.equal(result.status, 'COMPLETED');
+    assert.equal(result.executionLogs[0].status, 'SUCCESS');
+    const forensics = result.finalContext.forensics;
+    assert.ok(forensics);
+    assert.equal(forensics.files_hashed, 1);
+    assert.ok(forensics.hashes['evidence.txt']);
+    assert.equal(forensics.hashes['evidence.txt'].length, 64); // Valid SHA-256 hex string
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('Declarative Orchestrator: ACM approval gate suspends workflow and halts subsequent steps', async () => {
   const meta = {
     name: 'acm-agent',

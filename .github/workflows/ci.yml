@@ -40,7 +40,7 @@ jobs:
           echo "✅ No sensitive files tracked in git index."
 
       - name: ShellCheck Linting
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@2.0.0
         with:
           scandir: '.'
           ignore_paths: 'testinstall installtest'

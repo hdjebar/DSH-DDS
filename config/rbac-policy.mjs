@@ -120,6 +120,72 @@ export function resolvePath(candidatePath) {
 }
 
 /**
+/**
+ * Canonicalize path resolving realpath for nearest existing ancestor directory
+ * if the full target does not exist yet on disk.
+ */
+export function canonicalizeWithAncestorRealpath(targetPath) {
+  const resolved = resolvePath(targetPath);
+  if (fs.existsSync(resolved)) {
+    try {
+      return fs.realpathSync(resolved);
+    } catch {
+      return resolved;
+    }
+  }
+
+  let current = path.dirname(resolved);
+  const remaining = [path.basename(resolved)];
+
+  while (current && current !== path.dirname(current)) {
+    if (fs.existsSync(current)) {
+      try {
+        const canonicalAncestor = fs.realpathSync(current);
+        return path.join(canonicalAncestor, ...remaining);
+      } catch {
+        return resolved;
+      }
+    }
+    remaining.unshift(path.basename(current));
+    current = path.dirname(current);
+  }
+  return resolved;
+}
+
+/**
+ * Check whether any path component or intermediate ancestor traverses
+ * a symlink that resolves outside the allowRoot perimeter.
+ */
+export function checkSymlinkEscape(targetPath, allowRoot) {
+  const normTarget = resolvePath(targetPath);
+  const normRoot = resolvePath(allowRoot);
+  const canonicalRoot = canonicalizeWithAncestorRealpath(normRoot);
+
+  let current = normTarget;
+
+  while (current && current !== path.dirname(current)) {
+    if (current === normRoot || current === canonicalRoot) {
+      break;
+    }
+
+    if (fs.existsSync(current)) {
+      try {
+        const lstat = fs.lstatSync(current);
+        if (lstat.isSymbolicLink()) {
+          const real = fs.realpathSync(current);
+          if (!isContainedWithin(real, normRoot) && !isContainedWithin(real, canonicalRoot)) {
+            return true;
+          }
+        }
+      } catch {}
+    }
+
+    current = path.dirname(current);
+  }
+  return false;
+}
+
+/**
  * Checks if targetPath is strictly equal to allowRoot or is a child of allowRoot
  * using directory boundary checking (e.g. /tmp/allowed vs /tmp/allowed-evil).
  */
@@ -129,7 +195,18 @@ export function isContainedWithin(targetPath, allowRoot) {
 
   if (normTarget === normRoot) return true;
   const rootWithSep = normRoot.endsWith(path.sep) ? normRoot : normRoot + path.sep;
-  return normTarget.startsWith(rootWithSep);
+  if (normTarget.startsWith(rootWithSep)) return true;
+
+  // Check canonical ancestor realpaths for symlinked system roots (e.g. macOS /var -> /private/var)
+  try {
+    const realTarget = canonicalizeWithAncestorRealpath(normTarget);
+    const realRoot = canonicalizeWithAncestorRealpath(normRoot);
+    if (realTarget === realRoot) return true;
+    const realRootWithSep = realRoot.endsWith(path.sep) ? realRoot : realRoot + path.sep;
+    return realTarget.startsWith(realRootWithSep);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -149,10 +226,17 @@ export function enforceRbacPolicy(personaMeta, step) {
   const role = personaMeta.rbac.role || personaMeta.name;
 
   const rawAction = String(step.action || '').trim().replace(/^["']|["']$/g, '');
-  const targetsToCheck = [step.target, step.destination, step.scope]
+  const rawTargets = [step.target, step.destination, step.scope]
     .filter(Boolean)
-    .map(t => String(t).trim().replace(/^["']|["']$/g, ''))
-    .filter(t => t !== 'recursive' && t !== 'workspace'); // Filter non-filesystem logical flags
+    .map(t => String(t).trim().replace(/^["']|["']$/g, ''));
+
+  // F-07: Resolve logical scopes ('recursive', 'workspace') into concrete targets before policy evaluation
+  const targetsToCheck = rawTargets.map(t => {
+    if (t === 'recursive' || t === 'workspace') {
+      return step.concrete_target || process.env.DSH_WORKSPACE_ROOT || '/workspaces';
+    }
+    return t;
+  });
 
   const isWriteAction = [
     'write_report', 'apply_fix_or_patch', 'save_artifact',
@@ -166,11 +250,7 @@ export function enforceRbacPolicy(personaMeta, step) {
 
   for (const target of targetsToCheck) {
     let resolvedTarget = resolvePath(target);
-    if (fs.existsSync(resolvedTarget)) {
-      try {
-        resolvedTarget = fs.realpathSync(resolvedTarget);
-      } catch {}
-    }
+    const canonicalTarget = canonicalizeWithAncestorRealpath(resolvedTarget);
 
     // 1. Strict Deny Rules Check (Explicit Disallow Trumps All)
     const deniedPatterns = filesystem?.deny || [];
@@ -178,7 +258,13 @@ export function enforceRbacPolicy(personaMeta, step) {
       if (pattern.endsWith('*')) {
         const prefix = pattern.slice(0, -1);
         const normPrefix = path.resolve(prefix);
-        if (isContainedWithin(resolvedTarget, prefix) || isContainedWithin(resolvedTarget, normPrefix) || isContainedWithin(target, prefix) || target.startsWith(prefix)) {
+        if (
+          isContainedWithin(resolvedTarget, prefix) ||
+          isContainedWithin(canonicalTarget, prefix) ||
+          isContainedWithin(resolvedTarget, normPrefix) ||
+          isContainedWithin(target, prefix) ||
+          target.startsWith(prefix)
+        ) {
           return {
             allowed: false,
             role,
@@ -196,9 +282,14 @@ export function enforceRbacPolicy(personaMeta, step) {
           resolvedTarget === pattern ||
           resolvedTarget === normPattern ||
           resolvedTarget === realPattern ||
+          canonicalTarget === pattern ||
+          canonicalTarget === normPattern ||
+          canonicalTarget === realPattern ||
           target === pattern ||
           isContainedWithin(resolvedTarget, pattern) ||
+          isContainedWithin(canonicalTarget, pattern) ||
           isContainedWithin(resolvedTarget, realPattern) ||
+          isContainedWithin(canonicalTarget, realPattern) ||
           isContainedWithin(target, pattern)
         ) {
           return {
@@ -214,7 +305,22 @@ export function enforceRbacPolicy(personaMeta, step) {
     // 2. Strict Write Allowlist Check (Must be contained within filesystem.write)
     if (isWriteAction) {
       const allowedWrites = Array.isArray(filesystem?.write) ? filesystem.write : [];
-      const permitted = allowedWrites.some(allowedRoot => isContainedWithin(resolvedTarget, allowedRoot));
+
+      for (const allowedRoot of allowedWrites) {
+        if (isContainedWithin(resolvedTarget, allowedRoot) && checkSymlinkEscape(resolvedTarget, allowedRoot)) {
+          return {
+            allowed: false,
+            role,
+            violation: `Target '${target}' traverses symlink escaping allowed root '${allowedRoot}'`,
+            code: 'RBAC_SYMLINK_ESCAPE'
+          };
+        }
+      }
+
+      const permitted = allowedWrites.some(allowedRoot =>
+        isContainedWithin(resolvedTarget, allowedRoot) &&
+        isContainedWithin(canonicalTarget, allowedRoot)
+      );
       if (!permitted) {
         return {
           allowed: false,
@@ -228,7 +334,22 @@ export function enforceRbacPolicy(personaMeta, step) {
     // 3. Strict Read Allowlist Check (Must be contained within filesystem.read)
     if (isReadAction) {
       const allowedReads = Array.isArray(filesystem?.read) ? filesystem.read : [];
-      const permitted = allowedReads.some(allowedRoot => isContainedWithin(resolvedTarget, allowedRoot));
+
+      for (const allowedRoot of allowedReads) {
+        if (isContainedWithin(resolvedTarget, allowedRoot) && checkSymlinkEscape(resolvedTarget, allowedRoot)) {
+          return {
+            allowed: false,
+            role,
+            violation: `Target '${target}' traverses symlink escaping allowed root '${allowedRoot}'`,
+            code: 'RBAC_SYMLINK_ESCAPE'
+          };
+        }
+      }
+
+      const permitted = allowedReads.some(allowedRoot =>
+        isContainedWithin(resolvedTarget, allowedRoot) &&
+        isContainedWithin(canonicalTarget, allowedRoot)
+      );
       if (!permitted) {
         return {
           allowed: false,

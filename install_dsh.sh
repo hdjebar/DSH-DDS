@@ -92,6 +92,7 @@ fetch_or_copy_file() {
   mkdir -p "$(dirname "$dest")"
   if [ -f "$rel_path" ]; then
     cp "$rel_path" "$dest"
+  else
     echo "⬇️  Downloading $rel_path from repository..."
     if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest"; then
       echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
@@ -341,7 +342,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     g++ \
     build-essential \
-    && npm install -g pnpm \
+    && npm install -g pnpm@10.5.2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/.dsh/profiles/web

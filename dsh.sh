@@ -119,9 +119,16 @@ case "$COMMAND" in
     if [ "$1" = "workflow" ] || [ "$1" = "wf" ]; then
       if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
         docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
-      else
-        echo "⚠️ DSH container is offline. Executing workflow in local runtime mode..."
+      elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+        echo "⚠️ WARNING: Executing declarative workflow on host due to --force-host-unsafe."
+        echo "   Container Landlock, dropped capabilities, and volume isolation are bypassed!"
         node config/persona.mjs "$@"
+      else
+        echo "❌ Error: DSH container is offline. Declarative workflows must run inside"
+        echo "   the container sandbox to enforce kernel Landlock, dropped capabilities, and filesystem boundaries."
+        echo "   Start the container with: ./dsh.sh up"
+        echo "   Or override explicitly:   ./dsh.sh persona workflow $* --force-host-unsafe"
+        exit 1
       fi
     else
       node config/persona.mjs "$@"

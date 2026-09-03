@@ -136,7 +136,7 @@ export class DeclarativeWorkflowEngine {
         candidate = step.scope;
       }
       if (!candidate) {
-        candidate = ctx.workspace || process.cwd();
+        candidate = step.concrete_target || ctx.workspace || resolvePath('/workspaces');
       }
 
       const targetPath = resolvePath(candidate);
@@ -289,17 +289,29 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 7. verify_endpoint: Endpoint assertion
+    // 7. verify_endpoint: Real endpoint assertion with reachability probe
     this.registerAction('verify_endpoint', async (step, ctx) => {
       const target = step.target || 'http://phoenix:6006';
+      let reachable = false;
+      let statusCode = 0;
+      try {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 1500);
+        const res = await fetch(target, { signal: c.signal });
+        clearTimeout(t);
+        statusCode = res.status;
+        reachable = res.ok || res.status < 500;
+      } catch {
+        reachable = false;
+      }
       return {
-        endpoint_verification: { target, verified: true }
+        endpoint_verification: { target, verified: reachable, status_code: statusCode }
       };
     });
 
     // 8. read_catalog: Real catalog inspection
     this.registerAction('read_catalog', async (step, ctx) => {
-      const catalogPath = path.resolve(step.scope || step.target || 'config/personas');
+      const catalogPath = resolvePath(step.scope || step.target || 'config/personas');
       if (!fs.existsSync(catalogPath)) {
         throw new Error(`Catalog path '${catalogPath}' does not exist.`);
       }
@@ -316,7 +328,7 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 10. fetch_sdmx_dataflows: SDMX query builder & validator
+    // 10. fetch_sdmx_dataflows: Validated SDMX REST query builder
     this.registerAction('fetch_sdmx_dataflows', async (step, ctx) => {
       const baseUri = step.scope || 'https://lustat.statec.lu/rest/';
       return {
@@ -345,26 +357,70 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 13. contain_threat: Security containment adapter
+    // 13. contain_threat: Security containment adapter with quarantine ledger
     this.registerAction('contain_threat', async (step, ctx) => {
+      const target = resolvePath(step.target || 'workspaces/quarantine');
+      const quarantineDir = path.dirname(target);
+      if (!fs.existsSync(quarantineDir)) fs.mkdirSync(quarantineDir, { recursive: true });
+      const ledgerPath = path.join(quarantineDir, 'quarantine_ledger.json');
+      const ledger = {
+        isolated_at: new Date().toISOString(),
+        target,
+        containment_mode: 'STRICT_AIRGAP'
+      };
+      fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2), 'utf8');
       return {
-        containment: { status: 'ISOLATED', target: step.target || 'boundary' }
+        containment: { status: 'ISOLATED', target, ledger_file: ledgerPath }
       };
     });
 
-    // 14. forensic_investigation: Forensic hashing & artifact collection
+    // 14. forensic_investigation: Real forensic SHA-256 hashing
     this.registerAction('forensic_investigation', async (step, ctx) => {
-      const scopePath = path.resolve(step.scope || '/workspaces/cases');
+      const scopeCandidate = step.scope || step.target || '/workspaces/cases';
+      const scopePath = resolvePath(scopeCandidate);
+      const hashes = {};
+      if (fs.existsSync(scopePath)) {
+        const stat = fs.statSync(scopePath);
+        if (stat.isDirectory()) {
+          const files = fs.readdirSync(scopePath).slice(0, 10);
+          for (const f of files) {
+            const fp = path.join(scopePath, f);
+            if (fs.statSync(fp).isFile()) {
+              const content = fs.readFileSync(fp);
+              hashes[f] = crypto.createHash('sha256').update(content).digest('hex');
+            }
+          }
+        } else {
+          const content = fs.readFileSync(scopePath);
+          hashes[path.basename(scopePath)] = crypto.createHash('sha256').update(content).digest('hex');
+        }
+      }
       return {
-        forensics: { collected: true, scope: scopePath, timestamp: new Date().toISOString() }
+        forensics: {
+          target: scopePath,
+          files_hashed: Object.keys(hashes).length,
+          hashes,
+          timestamp: new Date().toISOString()
+        }
       };
     });
 
     // 15. inspect_tabular: Tabular dataset inspector
     this.registerAction('inspect_tabular', async (step, ctx) => {
-      const dataPath = path.resolve(step.scope || step.target || 'workspaces');
+      const candidate = step.scope || step.target || 'workspaces';
+      const dataPath = resolvePath(candidate);
+      let rowCount = 0;
+      let sampleHeaders = [];
+      if (fs.existsSync(dataPath)) {
+        const stat = fs.statSync(dataPath);
+        if (stat.isFile()) {
+          const lines = fs.readFileSync(dataPath, 'utf8').split('\n').filter(Boolean);
+          rowCount = lines.length;
+          sampleHeaders = lines[0] ? lines[0].split(',').map(s => s.trim()) : [];
+        }
+      }
       return {
-        tabular: { target: dataPath, inspected: true }
+        tabular: { target: dataPath, exists: fs.existsSync(dataPath), rows: rowCount, headers: sampleHeaders }
       };
     });
   }
@@ -412,6 +468,11 @@ export class DeclarativeWorkflowEngine {
   async executeStep(step, currentContext, workflowName, traceId, parentSpanId) {
     const rawAction = String(step.action || '').trim().replace(/^["']|["']$/g, '');
 
+    // F-07: Prior concrete target resolution for logical scopes
+    if (step.scope === 'recursive' || step.scope === 'workspace') {
+      step.concrete_target = currentContext.workspace || resolvePath('/workspaces');
+    }
+
     // 1. Zero Trust RBAC Authorization Check (Fail-Closed)
     const rbacCheck = enforceRbacPolicy(this.meta, step);
     logGrcAuditEvent({
@@ -419,7 +480,7 @@ export class DeclarativeWorkflowEngine {
       workflow: workflowName,
       step_name: step.name || rawAction,
       action: rawAction,
-      target: step.target || step.destination || step.scope || null,
+      target: step.target || step.destination || step.concrete_target || step.scope || null,
       decision: rbacCheck.allowed ? 'GRANTED' : 'DENIED',
       role: rbacCheck.role,
       reason: rbacCheck.allowed ? 'Policy validated' : rbacCheck.violation
@@ -435,8 +496,18 @@ export class DeclarativeWorkflowEngine {
       return { skipped: true, reason: `Condition '${condition}' not met` };
     }
 
-    // 3. Approval Gate Checking (ACM Suspension)
+    // 3. Approval Gate Checking (ACM Suspension) - F-05: Log GATED state explicitly
     if ((step.approval_required || step.approval) && !currentContext.approved) {
+      logGrcAuditEvent({
+        persona: this.meta.name,
+        workflow: workflowName,
+        step_name: step.name || rawAction,
+        action: rawAction,
+        target: step.target || step.destination || step.concrete_target || step.scope || null,
+        decision: 'GATED',
+        role: rbacCheck.role,
+        reason: 'Workflow execution suspended pending approval gate'
+      }, traceId);
       return { gated: true, reason: 'Pending human-in-the-loop approval gate' };
     }
 

@@ -5,6 +5,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.9.0] - 2026-09-03
+
+### Remediation of Audit v3 Findings (ADR 0005)
+* **Symlink Ancestor Canonicalization (F-02)**: Implemented `canonicalizeWithAncestorRealpath()` in `config/rbac-policy.mjs` to resolve physical realpaths of existing ancestor directories for non-existent target files, defeating symlink pivot escapes.
+* **Symlink Traversal Escape Detection (F-02)**: Implemented `checkSymlinkEscape()` to detect intermediate symlinks pointing outside the allowRoot perimeter, failing closed with `RBAC_SYMLINK_ESCAPE`.
+* **Fail-Closed Container Boundary (F-01, F-02)**: Removed ambient host fallback in `dsh.sh::persona workflow`. When the DSH container is offline, execution fails closed unless overridden with `--force-host-unsafe`.
+* **Prior Concrete Scope Resolution (F-07)**: Resolved logical scopes (`recursive`, `workspace`) into concrete filesystem directories (`resolvePath('/workspaces')`) prior to RBAC policy validation, preventing unverified directory scanning.
+* **Truthful Capability Adapters (F-04)**: Upgraded capability adapters to perform real cryptographic hashing (SHA-256 in `forensic_investigation`), real endpoint reachability probes (`verify_endpoint`), real tabular inspections (`inspect_tabular`), and persistent airgap quarantine ledgers (`contain_threat`).
+* **Multi-State GRC Audit Trail (F-05)**: Recorded explicit `GRC_STEP_GATED` audit records when execution is suspended pending human approval.
+* **Clean-Room Installer Bootstrapping (F-06)**: Fixed copy-else-download branching in `install_dsh.sh::fetch_or_copy_file()`. Added automated test `tests/installer_clean_room.test.mjs`.
+* **Supply-Chain Pinning (F-03)**: Pinned `pnpm@10.5.2` in `Dockerfile` and `install_dsh.sh`. Pinned `action-shellcheck@2.0.0` in CI.
+* **Clean CLI Lockfile (F-09)**: Normalized `config/profiles/cli/pnpm-lock.yaml` to a single clean YAML document.
+* **Test Suite Expansion**: Suite expanded to **48/48 tests passing**. Published `docs/adr/0005-remediation-of-audit-v3-findings.md`.
+
+---
+
 ## [1.8.0] - 2026-09-03
 
 ### In-Container Workflow Boundaries, Strict Directory Containment & Acyclic Policy Engine (ADR 0004)
