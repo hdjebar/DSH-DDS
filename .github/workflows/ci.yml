@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+  ACTIONS_RUNNER_FORCE_NODE24: 'true'
+
 jobs:
   security-and-static-analysis:
     name: Security Scans, Linting & Regression Tests
