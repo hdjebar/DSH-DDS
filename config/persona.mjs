@@ -54,18 +54,16 @@ function getRuntimeDir() {
 const RUNTIME_DIR = getRuntimeDir();
 const SESSIONS_DIR = process.env.DSH_SESSIONS_DIR || path.join(RUNTIME_DIR, 'sessions');
 
-function validateSlug(input, fieldName = 'name') {
+export function validateSlug(input, fieldName = 'name') {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
-    console.error(`❌ Error: Invalid ${fieldName} '${input}'. Must be alphanumeric with hyphens or underscores only.`);
-    process.exit(1);
+    throw new Error(`Invalid ${fieldName} '${input}'. Must be alphanumeric with hyphens or underscores only.`);
   }
   return input;
 }
 
-function validateSessionId(input) {
+export function validateSessionId(input) {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(input) || input.includes('..')) {
-    console.error(`❌ Error: Invalid session ID '${input}'. Must be alphanumeric with hyphens, underscores, or dots without directory traversal.`);
-    process.exit(1);
+    throw new Error(`Invalid session ID '${input}'. Must be alphanumeric with hyphens, underscores, or dots without directory traversal.`);
   }
   return input;
 }
