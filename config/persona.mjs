@@ -131,6 +131,75 @@ export function enforceRbacPolicy(personaMeta, step) {
   return { allowed: true, role, reason: 'RBAC policy validated' };
 }
 
+export function getGrcAuditLogPath() {
+  if (process.env.DSH_AUDIT_LOG_FILE) return process.env.DSH_AUDIT_LOG_FILE;
+  if (fs.existsSync('/var/log/dsh')) return '/var/log/dsh/audit_grc.jsonl';
+  return path.join(RUNTIME_DIR, 'audit', 'audit_grc.jsonl');
+}
+
+export async function emitGrcSpanToPhoenix(event) {
+  const phoenixUrl = process.env.PHOENIX_URL || 'http://phoenix:6006';
+  const apiKey = process.env.PHOENIX_API_KEY || '';
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    headers['api_key'] = apiKey;
+  }
+
+  const nowMs = Date.now();
+  const spanPayload = {
+    resourceSpans: [
+      {
+        resource: {
+          attributes: [
+            { key: 'service.name', value: { stringValue: 'dsh-grc-firewall' } },
+            { key: 'persona', value: { stringValue: event.persona || 'unknown' } },
+            { key: 'role', value: { stringValue: event.role || 'default' } }
+          ]
+        },
+        scopeSpans: [
+          {
+            scope: { name: 'grc.authorization.policy' },
+            spans: [
+              {
+                traceId: nowMs.toString(16).padStart(32, '0'),
+                spanId: Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(16, '0'),
+                name: `grc.policy.${(event.decision || 'unknown').toLowerCase()}`,
+                kind: 1,
+                startTimeUnixNano: (nowMs * 1000000).toString(),
+                endTimeUnixNano: ((nowMs + 1) * 1000000).toString(),
+                attributes: [
+                  { key: 'grc.decision', value: { stringValue: String(event.decision || '') } },
+                  { key: 'grc.action', value: { stringValue: String(event.action || 'unknown') } },
+                  { key: 'grc.target', value: { stringValue: String(event.target || '') } },
+                  { key: 'grc.reason', value: { stringValue: String(event.reason || '') } }
+                ],
+                status: {
+                  code: event.decision === 'GRANTED' ? 1 : 2
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    await fetch(`${phoenixUrl}/v1/traces`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(spanPayload),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+  } catch {
+    // Non-blocking out-of-band telemetry
+  }
+}
+
 export function logGrcAuditEvent(event) {
   const auditEntry = {
     timestamp: new Date().toISOString(),
@@ -138,14 +207,21 @@ export function logGrcAuditEvent(event) {
     ...event
   };
 
+  const primaryFile = getGrcAuditLogPath();
+
   try {
-    const auditFile = path.join(SESSIONS_DIR, 'audit_grc.jsonl');
-    const dir = path.dirname(auditFile);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.appendFileSync(auditFile, JSON.stringify(auditEntry) + '\n', 'utf8');
+    const dir = path.dirname(primaryFile);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    fs.appendFileSync(primaryFile, JSON.stringify(auditEntry) + '\n', { encoding: 'utf8', mode: 0o600 });
   } catch {
-    // Non-blocking fallback
+    try {
+      const fallbackFile = path.join(SESSIONS_DIR, 'audit_grc.jsonl');
+      fs.appendFileSync(fallbackFile, JSON.stringify(auditEntry) + '\n', 'utf8');
+    } catch {}
   }
+
+  // Non-blocking asynchronous OTel trace dispatch
+  emitGrcSpanToPhoenix(auditEntry).catch(() => {});
 
   return auditEntry;
 }

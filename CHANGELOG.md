@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6.0] - 2026-09-03
+
+### Out-of-Band GRC Telemetry & Deterministic E2E Sandbox (ADR 0002)
+* **Out-of-Band Non-Repudiable GRC Audit Sink**: Decoupled audit logs from the mutable session filesystem (`/root/.dsh/sessions/`). Audit logs are now directed to privileged `/var/log/dsh/audit_grc.jsonl` (mode `0600`) with directory isolation (`0750`).
+* **Asynchronous OpenTelemetry Span Dispatch to Arize Phoenix**: Every authorization check emits an asynchronous out-of-band OTel `ResourceSpans` payload directly to Phoenix (`/v1/traces`), guaranteeing non-repudiation and real-time security policy violation tracing.
+* **Deterministic E2E Sandbox Integration Harness**: Added `tests/e2e_sandbox_confinement.test.mjs` verifying failure-closed mechanics on injected adversarial steps (`reset.sh`, `install_dsh.sh`, `/etc/shadow`, out-of-scope MCP servers) and checking kernel container boundaries. Test suite expanded to **36/36 tests passing**.
+* **Architecture Decision Records**: Published `docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md`.
+
+---
+
 ## [1.5.0] - 2026-09-03
 
 ### Governance, Risk & Compliance (GRC) & Zero Trust Architecture

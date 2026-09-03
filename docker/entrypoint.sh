@@ -31,6 +31,7 @@ prepare_sandbox_home() {
 
   # Fill missing image-owned profile files without replacing operator configuration.
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  mkdir -p /var/log/dsh && chmod 0750 /var/log/dsh 2>/dev/null || true
 }
 
 prepare_standard_home() {
@@ -40,7 +41,9 @@ prepare_standard_home() {
     "$DSH_HOME/storages" \
     "$DSH_HOME/sessions" \
     "$DSH_HOME/patch" \
-    "$RUNTIME_DIR"
+    "$RUNTIME_DIR" \
+    /var/log/dsh
+  chmod 0750 /var/log/dsh 2>/dev/null || true
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
   if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
     cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml"

@@ -21,6 +21,7 @@ node_modules/
 config/sessions/
 config/storages/
 config/phoenix/
+config/audit/
 config/prompt-library/
 config/profiles/web/.dsh-market/
 config/profiles/.dsh-market/

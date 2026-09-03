@@ -67,7 +67,8 @@ RUN node /usr/local/bin/patch-bash-local.mjs \
 # Preserve the upstream launcher and install the repository-owned bootstrap wrapper.
 RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
     /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \
-    /opt/dsh-config /var/lib/dsh-state \
+    /opt/dsh-config /var/lib/dsh-state /var/log/dsh \
+    && chmod 0750 /var/log/dsh \
     && mv /app/entrypoint.sh /app/entrypoint.upstream.sh \
     && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh
