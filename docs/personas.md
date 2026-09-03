@@ -1,6 +1,7 @@
 # 🎭 AI Agent Personas & Multi-Model Task Routing
 
 > 🔬 **Academic & Industry Research**: For theoretical foundations, literature analysis (Stanford, Google, Anthropic), and comparative framework benchmarks, see the **[AI Personas Research Note](research-notes-ai-personas.md)**.
+> 🏛️ **AI Harness Engineering Whitepaper**: For the overarching SOTA AI Harness specification enclosing persona execution (Kernel Sandbox, Declarative Orchestrator, Zero Trust RBAC, MCP Virtualization, and GRC), see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
 
 A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker configured across **6 specialized layers**:
 1. **Domain Skill (`SKILL.md`)**: Operational guidelines, domain rules, code patterns, and structured output schemas.

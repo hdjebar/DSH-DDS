@@ -1,5 +1,7 @@
 # 🏛️ DeepSeek Harness & Phoenix System Architecture
 
+> 🏛️ **Comprehensive State-of-the-Art Whitepaper**: For theoretical foundations, NIST/OWASP compliance mapping, and the 5-Pillar SOTA AI Harness engineering specification, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
+
 ```mermaid
 flowchart TD
     subgraph Host ["💻 Host Environment (macOS / Linux / Windows)"]

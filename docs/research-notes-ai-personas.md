@@ -1,5 +1,7 @@
 # 🔬 Research Note: Theoretical Foundations & Architecture of AI Agent Personas
 
+> 🏛️ **Related SOTA Research**: For the holistic engineering specification of the 5-Pillar SOTA AI Harness enclosing these personas (Kernel Boundaries, Declarative Orchestration, Zero Trust RBAC, Protocol Bridges, and GRC Observability), see the **[State of the Art: AI Harness Architecture](ai-harness-architecture-sota.md)**.
+
 This research note formalizes the concept of **AI Agent Personas** in modern agentic systems, synthesizing academic literature (Stanford, Google Research, Anthropic) and industry frameworks (CrewAI, Microsoft AutoGen, LangGraph, MetaGPT) to establish the design rationale for the **6-Layer Persona Architecture** implemented in this repository.
 
 ---

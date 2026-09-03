@@ -1,5 +1,7 @@
 # 🔒 Security Architecture & Security Audit
 
+> 🏛️ **SOTA Specification**: For the 5-Pillar theoretical model, NIST AI RMF, and OWASP Top 10 for LLMs compliance mapping, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
+
 DeepSeek Harness within this Docker stack is designed with multi-layered defensive security controls to protect host files, sensitive credentials, and telemetry traces.
 
 This document serves as both the **Security Architecture Guide** and the **Security Audit Reference**, tracking threat models, known risks, and hardening guidelines.

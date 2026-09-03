@@ -227,6 +227,7 @@ Comprehensive guides organized by audience and operational goal:
 * 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 
 ### 🏛️ Architecture & Security Reference
+* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — **Comprehensive Whitepaper**: The 5 architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, and comparative benchmarks.
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 10 plugins and 4 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, Zero Trust persona RBAC, and network isolation.
@@ -237,6 +238,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📜 **[ADR 0005: Remediation of Audit v3 Findings](docs/adr/0005-remediation-of-audit-v3-findings.md)** — Architecture Decision Record on symlink ancestor canonicalization, truthful capability adapters, clean-room installer parity, and multi-state GRC auditing.
 
 ### 🔬 Theory & Research
+* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.
 
 ---
