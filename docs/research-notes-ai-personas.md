@@ -25,7 +25,7 @@ Extensive research documents three primary structural failure modes of monolithi
 
 In modular agentic architectures, an **AI Persona** is defined as an encapsulated, portable software package:
 
-$$\text{Persona} = \langle \text{Role Identity} + \text{Domain Rules} + \text{Multi-Model Routing} + \text{Bounded MCP Toolset} + \text{Execution Profiles} + \text{Memory Vault} \rangle$$
+$$\text{Persona} = \langle \text{Role Identity} + \text{Domain Rules} + \text{Multi-Model Routing} + \text{Bounded MCP Toolset} + \text{Execution Profiles} + \text{Zero Trust RBAC} + \text{Declarative Workflows} \rangle$$
 
 ```mermaid
 flowchart TD
@@ -41,7 +41,7 @@ flowchart TD
         P3["3. 🌐 Execution Profiles — web canvas / headless CI / cli"]
         P4["4. 🔌 Scoped MCP Tools — Bounded Model Context Protocol servers"]
         P5["5. 🧩 UI Plugins — deepseek-flow / dsh-mnemon"]
-        P6["6. 🛡️ Declarative Workflows — 100% Declarative step pipelines (workflows)"]
+        P6["6. 🛡️ Declarative Workflows & Zero Trust RBAC — Safe pipelines with PoLP & GRC"]
     end
 
     Monolithic_Pattern -.->|Architectural Transition| Persona_Pattern
@@ -76,8 +76,10 @@ Different multi-agent frameworks operationalize agent roles through distinct eng
 | **Model Assignment** | Per-agent LLM parameter | Per-agent LLM configuration | Global configuration | **Multi-Model Task Matrix** (Default, Reasoning, Coding, Fast) |
 | **Tool Integration Model** | Python LangChain/Crew tools | Python functions / toolkits | Action classes | **Model Context Protocol (MCP)** via JSON-RPC / stdio |
 | **Execution Contexts** | In-process Python runtime | In-process / Docker sandbox | Local CLI process | **Execution Profile Matrix** (`web`, `headless`, `cli`, `sandbox`) |
+| **Security & Access Control (RBAC)** | Application prompt instructions | Python code constraints / Docker | Process-level sandbox | **In-Container Landlock LSM + Declarative Zero Trust RBAC + Symlink Pivot Rejection ([ADRs 0001–0005](adr/0005-remediation-of-audit-v3-findings.md))** |
+| **GRC & Audit Traceability** | Ephemeral console logs | Console logs | Output files | **Immutable Non-Repudiable Ledger (`audit_grc.jsonl`) + 128-bit OTel Correlation** |
 | **Observability Standard** | OpenTelemetry / AgentOps | OpenTelemetry / Console | Console / Logging | **100% Local Arize Phoenix OTel** (`http://localhost:6006`) |
-| **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Workflows |
+| **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Orchestrator |
 
 ---
 
@@ -119,3 +121,30 @@ A key innovation in this architecture is **Conversational Distillation** (`./dsh
 1. **Secret Redaction**: The distiller automatically scans session transcripts and strips recognized credentials (`sk-...`, `ghp_...`, Bearer tokens) before writing manifests.
 2. **Human-in-the-Loop Review Gate**: Distillation creates a draft package in `config/personas/<name>/`. It is **never automatically executed or committed**; developers must review the resulting `git diff` to guard against indirect prompt injection from untrusted web pages retrieved during interactive sessions.
 3. **Environment Indirection**: MCP tool configurations reference credentials exclusively via `${ENV_VAR}` variables rather than embedded secrets.
+
+---
+
+## 🛡️ 8. Zero Trust Agent Safety & GRC Compliance Foundations (ADRs 0001–0005)
+
+Modern agentic engineering must address risks of autonomous prompt injection, unauthorized privilege escalation, and unintended tool weaponization (OWASP Top 10 for LLMs: **LLM02 - Sensitive Information Disclosure** and **LLM08 - Excessive Agency**; NIST AI Risk Management Framework **NIST AI RMF 1.0**).
+
+DeepSeek Harness implements a multi-tier defense-in-depth model that replaces reliance on LLM self-policing with deterministic runtime kernel and filesystem enforcement:
+
+### A. Principle of Least Privilege (PoLP) via Immutable RBAC Contracts
+* Monolithic agents grant ambient file and network access to every prompt. 
+* DSH-DDS mandates an authoritative `rbac:` contract inside every `persona.yaml` defining disjoint read, write, deny, and tool allowlists. 
+* Any action targeting paths outside the allowlist or within the deny list (e.g. `/etc`, `/root/.ssh`, `config/personas/*`, administrative scripts) is terminated deterministically prior to execution (`RBAC_PATH_DENIED`).
+
+### B. Symlink Ancestor Canonicalization & Pivot Rejection
+* Attackers can exploit relative or intermediate symbolic links (`allowed/pivot/escaped.json`) to escape allowlisted directories.
+* The policy engine (`config/rbac-policy.mjs`) evaluates `canonicalizeWithAncestorRealpath()` and walks intermediate path segments (`checkSymlinkEscape()`), failing closed with `RBAC_SYMLINK_ESCAPE` if any segment points outside the container boundary.
+
+### C. Container Confinement & Ambient Privilege Elimination
+* Triggering persona workflows via `./dsh.sh persona workflow` dispatches directly into the running container via `docker compose exec`.
+* Steps run with dropped Linux capabilities (`cap_drop: [ALL]`), read-only root filesystems, and Landlock LSM sandbox limits. 
+* If the container is offline, execution strictly fails closed, preventing accidental leakage into the invoking host user's environment.
+
+### D. Non-Repudiable GRC Audit Trails & OTel Trace Correlation
+* Enterprise governance requires verifiable traceability for autonomous decisions.
+* Every authorization check, adaptive case management gate (`GATED`), and workflow completion is appended to `/root/.dsh/sessions/audit_grc.jsonl`.
+* Audit records embed 128-bit trace and span correlation IDs, enabling cryptographic auditing and forensic reconstruction within Arize Phoenix.
