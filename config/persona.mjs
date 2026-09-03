@@ -12,7 +12,28 @@ import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'node:url';
 import { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer } from './declarative-orchestrator.mjs';
-export { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer };
+import {
+  parseYaml,
+  parsePersonaYaml,
+  validateSlug,
+  enforceRbacPolicy,
+  logGrcAuditEvent,
+  getGrcAuditLogPath,
+  isContainedWithin
+} from './rbac-policy.mjs';
+
+export {
+  DeclarativeWorkflowEngine,
+  runAgentWorkflow,
+  AgentPhoenixTracer,
+  parseYaml,
+  parsePersonaYaml,
+  validateSlug,
+  enforceRbacPolicy,
+  logGrcAuditEvent,
+  getGrcAuditLogPath,
+  isContainedWithin
+};
 
 const require = createRequire(import.meta.url);
 
@@ -56,12 +77,6 @@ function getRuntimeDir() {
 const RUNTIME_DIR = getRuntimeDir();
 const SESSIONS_DIR = process.env.DSH_SESSIONS_DIR || path.join(RUNTIME_DIR, 'sessions');
 
-export function validateSlug(input, fieldName = 'name') {
-  if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(input)) {
-    throw new Error(`Invalid ${fieldName} '${input}'. Must be alphanumeric with hyphens or underscores only.`);
-  }
-  return input;
-}
 
 export function validateSessionId(input) {
   if (!input || typeof input !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(input) || input.includes('..')) {
@@ -81,179 +96,6 @@ export function scrubSecrets(text) {
     .replace(/(api[_-]?key\s*[:=]\s*["']?)[a-zA-Z0-9_-]{16,}(["']?)/gi, '$1[REDACTED_KEY]$2');
 }
 
-export function enforceRbacPolicy(personaMeta, step) {
-  if (!personaMeta || !personaMeta.rbac || !personaMeta.rbac.permissions) {
-    return {
-      allowed: false,
-      role: 'unassigned',
-      violation: `Missing mandatory Zero Trust RBAC contract for persona '${personaMeta?.name || 'unknown'}'`,
-      code: 'RBAC_MANIFEST_MISSING'
-    };
-  }
-
-  const { filesystem, mcp } = personaMeta.rbac.permissions;
-  const role = personaMeta.rbac.role || personaMeta.name;
-
-  // Check filesystem deny rules with path canonicalization
-  const deniedPatterns = filesystem?.deny || [];
-  const targetsToCheck = [step.target, step.destination, step.scope].filter(Boolean);
-
-  for (const target of targetsToCheck) {
-    const rawTarget = String(target);
-    const resolvedTarget = path.resolve(rawTarget);
-
-    for (const pattern of deniedPatterns) {
-      const resPattern = path.resolve(pattern);
-      if (pattern.endsWith('*')) {
-        const prefix = pattern.slice(0, -1);
-        if (resolvedTarget.startsWith(prefix) || resolvedTarget.includes(prefix) || rawTarget.startsWith(prefix) || rawTarget.includes(prefix)) {
-          return {
-            allowed: false,
-            role,
-            violation: `Target '${rawTarget}' matches denied pattern '${pattern}'`,
-            code: 'RBAC_DENY_VIOLATION'
-          };
-        }
-      } else if (resolvedTarget === pattern || resolvedTarget === resPattern || resolvedTarget.includes(pattern) || rawTarget === pattern || rawTarget.includes(pattern)) {
-        return {
-          allowed: false,
-          role,
-          violation: `Target '${rawTarget}' explicitly denied by RBAC policy rule '${pattern}'`,
-          code: 'RBAC_DENY_VIOLATION'
-        };
-      }
-    }
-
-    // If step writes, ensure target is in write allowlist (if declared)
-    const isWriteAction = ['write_report', 'apply_fix_or_patch', 'save_artifact', 'create_file'].includes(step.action);
-    if (isWriteAction && Array.isArray(filesystem?.write) && filesystem.write.length > 0) {
-      const allowedWrite = filesystem.write.some(w => {
-        const normW = path.normalize(w);
-        const resW = path.resolve(w);
-        return resolvedTarget.startsWith(resW) || resolvedTarget.startsWith(normW) || rawTarget.startsWith(normW);
-      });
-      if (!allowedWrite) {
-        return {
-          allowed: false,
-          role,
-          violation: `Write target '${rawTarget}' not permitted by filesystem.write allowlist`,
-          code: 'RBAC_WRITE_UNAUTHORIZED'
-        };
-      }
-    }
-  }
-
-  // Check MCP tool authorization
-  if (step.action && step.action.startsWith('mcp:')) {
-    const requestedMcp = step.action.replace(/^mcp:/, '');
-    const allowedMcps = mcp?.allowed || [];
-    if (!allowedMcps.includes(requestedMcp)) {
-      return {
-        allowed: false,
-        role,
-        violation: `MCP tool '${requestedMcp}' not permitted for role '${role}'`,
-        code: 'RBAC_MCP_UNAUTHORIZED'
-      };
-    }
-  }
-
-  return { allowed: true, role, reason: 'RBAC policy validated' };
-}
-
-export function getGrcAuditLogPath() {
-  if (process.env.DSH_AUDIT_LOG_FILE) return process.env.DSH_AUDIT_LOG_FILE;
-  if (fs.existsSync('/var/log/dsh')) return '/var/log/dsh/audit_grc.jsonl';
-  return path.join(RUNTIME_DIR, 'audit', 'audit_grc.jsonl');
-}
-
-export async function emitGrcSpanToPhoenix(event) {
-  const phoenixUrl = process.env.PHOENIX_URL || 'http://phoenix:6006';
-  const apiKey = process.env.PHOENIX_API_KEY || '';
-  const headers = { 'Content-Type': 'application/json' };
-  if (apiKey) {
-    headers['Authorization'] = `Bearer ${apiKey}`;
-    headers['api_key'] = apiKey;
-  }
-
-  const nowMs = Date.now();
-  const spanPayload = {
-    resourceSpans: [
-      {
-        resource: {
-          attributes: [
-            { key: 'service.name', value: { stringValue: 'dsh-grc-firewall' } },
-            { key: 'persona', value: { stringValue: event.persona || 'unknown' } },
-            { key: 'role', value: { stringValue: event.role || 'default' } }
-          ]
-        },
-        scopeSpans: [
-          {
-            scope: { name: 'grc.authorization.policy' },
-            spans: [
-              {
-                traceId: nowMs.toString(16).padStart(32, '0'),
-                spanId: Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(16, '0'),
-                name: `grc.policy.${(event.decision || 'unknown').toLowerCase()}`,
-                kind: 1,
-                startTimeUnixNano: (nowMs * 1000000).toString(),
-                endTimeUnixNano: ((nowMs + 1) * 1000000).toString(),
-                attributes: [
-                  { key: 'grc.decision', value: { stringValue: String(event.decision || '') } },
-                  { key: 'grc.action', value: { stringValue: String(event.action || 'unknown') } },
-                  { key: 'grc.target', value: { stringValue: String(event.target || '') } },
-                  { key: 'grc.reason', value: { stringValue: String(event.reason || '') } }
-                ],
-                status: {
-                  code: event.decision === 'GRANTED' ? 1 : 2
-                }
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    await fetch(`${phoenixUrl}/v1/traces`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(spanPayload),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-  } catch {
-    // Non-blocking out-of-band telemetry
-  }
-}
-
-export function logGrcAuditEvent(event) {
-  const auditEntry = {
-    timestamp: new Date().toISOString(),
-    event_type: 'GRC_AUTHORIZATION_DECISION',
-    ...event
-  };
-
-  const primaryFile = getGrcAuditLogPath();
-
-  try {
-    const dir = path.dirname(primaryFile);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    fs.appendFileSync(primaryFile, JSON.stringify(auditEntry) + '\n', { encoding: 'utf8', mode: 0o600 });
-  } catch {
-    try {
-      const fallbackFile = path.join(SESSIONS_DIR, 'audit_grc.jsonl');
-      fs.appendFileSync(fallbackFile, JSON.stringify(auditEntry) + '\n', 'utf8');
-    } catch {}
-  }
-
-  // Non-blocking asynchronous OTel trace dispatch
-  emitGrcSpanToPhoenix(auditEntry).catch(() => {});
-
-  return auditEntry;
-}
 
 function ensureDirs() {
   try { if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true }); } catch {}
@@ -263,58 +105,6 @@ function ensureDirs() {
   try { if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true }); } catch {}
 }
 
-export function parseYaml(yamlText) {
-  if (typeof yamlText !== 'string' || !yamlText.trim()) return {};
-  try {
-    if (YAML && typeof YAML.parse === 'function') {
-      return YAML.parse(yamlText) || {};
-    }
-    throw new Error('YAML parser library not initialized');
-  } catch (err) {
-    console.error('YAML parse error:', err.message);
-    return {};
-  }
-}
-
-export function parsePersonaYaml(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-  const content = fs.readFileSync(filePath, 'utf8');
-  const doc = parseYaml(content);
-  
-  const result = {
-    name: doc.name || path.basename(path.dirname(filePath)),
-    title: doc.title || doc.name || '',
-    description: doc.description || '',
-    profiles: Array.isArray(doc.profiles) ? doc.profiles : (doc.profiles && typeof doc.profiles === 'object' ? Object.keys(doc.profiles) : ['web', 'headless', 'cli']),
-    models: {},
-    rbac: doc.rbac || null,
-    workflows: doc.workflows || {},
-    plugins: doc.plugins || [],
-    mcpServers: doc.mcpServers || {}
-  };
-
-  if (doc.models && typeof doc.models === 'object') {
-    for (const [tier, cfg] of Object.entries(doc.models)) {
-      if (cfg && typeof cfg === 'object') {
-        result.models[tier] = {
-          provider: cfg.provider || 'openrouter',
-          model: cfg.model || 'deepseek/deepseek-chat',
-          temperature: typeof cfg.temperature === 'number' ? cfg.temperature : (parseFloat(cfg.temperature) || 0.2),
-          useCase: cfg.useCase || ''
-        };
-      }
-    }
-  }
-
-  if (!result.models.default) {
-    result.models.default = {
-      provider: doc.provider || 'openrouter',
-      model: doc.model || 'deepseek/deepseek-chat'
-    };
-  }
-
-  return result;
-}
 
 function listPersonas() {
   ensureDirs();

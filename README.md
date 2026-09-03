@@ -233,6 +233,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📜 **[ADR 0001: Build-Time Immutability & RBAC](docs/adr/0001-build-time-immutability-and-rbac.md)** — Architecture Decision Record on build-time immutability, Zero Trust RBAC, and GRC audit logs.
 * 📜 **[ADR 0002: Out-of-Band GRC & E2E Sandbox](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md)** — Architecture Decision Record on out-of-band GRC telemetry and deterministic E2E sandbox verification.
 * 📜 **[ADR 0003: Authoritative Declarative Orchestrator](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)** — Architecture Decision Record on authoritative JavaScript orchestration, capability adapters, and fail-closed RBAC.
+* 📜 **[ADR 0004: In-Container Boundaries & Strict Containment](docs/adr/0004-in-container-boundaries-and-strict-directory-containment.md)** — Architecture Decision Record on in-container execution boundaries, strict directory containment, and acyclic policy architecture.
 
 ### 🔬 Theory & Research
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.

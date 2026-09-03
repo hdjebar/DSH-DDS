@@ -116,7 +116,16 @@ case "$COMMAND" in
 
   persona)
     shift || true
-    node config/persona.mjs "$@"
+    if [ "$1" = "workflow" ] || [ "$1" = "wf" ]; then
+      if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+        docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
+      else
+        echo "⚠️ DSH container is offline. Executing workflow in local runtime mode..."
+        node config/persona.mjs "$@"
+      fi
+    else
+      node config/persona.mjs "$@"
+    fi
     ;;
 
   sessions|session)

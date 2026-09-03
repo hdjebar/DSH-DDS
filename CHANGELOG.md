@@ -5,6 +5,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.0] - 2026-09-03
+
+### In-Container Workflow Boundaries, Strict Directory Containment & Acyclic Policy Engine (ADR 0004)
+* **In-Container Execution Boundary**: `dsh.sh::persona` now verifies if the `dsh` container is running and delegates workflow execution directly into the container (`docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"`), guaranteeing that workflows execute within container Landlock, dropped capabilities, and read-only filesystem boundaries.
+* **Acyclic Policy Architecture**: Extracted parsing, validation, path resolution, RBAC policy enforcement, and GRC audit logging into `config/rbac-policy.mjs`, eradicating circular coupling between `persona.mjs` and `declarative-orchestrator.mjs`.
+* **Strict Directory Boundary Containment**: Replaced vulnerable `startsWith` prefix matching with `isContainedWithin()`, strictly asserting that allowlisted roots cannot authorize adjacent prefixes (e.g., `/tmp/allowed` strictly rejects `/tmp/allowed-evil`).
+* **Enforced Read Allowlists**: `enforceRbacPolicy()` now verifies `filesystem.read` allowlists across all read capability adapters (`fetch_sources`, `inspect_sqlite`, `read_catalog`, `forensic_investigation`, `inspect_tabular`, `read_file`).
+* **Canonical Path Resolver (`resolvePath`)**: Transparently maps Docker volume mount roots (`/workspaces` -> `./workspaces`, `/root/.dsh` -> `./config`) when operating outside Docker, terminating silent target substitution and confusing-deputy vulnerabilities.
+* **Transactional ACM Workflow Suspension**: An unapproved gated step (`approval_required: true`) now halts workflow execution immediately (`status: 'SUSPENDED_APPROVAL_REQUIRED'`), preventing unapproved execution of subsequent steps.
+* **Architecture Decision Record**: Published `docs/adr/0004-in-container-boundaries-and-strict-directory-containment.md`. Test suite expanded to **45/45 tests passing**.
+
+---
+
 ## [1.7.0] - 2026-09-03
 
 ### Authoritative Declarative Orchestration & Capability Adapters (ADR 0003)

@@ -5,10 +5,20 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer } from '../config/declarative-orchestrator.mjs';
+import { isContainedWithin, enforceRbacPolicy } from '../config/rbac-policy.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
+
+test('RBAC Policy: strict directory boundary containment', () => {
+  assert.equal(isContainedWithin('/tmp/allowed/sub/file.txt', '/tmp/allowed'), true);
+  assert.equal(isContainedWithin('/tmp/allowed', '/tmp/allowed'), true);
+  // Boundary traversal attack: /tmp/allowed-evil must NOT be authorized by /tmp/allowed
+  assert.equal(isContainedWithin('/tmp/allowed-evil', '/tmp/allowed'), false);
+  assert.equal(isContainedWithin('/tmp/allowed-evil/file.txt', '/tmp/allowed'), false);
+  assert.equal(isContainedWithin('/etc/shadow', '/tmp/allowed'), false);
+});
 
 test('Declarative Orchestrator: executes structured steps with real capability adapters', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-orch-test-'));
@@ -45,7 +55,7 @@ test('Declarative Orchestrator: executes structured steps with real capability a
           {
             name: 'Apply Verification Patch',
             action: 'apply_fix_or_patch',
-            target: 'config/'
+            target: path.join(tmpDir, 'test.patch')
           },
           {
             name: 'Write Audit Report',
@@ -134,58 +144,68 @@ test('Declarative Orchestrator: fail-closed when persona manifest lacks RBAC con
   );
 });
 
-test('Declarative Orchestrator: intercepts RBAC violations and unauthorized write paths', async () => {
+test('Declarative Orchestrator: enforces read and write allowlists with directory boundary', async () => {
+  const tmpAllowed = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-allowed-'));
+  const tmpEvil = `${tmpAllowed}-evil`;
+
   const meta = {
     name: 'restricted-agent',
     rbac: {
       role: 'restricted',
       permissions: {
         filesystem: {
-          read: ['/workspaces'],
-          write: ['/workspaces/allowed'],
+          read: [tmpAllowed],
+          write: [tmpAllowed],
           deny: ['/etc', 'reset.sh']
         }
       }
     },
     workflows: {
-      unauthorized_write: {
+      prefix_escape_write: {
         steps: [
           {
-            name: 'Write to Denied Host Script',
+            name: 'Prefix Escape Write',
             action: 'write_report',
-            destination: 'reset.sh'
+            destination: path.join(tmpEvil, 'exploit.json')
           }
         ]
       },
-      write_outside_allowlist: {
+      unauthorized_read: {
         steps: [
           {
-            name: 'Write outside write perimeter',
-            action: 'write_report',
-            destination: '/var/unauthorized_output.json'
+            name: 'Read Outside Allowlist',
+            action: 'fetch_sources',
+            scope: '/opt/unauthorized_scan'
           }
         ]
       }
     }
   };
 
-  const engine = new DeclarativeWorkflowEngine(meta);
-  await assert.rejects(
-    async () => {
-      await engine.executeWorkflow('unauthorized_write');
-    },
-    /RBAC_DENY_VIOLATION/
-  );
+  try {
+    const engine = new DeclarativeWorkflowEngine(meta);
 
-  await assert.rejects(
-    async () => {
-      await engine.executeWorkflow('write_outside_allowlist');
-    },
-    /RBAC_WRITE_UNAUTHORIZED/
-  );
+    // Must reject prefix write escape (/tmp/allowed-evil is not /tmp/allowed)
+    await assert.rejects(
+      async () => {
+        await engine.executeWorkflow('prefix_escape_write');
+      },
+      /RBAC_WRITE_UNAUTHORIZED/
+    );
+
+    // Must reject reading outside filesystem.read
+    await assert.rejects(
+      async () => {
+        await engine.executeWorkflow('unauthorized_read');
+      },
+      /RBAC_READ_UNAUTHORIZED/
+    );
+  } finally {
+    fs.rmSync(tmpAllowed, { recursive: true, force: true });
+  }
 });
 
-test('Declarative Orchestrator: evaluates Adaptive Case Management conditions and gates', async () => {
+test('Declarative Orchestrator: ACM approval gate suspends workflow and halts subsequent steps', async () => {
   const meta = {
     name: 'acm-agent',
     rbac: {
@@ -195,22 +215,20 @@ test('Declarative Orchestrator: evaluates Adaptive Case Management conditions an
       }
     },
     workflows: {
-      conditional_wf: {
+      gated_wf: {
         steps: [
           {
-            name: 'Step 1: Check Condition (Should Pass)',
-            action: 'parse_intent',
-            when: "status == 'ACTIVE'"
+            name: 'Step 1: Evaluation',
+            action: 'parse_intent'
           },
           {
-            name: 'Step 2: Check Condition (Should Skip)',
-            action: 'parse_intent',
-            when: "status == 'INACTIVE'"
-          },
-          {
-            name: 'Step 3: Approval Gate (Pending)',
+            name: 'Step 2: Approval Gate',
             action: 'parse_intent',
             approval_required: true
+          },
+          {
+            name: 'Step 3: Should Not Execute',
+            action: 'parse_intent'
           }
         ]
       }
@@ -218,11 +236,32 @@ test('Declarative Orchestrator: evaluates Adaptive Case Management conditions an
   };
 
   const engine = new DeclarativeWorkflowEngine(meta);
-  const result = await engine.executeWorkflow('conditional_wf', { status: 'ACTIVE' });
+  const result = await engine.executeWorkflow('gated_wf', { approved: false });
 
+  // Execution must suspend on approval gate
+  assert.equal(result.status, 'SUSPENDED_APPROVAL_REQUIRED');
+  assert.ok(result.suspendedReason.includes('requires approval'));
+  assert.equal(result.executionLogs.length, 2);
   assert.equal(result.executionLogs[0].status, 'SUCCESS');
-  assert.equal(result.executionLogs[1].status, 'SKIPPED');
-  assert.equal(result.executionLogs[2].status, 'GATED');
+  assert.equal(result.executionLogs[1].status, 'GATED');
+  // Step 3 must NOT have executed
+  assert.equal(result.executionLogs.some(l => l.step.includes('Step 3')), false);
+});
+
+test('Declarative Orchestrator: condition evaluation handles nested properties and booleans', () => {
+  const engine = new DeclarativeWorkflowEngine({ name: 'eval-test' });
+  const ctx = {
+    incident_severity: { severity: 'CRITICAL', score: 9.5 },
+    is_active: true,
+    environment: 'production'
+  };
+
+  assert.equal(engine.evaluateCondition("incident_severity == 'CRITICAL'", ctx), true);
+  assert.equal(engine.evaluateCondition("incident_severity.severity == 'CRITICAL'", ctx), true);
+  assert.equal(engine.evaluateCondition("incident_severity.severity != 'LOW'", ctx), true);
+  assert.equal(engine.evaluateCondition("environment == 'production'", ctx), true);
+  assert.equal(engine.evaluateCondition("environment == 'staging'", ctx), false);
+  assert.equal(engine.evaluateCondition("is_active", ctx), true);
 });
 
 test('Declarative Orchestrator: AgentPhoenixTracer generates correlated parent-child spans', async () => {
