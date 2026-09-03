@@ -90,3 +90,9 @@ flowchart TD
 ### 3. Dynamic Boot-Time Model Synchronizer (`sync_models.mjs`)
 * Automatically queries `https://openrouter.ai/api/v1/models` and `https://generativelanguage.googleapis.com/v1beta/models` every time the container boots.
 * Ingests all **420+ models** with real-time prompt/completion token pricing directly into the Arize Phoenix SQLite database and DeepSeek Harness runtime.
+
+### 4. Authoritative Declarative Orchestrator & Acyclic Policy Engine (`config/`)
+* **`DeclarativeWorkflowEngine` ([declarative-orchestrator.mjs](../config/declarative-orchestrator.mjs))**: Evaluates 100% declarative workflow recipes defined in `persona.yaml` natively in JavaScript, permanently replacing shell scripts. Implements 15 typed capability adapters with real cryptographic SHA-256 hashing, real HTTP endpoint reachability probes, and airgap containment ledgers.
+* **Acyclic Policy Engine ([rbac-policy.mjs](../config/rbac-policy.mjs))**: Single source of truth for Zero Trust RBAC policy enforcement, canonical path resolution (`resolvePath`), strict directory containment (`isContainedWithin`), symlink ancestor canonicalization (`canonicalizeWithAncestorRealpath`), and escape detection (`checkSymlinkEscape`).
+* **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: Records structured decision lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel parent-child span correlation (`AgentPhoenixTracer`).
+* **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and read-only root filesystems.

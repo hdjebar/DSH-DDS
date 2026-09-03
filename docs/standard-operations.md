@@ -45,6 +45,27 @@ docker compose exec dsh dsh --profile headless \
 
 ---
 
+## 🛡️ Declarative Workflow Execution (`DeclarativeWorkflowEngine`)
+
+Execute 100% declarative workflow pipelines defined in `persona.yaml` through the authoritative native JavaScript orchestrator:
+
+### Basic In-Container Execution
+```bash
+# Runs inside the running DSH container with Landlock LSM and dropped capabilities
+./dsh.sh persona workflow security-auditor audit_code
+
+# Run data analyst pipeline
+./dsh.sh persona workflow data-analyst analyze_pipeline
+```
+
+### Offline Host Execution (Unsafe Override)
+If the container is offline, workflows fail closed by default to prevent ambient host privileges escape. To explicitly run on host for local debugging:
+```bash
+./dsh.sh persona workflow security-auditor audit_code --force-host-unsafe
+```
+
+---
+
 ## 📊 Arize Phoenix Telemetry Operations
 
 * **Dashboard**: `http://localhost:6006`

@@ -25,8 +25,10 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
 | **SEC-06** | **Supply Chain** | **PASS** | Immutable SHA256 Image Digests & Safe Parser | Pinned base digests and regex-enforced `.env` variable loader prevent injection. |
-| **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and transactional proxy blocking `reset.sh`/`install_dsh.sh`. |
-| **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via build-time Docker patching; zero runtime mutation in `entrypoint.sh`. |
+| **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and transactional proxy blocking `reset.sh`/`install_dsh.sh` ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md)). |
+| **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via build-time Docker patching; zero runtime mutation in `entrypoint.sh` ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md)). |
+| **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
+| **SEC-10** | **Execution Boundary** | **PASS** | Ambient Host Execution Fallback in CLI | Remediated via fail-closed in-container execution dispatch in `dsh.sh` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
 
 ---
 
@@ -88,8 +90,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - A prompt-injected or compromised persona (e.g. `data-analyst` handling untrusted CSV/SQL) could attempt to read credentials, mutate skills of `security-auditor`, or trigger administrative scripts (`reset.sh`, `install_dsh.sh`).
 * **Hardening Guideline & Enforcement**:
   - Every persona manifest (`persona.yaml`) declares a strict `rbac:` policy specifying allowed roles, readable/writable filesystem paths, allowed MCP tools, and explicit `deny` paths.
-  - The transactional execution engine in `config/persona.mjs` (`enforceRbacPolicy()`) intercepts every workflow step prior to execution and fails closed if a target matches a deny pattern or exceeds authorization.
-  - See [ADR 0001: Build-Time Immutability, Zero Trust Persona RBAC, and Deterministic GRC Observability](adr/0001-build-time-immutability-and-rbac.md).
+  - The authoritative policy engine in `config/rbac-policy.mjs` (`enforceRbacPolicy()`) intercepts every workflow step prior to execution, performs directory containment checks (`isContainedWithin`), checks for escaping symlinks (`checkSymlinkEscape`), and fails closed if a target matches a deny pattern or exceeds authorization.
+  - See [ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), and [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md).
 
 ### 7. [SEC-08] Build-Time Immutability vs. Runtime Monkey-Patching
 * **Threat Model**:
