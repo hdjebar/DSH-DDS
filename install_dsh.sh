@@ -391,6 +391,19 @@ if (fs.existsSync(file)) {\
   }\
 }' && node --check /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js
 
+# Build-Time Immutability: Patch dsh-bash-local to auto-create spec.workdir before spawning under Landlock
+RUN node -e '\
+const fs = require("fs");\
+const target = "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-bash-local/lib/index.js";\
+if (fs.existsSync(target)) {\
+  let c = fs.readFileSync(target, "utf8");\
+  if (!c.includes("mkdirSync(spec.workdir")) {\
+    c = c.replace("spawnSpec(spec, argv, stdoutMaxBytes, signal) {", "spawnSpec(spec, argv, stdoutMaxBytes, signal) {\\n\\t\\tif (spec.workdir && !fs.existsSync(spec.workdir)) { try { fs.mkdirSync(spec.workdir, { recursive: true }); } catch {} }");\
+    fs.writeFileSync(target, c, "utf8");\
+    console.log("✅ dsh-bash-local auto-workdir patch applied cleanly at build time.");\
+  }\
+}'
+
 # Preserve the upstream launcher and install the repository-owned bootstrap wrapper.
 RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
     /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \

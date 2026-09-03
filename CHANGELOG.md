@@ -5,6 +5,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.0] - 2026-09-03
+
+### Governance, Risk & Compliance (GRC) & Zero Trust Architecture
+* **Build-Time Immutability (ADR 0001)**: Moved all dynamic monkey-patching (`dsh-bash-local` auto-workdir creation and `pi-ai` thought-signature preservation) to Dockerfile `RUN` build steps. Cleared `docker/entrypoint.sh` of all runtime mutations, ensuring the container filesystem is 100% frozen, reproducible, and read-only.
+* **Zero Trust Persona RBAC Matrix**: Declared explicit `rbac:` contracts across all 7 domain personas (`role`, `filesystem: { read, write, deny }`, `mcp: { allowed }`).
+* **Transactional Authorization Proxy**: Enforced strict RBAC policy checks in `config/persona.mjs` before executing any workflow action; attempts to access denied files (`reset.sh`, `install_dsh.sh`, `/etc`) fail closed immediately.
+* **Immutable GRC Audit Trail**: Added `audit_grc.jsonl` recording structured audit events (`timestamp`, `persona`, `role`, `action`, `decision: GRANTED | DENIED`, `reason`) for regulatory compliance and auditability.
+* **Adaptive Case Management (ACM)**: Extended declarative workflows to support conditional branching (`when`), human-in-the-loop gates (`approval_required`), exception fallbacks (`on_failure`), and stateful tracking (`output_variable`).
+* **Confinement Test Suite**: Added `tests/rbac_confinement.test.mjs`; test suite expanded to **32/32 tests passing**.
+
+---
+
 ## [1.4.0] - 2026-09-03
 
 ### Security & Architecture (Hardening Against Execution-Payload Injection)

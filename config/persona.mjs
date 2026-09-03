@@ -79,6 +79,77 @@ export function scrubSecrets(text) {
     .replace(/(api[_-]?key\s*[:=]\s*["']?)[a-zA-Z0-9_-]{16,}(["']?)/gi, '$1[REDACTED_KEY]$2');
 }
 
+export function enforceRbacPolicy(personaMeta, step) {
+  if (!personaMeta || !personaMeta.rbac || !personaMeta.rbac.permissions) {
+    return { allowed: true, role: personaMeta?.rbac?.role || 'default', reason: 'Unrestricted default' };
+  }
+
+  const { filesystem, mcp } = personaMeta.rbac.permissions;
+  const role = personaMeta.rbac.role || personaMeta.name;
+
+  // Check filesystem deny rules
+  const deniedPatterns = filesystem?.deny || [];
+  const targetsToCheck = [step.target, step.destination, step.scope].filter(Boolean);
+
+  for (const target of targetsToCheck) {
+    for (const pattern of deniedPatterns) {
+      if (pattern.endsWith('*')) {
+        const prefix = pattern.slice(0, -1);
+        if (target.startsWith(prefix) || target.includes(prefix)) {
+          return {
+            allowed: false,
+            role,
+            violation: `Target '${target}' matches denied prefix '${pattern}'`,
+            code: 'RBAC_DENY_VIOLATION'
+          };
+        }
+      } else if (target === pattern || target.includes(pattern)) {
+        return {
+          allowed: false,
+          role,
+          violation: `Target '${target}' explicitly denied by RBAC policy rule '${pattern}'`,
+          code: 'RBAC_DENY_VIOLATION'
+        };
+      }
+    }
+  }
+
+  // Check MCP tool authorization
+  if (step.action && step.action.startsWith('mcp:')) {
+    const requestedMcp = step.action.replace(/^mcp:/, '');
+    const allowedMcps = mcp?.allowed || [];
+    if (!allowedMcps.includes(requestedMcp)) {
+      return {
+        allowed: false,
+        role,
+        violation: `MCP tool '${requestedMcp}' not permitted for role '${role}'`,
+        code: 'RBAC_MCP_UNAUTHORIZED'
+      };
+    }
+  }
+
+  return { allowed: true, role, reason: 'RBAC policy validated' };
+}
+
+export function logGrcAuditEvent(event) {
+  const auditEntry = {
+    timestamp: new Date().toISOString(),
+    event_type: 'GRC_AUTHORIZATION_DECISION',
+    ...event
+  };
+
+  try {
+    const auditFile = path.join(SESSIONS_DIR, 'audit_grc.jsonl');
+    const dir = path.dirname(auditFile);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(auditFile, JSON.stringify(auditEntry) + '\n', 'utf8');
+  } catch {
+    // Non-blocking fallback
+  }
+
+  return auditEntry;
+}
+
 function ensureDirs() {
   try { if (!fs.existsSync(PERSONAS_DIR)) fs.mkdirSync(PERSONAS_DIR, { recursive: true }); } catch {}
   try { if (!fs.existsSync(SKILLS_DIR)) fs.mkdirSync(SKILLS_DIR, { recursive: true }); } catch {}
@@ -393,6 +464,25 @@ function runWorkflow(name, workflowKey) {
       if (s.output_variable) meta.push(`[OUT: ${s.output_variable}]`);
       const metaStr = meta.length ? ` ${meta.join(' ')}` : '';
       console.log(`   [${idx + 1}/${wf.steps.length}] ${s.name || s.action} (${s.action})${metaStr}`);
+
+      // Zero Trust RBAC Authorization Check
+      const rbacCheck = enforceRbacPolicy(meta, s);
+      logGrcAuditEvent({
+        persona: safeName,
+        workflow: safeWfKey,
+        step_index: idx + 1,
+        step_name: s.name || s.action,
+        action: s.action,
+        target: s.target || s.destination || s.scope || null,
+        decision: rbacCheck.allowed ? 'GRANTED' : 'DENIED',
+        role: rbacCheck.role,
+        reason: rbacCheck.allowed ? 'Policy validated' : rbacCheck.violation
+      });
+
+      if (!rbacCheck.allowed) {
+        console.error(`\x1b[31m⛔ Zero Trust RBAC Violation [${rbacCheck.code}]: ${rbacCheck.violation}\x1b[0m`);
+        throw new Error(`Zero Trust RBAC Policy Violation: ${rbacCheck.violation}`);
+      }
 
       const details = [];
       if (s.scope) details.push(`scope: ${s.scope}`);

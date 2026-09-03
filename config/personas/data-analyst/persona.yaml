@@ -45,6 +45,28 @@ mcpServers:
     command: "mcp-server-webresearch"
     args: []
 
+rbac:
+  role: "data_analyst"
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/personas/data-analyst"
+      write:
+        - "/workspaces"
+        - "/root/.dsh/sessions"
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+        - "config/profiles/*"
+    mcp:
+      allowed:
+        - "sqlite-db"
+        - "fetch"
+
 workflows:
   analyze_pipeline:
     modelTier: reasoning

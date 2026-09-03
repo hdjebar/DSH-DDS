@@ -44,6 +44,27 @@ mcpServers:
     command: "mcp-server-webresearch"
     args: []
 
+rbac:
+  role: "devops_sre"
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/personas/devops-sre"
+      write:
+        - "/workspaces"
+        - "/root/.dsh/sessions"
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+    mcp:
+      allowed:
+        - "github"
+        - "fetch"
+
 workflows:
   verify_cluster:
     modelTier: reasoning

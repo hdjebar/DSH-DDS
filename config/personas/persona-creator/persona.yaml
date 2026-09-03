@@ -49,6 +49,29 @@ mcpServers:
     command: "github-mcp-server"
     args: ["stdio"]
 
+rbac:
+  role: "persona_creator"
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/personas/persona-creator"
+        - "/root/.dsh/templates"
+      write:
+        - "/workspaces"
+        - "/root/.dsh/personas"
+        - "/root/.dsh/sessions"
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "reset.sh"
+        - "install_dsh.sh"
+    mcp:
+      allowed:
+        - "fetch"
+        - "context7"
+        - "github"
+
 workflows:
   generate_declarative_pipeline:
     modelTier: reasoning
