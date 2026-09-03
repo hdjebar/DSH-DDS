@@ -382,20 +382,33 @@ function runWorkflow(name, workflowKey) {
 
   let prompt;
   if (Array.isArray(wf.steps)) {
-    console.log(`📋 Validated transactional workflow pipeline (${wf.steps.length} steps):`);
+    const isCaseManagement = wf.type === 'case-management' || wf.steps.some(s => s.when || s.condition || s.approval_required || s.approval || s.on_failure || s.fallback || s.output_variable);
+    const label = isCaseManagement ? 'Adaptive Case Management Workflow' : 'Transactional Workflow Pipeline';
+    console.log(`📋 Validated ${label} (${wf.steps.length} steps):`);
     const stepsFormatted = wf.steps.map((s, idx) => {
-      console.log(`   [${idx + 1}/${wf.steps.length}] ${s.name || s.action} (${s.action})`);
+      const meta = [];
+      if (s.when || s.condition) meta.push(`[WHEN: ${s.when || s.condition}]`);
+      if (s.approval_required || s.approval) meta.push(`[GATE: APPROVAL REQUIRED]`);
+      if (s.on_failure || s.fallback) meta.push(`[ON-FAIL: ${s.on_failure || s.fallback}]`);
+      if (s.output_variable) meta.push(`[OUT: ${s.output_variable}]`);
+      const metaStr = meta.length ? ` ${meta.join(' ')}` : '';
+      console.log(`   [${idx + 1}/${wf.steps.length}] ${s.name || s.action} (${s.action})${metaStr}`);
+
       const details = [];
       if (s.scope) details.push(`scope: ${s.scope}`);
       if (s.ignore) details.push(`ignore: ${s.ignore}`);
       if (s.target) details.push(`target: ${s.target}`);
+      if (s.when || s.condition) details.push(`when: "${s.when || s.condition}"`);
+      if (s.approval_required || s.approval) details.push(`approval_required: true`);
+      if (s.on_failure || s.fallback) details.push(`on_failure: "${s.on_failure || s.fallback}"`);
+      if (s.output_variable) details.push(`output_variable: "${s.output_variable}"`);
       if (s.verification) details.push(`verification: ${s.verification}`);
       if (s.destination) details.push(`destination: ${s.destination}`);
       if (s.projection) details.push(`projection: ${s.projection}`);
       if (s.prompt) details.push(`prompt: "${s.prompt}"`);
       return `Step ${idx + 1} - ${s.name || s.action}: Action='${s.action}'${details.length ? ' (' + details.join(', ') + ')' : ''}`;
     }).join('\n');
-    prompt = `Execute the declarative workflow '${safeWfKey}' following these verified steps:\n${stepsFormatted}`;
+    prompt = `Execute the ${isCaseManagement ? 'adaptive case management' : 'declarative'} workflow '${safeWfKey}' following these verified steps:\n${stepsFormatted}`;
   } else if (wf.command) {
     prompt = wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), '');
   } else {

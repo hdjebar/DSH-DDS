@@ -64,6 +64,28 @@ workflows:
         action: "write_report"
         destination: "/root/.dsh/sessions/security_audit_report.json"
         projection: "domain_entities"
+  incident_triage:
+    modelTier: reasoning
+    description: "Adaptive Case Management: Security incident assessment, conditional containment, and forensic dossier"
+    type: case-management
+    steps:
+      - name: "Assess Threat & Determine Severity"
+        action: "evaluate_incident"
+        scope: "workspace"
+        output_variable: "incident_severity"
+      - name: "Isolate Compromised Artifacts"
+        action: "contain_threat"
+        when: "incident_severity == 'CRITICAL'"
+        approval_required: true
+        on_failure: "escalate_to_soc"
+      - name: "Perform Deep Forensic Analysis"
+        action: "forensic_investigation"
+        target: "audit_logs"
+        verification: "Verify IOCs and persistence mechanisms"
+      - name: "Compile Case Report & Close Dossier"
+        action: "write_report"
+        destination: "/workspaces/cases/incident_report.md"
+        projection: "executive_case_summary"
   audit-diff:
     modelTier: default
     command: "Using the security-auditor skill, audit all modified files in git diff HEAD~1 and report security risks with diff patches."

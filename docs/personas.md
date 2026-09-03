@@ -310,11 +310,24 @@ mcpServers:                            # [Optional] Dictionary of MCP tool defin
 plugins:                               # [Optional] List of DSH plugins required
   - "plugin-id-or-npm-name"
 
-# 🤖 Executable Automation Recipes
+# 🛡️ Declarative Workflows & Adaptive Case Management (ACM)
 workflows:                             # [Optional] Dictionary of named execution recipes
   <workflow-key>:
     modelTier: "default|reasoning|coding|fast" # Model tier to invoke
-    command: "string"                  # CLI prompt / instruction
+    description: "string"              # Summary of the workflow case
+    type: "standard|case-management"   # [Optional] Declares adaptive case handling
+    steps:                             # [Optional] 100% Declarative step sequence
+      - name: "Step Name"
+        action: "fetch_sources|evaluate_threat|..."
+        scope: "workspace|docker|..."
+        target: "resource-id-or-path"
+        when: "expression (e.g. severity == 'CRITICAL')" # Conditional branch
+        approval_required: true        # Human-in-the-Loop gateway
+        on_failure: "fallback_action"  # Exception handling & escalation
+        output_variable: "var_name"    # Stateful case tracking
+        verification: "assertion"      # Post-action verification invariant
+        destination: "report-path"     # Evidence or artifact destination
+    command: "string"                  # Alternative direct declarative instruction
 ```
 
 ### Merging & Resolution Rules:

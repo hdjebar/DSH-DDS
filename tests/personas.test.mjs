@@ -77,6 +77,18 @@ test('Persona Workflows: security-auditor has 100% declarative step-based workfl
   assert.ok(content.includes('action: "write_report"'), 'Step 4 must be write_report');
 });
 
+test('Adaptive Case Management: security-auditor supports conditional branching and approval gates', () => {
+  const manifestPath = path.join(PERSONAS_DIR, 'security-auditor', 'persona.yaml');
+  const content = fs.readFileSync(manifestPath, 'utf8');
+
+  assert.ok(content.includes('incident_triage:'), 'security-auditor must contain incident_triage case management workflow');
+  assert.ok(content.includes('type: case-management'), 'incident_triage must declare type: case-management');
+  assert.ok(content.includes('output_variable: "incident_severity"'), 'Step 1 must output state variable');
+  assert.ok(content.includes("when: \"incident_severity == 'CRITICAL'\""), 'Step 2 must declare conditional branch');
+  assert.ok(content.includes('approval_required: true'), 'Step 2 must declare human-in-the-loop approval gate');
+  assert.ok(content.includes('on_failure: "escalate_to_soc"'), 'Step 2 must declare on_failure fallback');
+});
+
 test('Transactional Firewall: blocks prompt injection path traversal and unauthorized system targets', () => {
   const maliciousSlugs = [
     '../../etc/shadow',
