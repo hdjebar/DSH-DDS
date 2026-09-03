@@ -33,6 +33,9 @@ v1.10.0+ (Current Production Baseline)
 
 ### Track A: DSH Engine Container (`dsh`)
 
+> [!TIP]
+> **Implementation Blueprints**: Refer to [Section 8.1 (`envoy-egress.yaml`)](SOTA-ResearchReport-ProductionArch.md#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml), [Section 8.2 (`antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-implementation-configantigravity-searchmjs), [Section 8.3 (`failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs), and [Section 8.6 (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#86-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml) for production code specifications.
+
 #### Task A.1: Envoy Egress Forward Proxy Sidecar (`config/network/envoy-egress.yaml`)
 * [ ] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and Google Antigravity.
 * [ ] **Implementation Steps**:
@@ -79,6 +82,9 @@ v1.10.0+ (Current Production Baseline)
 
 ### Track B: OpenTelemetry Container (`phoenix`)
 
+> [!TIP]
+> **Implementation Blueprint**: Refer to [Section 8.5 (`phoenix-tracer.mjs`)](SOTA-ResearchReport-ProductionArch.md#85-opentelemetry--arize-phoenix-tracer-configphoenix-tracermjs) for the native Cordis OpenTelemetry plugin, OTLP container topology, and regression tests.
+
 #### Task B.1: Cgroup Resource Limits & Log Rotation
 * [ ] **Objective**: Prevent the Phoenix container from causing host memory starvation or disk bloat during heavy trace collection.
 * [ ] **Implementation Steps**:
@@ -123,6 +129,9 @@ v1.10.0+ (Current Production Baseline)
 * **Focus Areas:** Atomic workspace rollbacks, Git worktrees, and automated trajectory grading.
 
 ### Track A: DSH Engine Container (`dsh`)
+
+> [!TIP]
+> **Implementation Blueprint**: Refer to [Section 8.4 (`worktree-staging.mjs`)](SOTA-ResearchReport-ProductionArch.md#84-transactional-workspace-staging-configworktree-stagingmjs) for the transactional Git worktree staging code.
 
 #### Task A.1: Ephemeral Git Worktree Staging (`config/worktree-staging.mjs`)
 * [ ] **Objective**: Isolate multi-step agent code modifications in temporary Git worktrees to prevent leaving broken, half-edited code on the host.

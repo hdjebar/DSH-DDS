@@ -416,6 +416,19 @@ v1.10.0+ (Current Production Baseline)
 
 ## 8. Concrete Implementation Blueprints in Native Node.js 24 / Cordis ESM
 
+The following 6 production-grade implementation blueprints provide concrete code, configurations, and test suites natively integrated into the Node.js 24 / Cordis ESM microkernel architecture of `DSH-DDS`:
+
+| Blueprint | Component / File | Architecture Role | Target Milestone |
+| :--- | :--- | :--- | :--- |
+| **[8.1 Egress Forward Proxy](#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml)** | `config/network/envoy-egress.yaml` | Zero-Trust network boundary, method-level filtering for `mcp-fetch`. | Milestone 1 (v1.11.0) |
+| **[8.2 Antigravity Search Tool](#82-antigravity-search-tool-implementation-configantigravity-searchmjs)** | `config/antigravity-search.mjs` | Typed Cordis search plugin wrapping headless Google Antigravity (`agy`). | Milestone 1 (v1.11.0) |
+| **[8.3 In-Flight Failover Gateway](#83-in-flight-model-failover-gateway-configfailover-gatewaymjs)** | `config/failover-gateway.mjs` | In-process provider cascade with transparent schema normalization. | Milestone 1 (v1.11.0) |
+| **[8.4 Transactional Worktree Staging](#84-transactional-workspace-staging-configworktree-stagingmjs)** | `config/worktree-staging.mjs` | Ephemeral Git worktree staging with automatic zero-diff rollback. | Milestone 2 (v1.12.0) |
+| **[8.5 OpenTelemetry & Phoenix Tracer](#85-opentelemetry--arize-phoenix-tracer-configphoenix-tracermjs)** | `config/phoenix-tracer.mjs` | W3C OpenInference spans, OTLP export, and orchestrator integration. | Milestone 1 (v1.11.0) |
+| **[8.6 Hardened Sandbox Specification](#86-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)** | `docker-compose.sandbox.yml` | Read-only rootfs, `cap_drop: ALL`, cgroups, and host OAuth bind. | Milestone 1 (v1.11.0) |
+
+---
+
 ### 8.1 Network Egress Proxy Configuration with Antigravity Support (`config/network/envoy-egress.yaml`)
 
 This configuration establishes an Envoy forward proxy sidecar that drops all outbound traffic except requests directed to verified model endpoints, package registries, and **Google Antigravity (`agy`)** search infrastructure.
@@ -1126,7 +1139,3 @@ services:
 *Annotation:* Governs container isolation primitives, seccomp filters, and Linux capability management essential for securing execution environments.
 5. **OpenTelemetry Project.** (2024–2026). *Semantic Conventions for Generative AI and Agent Systems.* Cloud Native Computing Foundation (CNCF). [Technical Standard]. URL: `[https://opentelemetry.io/docs/specs/semconv/gen-ai/](https://opentelemetry.io/docs/specs/semconv/gen-ai/)`
 *Annotation:* Provides the industry-standard specification for instrumenting AI agent execution spans, tool calls, and model inference metrics.
-
----
-
-
