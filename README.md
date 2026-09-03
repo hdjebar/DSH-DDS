@@ -240,7 +240,9 @@ Comprehensive guides organized by audience and operational goal:
 ### 🔬 Theory & Research
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.
-* 🚀 **[Future Development Roadmap & Production Blueprint](docs/future-development/SOTA-ResearchReport-ProductionArch.md)** — Master consolidated audit, capability maturity framework, and 4-phase engineering roadmap.
+* 🚀 **[Future Development Hub](docs/future-development/README.md)** — Architectural roadmap, capability maturity scorecard, and sprint plans:
+  * 🗺️ **[Engineering Roadmap & Sprints](docs/future-development/ROADMAP.md)** — Phased milestones (v1.11.0, v1.12.0, v2.0.0) across `dsh` and `phoenix` containers.
+  * 🏛️ **[SOTA Research Report & Production Blueprint](docs/future-development/SOTA-ResearchReport-ProductionArch.md)** — Master consolidated audit, 17-layer evaluation, and Node.js Cordis blueprints.
 
 ---
 
