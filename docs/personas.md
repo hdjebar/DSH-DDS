@@ -391,6 +391,73 @@ flowchart LR
 
 ---
 
+## 🛡️ Persona Runtime Security & Zero Trust Enforcement (ADRs 0001–0005)
+
+DeepSeek Harness implements a multi-tier defense-in-depth model specifically designed to isolate personas from the host, the container environment, and other personas.
+
+```mermaid
+flowchart TD
+    subgraph Trigger ["1. Workflow Trigger"]
+        CLI["./dsh.sh persona workflow &lt;name&gt; &lt;flow&gt;"]
+    end
+
+    subgraph Boundary ["2. Container Execution Perimeter (ADR 0004)"]
+        DOCKER["docker compose exec dsh<br/>(Landlock LSM, cap_drop: ALL, Read-Only rootfs)"]
+        FAILCLOSED["Fail-Closed if Offline<br/>(Requires --force-host-unsafe to override)"]
+    end
+
+    subgraph Policy ["3. Acyclic Policy Engine (config/rbac-policy.mjs)"]
+        SCOPE["Prior Concrete Scope Resolution<br/>(/workspaces)"]
+        SYMLINK["Symlink Escape Check<br/>(canonicalizeWithAncestorRealpath & checkSymlinkEscape)"]
+        MATRIX["RBAC Matrix Assertion<br/>(read / write / deny allowlists + allowed MCPs)"]
+    end
+
+    subgraph Execution ["4. Declarative Orchestrator & GRC"]
+        ADAPTERS["Truthful Capability Adapters<br/>(Real SHA-256 Hashing & HTTP Probes)"]
+        ACM["Approval Gate Check<br/>(Suspends as GATED if approval_required)"]
+        AUDIT["Immutable GRC Audit Trail<br/>(audit_grc.jsonl + OTel parent-child spans)"]
+    end
+
+    CLI --> DOCKER
+    CLI -.->|Offline| FAILCLOSED
+    DOCKER --> SCOPE
+    SCOPE --> SYMLINK
+    SYMLINK --> MATRIX
+    MATRIX --> ACM
+    ACM --> ADAPTERS
+    ADAPTERS --> AUDIT
+```
+
+### 1. Zero Trust RBAC Matrix (`config/rbac-policy.mjs`)
+* Every persona manifest (`persona.yaml`) declares an explicit `rbac:` contract defining:
+  - **`role`**: Semantic role of the persona (e.g. `security_auditor`, `data_analyst`).
+  - **`permissions.filesystem.read`**: Strict directory paths allowed for reading.
+  - **`permissions.filesystem.write`**: Strict directory paths allowed for modification (e.g. `/workspaces`, `/root/.dsh/sessions`).
+  - **`permissions.filesystem.deny`**: Explicitly forbidden patterns (`/etc`, `/root/.ssh`, `config/personas/*`, `reset.sh`, `install_dsh.sh`).
+  - **`permissions.mcp.allowed`**: Allowlisted MCP tool servers.
+* If a persona manifest lacks an `rbac:` contract, the orchestrator **fails closed immediately** (`RBAC_POLICY_MISSING`).
+
+### 2. Symlink Traversal & Directory Containment (ADRs 0004 & 0005)
+* **Directory Boundary Enforcement (`isContainedWithin`)**: Resolves system roots and verifies that target paths are strictly inside authorized directory perimeters.
+* **Ancestor Canonicalization (`canonicalizeWithAncestorRealpath`)**: For targets that do not yet exist, resolves the canonical physical path of the nearest existing ancestor to prevent directory traversal.
+* **Symlink Pivot Detection (`checkSymlinkEscape`)**: Inspects every intermediate path segment; if an intermediate symlink points outside the authorized root, execution is aborted with `RBAC_SYMLINK_ESCAPE`.
+
+### 3. In-Container Confinement Perimeter
+* Workflows triggered via `./dsh.sh persona workflow` are executed directly inside the running DSH container using `docker compose exec dsh`.
+* In-container workflows execute with:
+  - Dropped Linux capabilities (`cap_drop: [ALL]`).
+  - Read-only root filesystems (`read_only: true`).
+  - No new privileges (`no-new-privileges: true`).
+  - Landlock Linux Security Module (LSM) boundaries.
+* If the DSH container is offline, execution **strictly fails closed**. Running on the ambient host environment is blocked unless explicitly overridden with `--force-host-unsafe`.
+
+### 4. Human-in-the-Loop Gates (ACM) & Truthful Adapters
+* **Approval Gates**: High-impact steps declaring `approval_required: true` suspend execution, log a `GATED` audit event, and halt subsequent steps until human authorization.
+* **Truthful Capabilities**: All capability adapters perform real operations (e.g., real SHA-256 cryptographic hashing in `forensic_investigation`, active HTTP reachability checks in `verify_endpoint`, and isolated persistent containment ledgers in `contain_threat`).
+* **Non-Repudiable GRC Logging**: Every decision (`GRANTED`, `DENIED`, `GATED`) is recorded in `config/audit/audit_grc.jsonl` with cryptographic OpenTelemetry 128-bit trace and span correlation IDs.
+
+---
+
 ## 🧪 Interactive Session Recording & Persona Distillation
 
 Instead of writing a persona from scratch, you can **draft and refine workflows interactively** in a chat session, and then **distill the session into a permanent 6-Layer Persona Package** using our native CLI distiller:
