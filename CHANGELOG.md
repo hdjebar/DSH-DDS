@@ -5,6 +5,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.10.0] - 2026-09-03
+
+### Official Base Image Migration & Zero-Trust Provenance Hardening
+* **Direct Official Engine & Base (`node:24-bookworm-slim` + `@deepseek-ai/dsh@0.1.2-rc.1`)**: Migrated the container build away from third-party community base image `smanx/deepseek-harness:0.1.1-rc.2`. The runtime now builds directly on official `node:24-bookworm-slim` and installs verified `@deepseek-ai/dsh@0.1.2-rc.1` directly from the official npm registry.
+* **Elimination of Third-Party Reverse Proxy**: Removed `smanx`'s custom `/app/proxy` wrapper (`0.0.0.0:3080 -> 127.0.0.1:3079`). Replaced with a native declarative Cordis patch (`- id: webserver; config: { host: '0.0.0.0', port: PORT }`) in `config/profiles/web/cordis.patch.yml`, allowing the DeepSeek Harness kernel to bind directly to container interfaces with zero proxy latency.
+* **Direct Signal Lifecycle in Entrypoint**: Refactored `docker/entrypoint.sh` to directly execute `node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web`, ensuring direct Unix signal propagation (SIGTERM, SIGINT) and clean teardowns without intermediate wrapper daemons.
+* **Resilient Patch Resolution**: Updated `config/patch-bash-local.mjs` and the `@earendil-works/pi-ai` Gemini thought-signature bridge in `Dockerfile` to dynamically resolve candidate installation paths, ensuring resilience across hoisted and nested global npm module hierarchies.
+* **Turnkey Installer Synchronization**: Updated embedded Dockerfile and configuration templates in `install_dsh.sh` to mirror the official base image architecture.
+
+---
+
 ## [1.9.0] - 2026-09-03
 
 ### Remediation of Audit v3 Findings (ADR 0005)

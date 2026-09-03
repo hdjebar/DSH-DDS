@@ -6,11 +6,16 @@
 
 import fs from 'fs';
 
-const FILE = process.env.DSH_BASH_LOCAL_FILE
-  || '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-bash-local/lib/index.js';
+const CANDIDATES = [
+  process.env.DSH_BASH_LOCAL_FILE,
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-bash-local/lib/index.js',
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh-bash-local/lib/index.js'
+].filter(Boolean);
 
-if (!fs.existsSync(FILE)) {
-  console.log(`ℹ️ dsh-bash-local module not found at ${FILE}; skipping.`);
+const FILE = CANDIDATES.find(p => fs.existsSync(p));
+
+if (!FILE) {
+  console.log(`ℹ️ dsh-bash-local module not found in candidate paths; skipping.`);
   process.exit(0);
 }
 

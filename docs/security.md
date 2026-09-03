@@ -12,7 +12,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 * **Overall Posture**: **GOOD** for local, single-developer environments; **REQUIRES SANDBOX OVERRIDE** when evaluating untrusted code or running multi-tenant hosts.
 * **Network Isolation**: All exposed endpoints (`3080` for DSH Web UI, `6006` for Arize Phoenix) bind strictly to loopback (`127.0.0.1`), preventing external LAN/WAN network exposure.
-* **Supply Chain Security**: Base images are pinned to immutable cryptographic digests (SHA256), eliminating image-tag mutability risks.
+* **Supply Chain Security**: Base images derive directly from official `node:24-bookworm-slim` with `@deepseek-ai/dsh` installed from official npm, eliminating third-party Docker Hub intermediaries and pinning SHA256 digests.
 * **Data Sovereignty**: Observability (Arize Phoenix) runs 100% on-premise; no prompt traces or completion tokens egress to third-party cloud vendors.
 
 ---
@@ -26,7 +26,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-03** | **Credential Security** | **MEDIUM** | API Keys Injected via Process Environment | Stored in memory / `/proc/1/environ`. Recommend restricted-scope keys and system prompt constraints. |
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
-| **SEC-06** | **Supply Chain** | **PASS** | Immutable SHA256 Image Digests & Safe Parser | Pinned base digests and regex-enforced `.env` variable loader prevent injection. |
+| **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim` + signed `@deepseek-ai/dsh` npm package; eliminates unverified third-party Docker Hub images. |
 | **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and transactional proxy blocking `reset.sh`/`install_dsh.sh` ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md)). |
 | **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via build-time Docker patching; zero runtime mutation in `entrypoint.sh` ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md)). |
 | **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |

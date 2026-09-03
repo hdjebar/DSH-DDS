@@ -82,7 +82,7 @@ flowchart TD
 ## 🏗️ Core Layers
 
 ### 1. Dual-Container Runtime Layer
-* **`dsh-local`**: Minimal production Node.js 24 image based on pinned digest `smanx/deepseek-harness:0.1.1-rc.2`. Compiles native binaries (`node-pty`) via multi-stage `pnpm`, embeds prebuilt plugins and MCP binaries, and exposes proxy port `3080` bound strictly to `127.0.0.1`.
+* **`dsh-local`**: Hardened production Node.js 24 image based directly on official `node:24-bookworm-slim` with `@deepseek-ai/dsh@0.1.2-rc.1` installed from npm. Compiles native binaries (`node-pty`) via multi-stage `pnpm`, embeds prebuilt plugins and MCP binaries, binds native Cordis HTTP server to `0.0.0.0:3080` without third-party proxies, and exposes port `3080` bound strictly to `127.0.0.1` on the host.
 * **`dsh-phoenix`**: Open-source Arize Phoenix instance (`arizephoenix/phoenix:20.5.0`) running uvicorn/Python on port `6006` bound strictly to `127.0.0.1` with embedded SQLite persistence.
 
 ### 2. Google Gemini Thought Signature Bridge

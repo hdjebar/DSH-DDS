@@ -49,3 +49,7 @@ yarn-error.log*
 testinstall/
 installtest/
 pnpm-debug.log*
+
+# Workspace ephemeral outputs
+workspaces/*
+!workspaces/.gitkeep
