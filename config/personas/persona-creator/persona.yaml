@@ -50,6 +50,19 @@ mcpServers:
     args: ["stdio"]
 
 workflows:
+  generate_declarative_pipeline:
+    modelTier: reasoning
+    description: "Multi-step automated interactive visual workflow synthesis with deepseek-flow"
+    steps:
+      - name: "Analyze User Requirements"
+        action: "parse_intent"
+        scope: "workspace"
+      - name: "Generate Visual Canvas Nodes"
+        action: "run_llm_query"
+        prompt: "Synthesize WORKFLOW.md control graph and step-by-step STEP.md workspaces."
+      - name: "Validate Flow Schema"
+        action: "write_report"
+        destination: "/workspaces/flow.json"
   design-workflow:
     modelTier: reasoning
     command: "Design an interactive visual workflow canvas (WORKFLOW.md and STEP.md) with deepseek-flow."
@@ -58,4 +71,4 @@ workflows:
     command: "Synthesize and write a complete 6-layer persona package into config/personas/<name>/."
   benchmark:
     modelTier: fast
-    command: "Evaluate persona token performance and trace latency via Arize Phoenix."
+    command: "Calibrate and rank multi-model routing tiers for persona task execution."

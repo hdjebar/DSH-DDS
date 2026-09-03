@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.0] - 2026-09-03
+
+### Security & Architecture (Hardening Against Execution-Payload Injection)
+* **Eradication of Executable `workflow.sh` Scripts**: Completely removed all executable Bash scripts from persona packages (`config/personas/*/workflow.sh` and `templates/`). Decoupled persona instructions from execution primitives to eliminate prompt-injection weaponization (the "jailbreak rewriting its own muscles" attack vector).
+* **100% Declarative Workflow Pipelines**: Upgraded all 7 domain personas (`security-auditor`, `devops-sre`, `data-analyst`, `mlops-engineer`, `sdmx-expert`, `stats-engineer`, `persona-creator`) to structured step-based declarative pipelines (`steps` with `action`, `scope`, `target`, `prompt`, `verification`).
+* **Transactional Intent Interceptor (`config/persona.mjs`)**: Upgraded `runWorkflow()` into a declarative pipeline validator and transactional proxy that validates step schemas, inspects permissions, and dispatches to container runtimes with complete OpenTelemetry telemetry.
+* **Security & Invariant Test Suites**:
+  * Added `tests/personas.test.mjs`: Formally asserts zero executable scripts exist anywhere in persona directories and validates manifest integrity.
+  * Added `tests/patches.test.mjs`: Validates `patch-pi-ai.mjs` against synthetic mock templates for clean thought signature injection, idempotency, and fail-fast drift detection.
+  * Added `tests/skills.test.mjs`: Validates guidelines, roles, and instructions across all 7 domain skills.
+  * Suite expanded to **26/26 automated tests passing**.
+
+---
+
 ## [1.3.0] - 2026-09-03
 
 ### Added

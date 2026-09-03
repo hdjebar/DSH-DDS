@@ -35,7 +35,6 @@ models:
 plugins:
   - "@liustack/modsearch"
   - "dsh-mnemon"
-  - "dsh-persona-memory"
   - "dsh-find-plugin"
 
 mcpServers:
@@ -44,6 +43,19 @@ mcpServers:
     args: []
 
 workflows:
+  synthesize_dataset:
+    modelTier: reasoning
+    description: "Multi-step automated statistical data synthesis, imputation, and validation"
+    steps:
+      - name: "Ingest Tabular Data"
+        action: "inspect_tabular"
+        scope: "/workspaces"
+      - name: "Run Statistical Modeling"
+        action: "run_llm_query"
+        prompt: "Verify regression invariants, compute confidence intervals, and validate normalities."
+      - name: "Export Statistical Summary"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/statistical_synthesis.md"
   default-task:
     modelTier: default
     command: "Using the stats-engineer skill, execute the core Stats Engineer workflow."

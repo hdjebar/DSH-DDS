@@ -45,6 +45,20 @@ mcpServers:
     args: []
 
 workflows:
+  verify_cluster:
+    modelTier: reasoning
+    description: "Multi-step automated health and observability verification"
+    steps:
+      - name: "Inspect Container Topology"
+        action: "probe_services"
+        scope: "docker"
+      - name: "Validate Telemetry & Health"
+        action: "verify_endpoint"
+        target: "http://phoenix:6006"
+        verification: "Ensure OTel traces are ingesting without backpressure"
+      - name: "Generate SRE Reliability Report"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/sre_health_report.json"
   doctor:
     modelTier: default
     command: "Using the devops-sre skill, run ./dsh.sh doctor and verify container health, ports, and OTel ingest."

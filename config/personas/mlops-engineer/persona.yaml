@@ -35,7 +35,6 @@ models:
 plugins:
   - "@liustack/modsearch"
   - "dsh-mnemon"
-  - "dsh-persona-memory"
   - "dsh-find-plugin"
 
 mcpServers:
@@ -44,6 +43,19 @@ mcpServers:
     args: []
 
 workflows:
+  calibrate_models:
+    modelTier: reasoning
+    description: "Multi-step automated LLM evaluation, routing matrix validation, and latency benchmarking"
+    steps:
+      - name: "Inspect Active Catalog"
+        action: "read_catalog"
+        scope: "/root/.dsh/models.cache.json"
+      - name: "Evaluate Token Costs & Latency"
+        action: "run_llm_query"
+        prompt: "Calibrate cost-performance frontier across active OpenRouter and Gemini models."
+      - name: "Export Routing Matrix"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/model_routing_calibration.json"
   default-task:
     modelTier: default
     command: "Using the mlops-engineer skill, execute the core Mlops Engineer workflow."

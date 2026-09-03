@@ -8,7 +8,7 @@ A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker
 3. **Execution Context Profiles (`profiles`)**: Defined runtime execution environments (e.g. `web` for interactive visual canvas & widgets, `headless` for automated CI/CD batch runs, `cli` for terminal TUI, `sandbox` for isolated security).
 4. **Scoped MCP Servers (`mcpServers`)**: Dedicated Model Context Protocol tool integrations (e.g. SQLite, GitHub, Context7, Fetch).
 5. **Dedicated Plugins (`plugins`)**: Specific DSH plugins required by the persona (e.g. `deepseek-flow`, `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`).
-6. **Executable Workflows (`workflow.sh`)**: Repeatable automation recipes and scheduled background tasks.
+6. **Declarative Workflows (`workflows`)**: 100% declarative automation pipelines and recipes defined directly in `persona.yaml`, eliminating executable shell scripts to protect against prompt-injection execution payload weaponization.
 
 ---
 
@@ -17,9 +17,9 @@ A **Persona** in DeepSeek Harness is a fully packaged, domain-specific AI worker
 ```mermaid
 flowchart TD
     subgraph Package ["📦 Persona Package (config/personas/name/)"]
-        MANIFEST["📋 persona.yaml<br/>(Multi-Model Matrix, Profiles, MCPs, Plugins, Workflows)"]
+        MANIFEST["📋 persona.yaml<br/>(Multi-Model Matrix, Profiles, MCPs, Plugins, Declarative Workflows)"]
         SKILL["🧠 SKILL.md<br/>(Domain Guidelines & Output Schemas)"]
-        WORKFLOW["🤖 workflow.sh<br/>(Automated CLI Recipes)"]
+        WORKFLOW["🛡️ Declarative Workflows<br/>(Validated Intent Pipelines)"]
         MCPS["🔌 Scoped MCP Servers<br/>(SQLite, GitHub, Web Fetch)"]
         PLUGS["🧩 Custom Plugins<br/>(deepseek-flow, Search, Memory)"]
         PROFILES["🌐 Execution Contexts<br/>(web, headless, cli, sandbox)"]
@@ -125,9 +125,8 @@ Rather than restricting a persona to a single static model, each persona defines
 
 ```text
 config/personas/<name>/
-├── persona.yaml       # Master manifest (version, Multi-Model Matrix, profiles, MCPs, plugins, workflows)
-├── SKILL.md           # Reusable domain rules and operational constraints
-└── workflow.sh        # Executable bash recipes for recurring tasks
+├── persona.yaml       # Master manifest (version, Multi-Model Matrix, profiles, MCPs, plugins, declarative workflows)
+└── SKILL.md           # Reusable domain rules and operational constraints
 ```
 
 ### Flagship Manifest Example (`config/personas/sdmx-expert/persona.yaml`):
@@ -376,9 +375,8 @@ flowchart TD
     end
 
     subgraph Persona_Package ["📦 Persona Package (config/personas/name/)"]
-        YAML["persona.yaml (Multi-Model Matrix, Profiles, MCPs)"]
+        YAML["persona.yaml (Multi-Model Matrix, Profiles, MCPs, Declarative Workflows)"]
         SKILL["SKILL.md (Rules & Guidelines)"]
-        WF["workflow.sh (Automation Recipes)"]
     end
 
     SESSION --> Recording_Pipeline
@@ -399,8 +397,8 @@ flowchart TD
     RUN --> OTEL["3. Audit Live Traces in Arize Phoenix (:6006)<br/>(Inspect model latency, tool waterfalls, token cost)"]
     OTEL --> LIST["4. Inspect Session Transcripts<br/>./dsh.sh sessions"]
     LIST --> DISTILL["5. Distill Outside Web UI into Persona Package<br/>./dsh.sh persona distill name --session id"]
-    DISTILL --> GIT["6. Git Commit & IDE Review<br/>config/personas/name/ (persona.yaml, SKILL.md, workflow.sh)"]
-    GIT --> AUTO["7. Re-use & Automate Headless<br/>./config/personas/name/workflow.sh or Web UI Dropdown"]
+    DISTILL --> GIT["6. Git Commit & IDE Review<br/>config/personas/name/ (persona.yaml, SKILL.md)"]
+    GIT --> AUTO["7. Re-use & Automate Headless<br/>./dsh.sh persona workflow name wf-key or Web UI Dropdown"]
 ```
 
 ### 📋 Detailed Step-by-Step Guide:
@@ -437,9 +435,8 @@ Open the generated package in your editor:
 ```bash
 # Inspect the 6-layer persona package
 tree config/personas/sdmx-engineer/
-# ├── persona.yaml   # Multi-Model Task Routing Matrix & MCP tools
-# ├── SKILL.md       # Operational rules, guidelines & schemas
-# └── workflow.sh    # Executable repeatable automation recipes
+# ├── persona.yaml   # Multi-Model Task Routing Matrix, MCP tools & Declarative Workflows
+# └── SKILL.md       # Operational rules, guidelines & schemas
 
 # Commit to version control
 git add config/personas/sdmx-engineer/
@@ -452,8 +449,8 @@ git commit -m "feat(persona): add sdmx-engineer distilled from ESTAT/LUSTAT inte
   ```bash
   # Execute using calibrated model tier
   ./dsh.sh persona run sdmx-engineer --tier reasoning "Calculate core inflation breaks"
-  # Run batch workflow recipe
-  ./config/personas/sdmx-engineer/workflow.sh reasoning
+  # Run declarative workflow pipeline
+  ./dsh.sh persona workflow sdmx-engineer default-task
   ```
 
 ---

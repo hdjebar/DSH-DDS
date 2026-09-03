@@ -45,6 +45,25 @@ mcpServers:
     args: []
 
 workflows:
+  audit_code:
+    modelTier: reasoning
+    description: "Multi-step architectural audit and dependency vulnerability scan"
+    steps:
+      - name: "Discover Workspace Structure"
+        action: "fetch_sources"
+        scope: "recursive"
+        ignore: "node_modules, .git"
+      - name: "Scan for Dynamic Patches & Dependencies"
+        action: "run_llm_query"
+        prompt: "Analyze workspace structure for manual patching scripts (e.g. patch-pi-ai.mjs) and verify structural integrity."
+      - name: "Trace Thought Signatures"
+        action: "apply_fix_or_patch"
+        target: "pi-ai"
+        verification: "Ensure thought_signature is captured and structured API returns are preserved cleanly."
+      - name: "Export Architecture Mapping Report"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/security_audit_report.json"
+        projection: "domain_entities"
   audit-diff:
     modelTier: default
     command: "Using the security-auditor skill, audit all modified files in git diff HEAD~1 and report security risks with diff patches."

@@ -45,6 +45,19 @@ mcpServers:
     args: []
 
 workflows:
+  extract_indicators:
+    modelTier: reasoning
+    description: "Multi-step automated SDMX 2.1 dataflow discovery, dimension validation, and pandas conversion"
+    steps:
+      - name: "Discover LUSTAT Dataflows"
+        action: "fetch_sdmx_dataflows"
+        target: "https://lustat.statec.lu/rest/dataflow/LU1/all/latest"
+      - name: "Validate Codelists & DSDs"
+        action: "validate_sdmx_schema"
+        scope: "LU1"
+      - name: "Generate Statistical Dataset"
+        action: "write_report"
+        destination: "/workspaces/sdmx_indicators.csv"
   lustat:
     modelTier: default
     command: "Using the sdmx-expert skill, query available dataflows from LUSTAT (LU1) and list top economic indicators."

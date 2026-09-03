@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, '..');
+const PERSONAS_DIR = path.join(ROOT, 'config', 'personas');
+const TEMPLATES_DIR = path.join(ROOT, 'config', 'templates', 'personas');
+
+test('Security Sandbox Invariant: no executable scripts exist in persona packages', () => {
+  const checkDirForExecutables = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        checkDirForExecutables(fullPath);
+      } else {
+        const ext = path.extname(entry.name).toLowerCase();
+        assert.ok(
+          !['.sh', '.bash', '.zsh', '.exe', '.bin'].includes(ext),
+          `Security violation: executable script '${entry.name}' found at '${fullPath}'. Workflows must be 100% declarative in persona.yaml.`
+        );
+      }
+    }
+  };
+
+  checkDirForExecutables(PERSONAS_DIR);
+  checkDirForExecutables(TEMPLATES_DIR);
+});
+
+test('Persona Architecture: all 7 domain personas have valid declarative manifests', () => {
+  const expectedPersonas = [
+    'data-analyst',
+    'devops-sre',
+    'mlops-engineer',
+    'persona-creator',
+    'sdmx-expert',
+    'security-auditor',
+    'stats-engineer'
+  ];
+
+  for (const name of expectedPersonas) {
+    const personaDir = path.join(PERSONAS_DIR, name);
+    assert.ok(fs.existsSync(personaDir), `Persona directory must exist: ${name}`);
+
+    const manifestPath = path.join(personaDir, 'persona.yaml');
+    assert.ok(fs.existsSync(manifestPath), `persona.yaml must exist for: ${name}`);
+
+    const content = fs.readFileSync(manifestPath, 'utf8');
+    assert.match(content, new RegExp(`name:\\s*${name}`), `Manifest name must match directory for ${name}`);
+    assert.match(content, /models:\s*\n/, `Manifest must define models matrix for ${name}`);
+    assert.match(content, /workflows:\s*\n/, `Manifest must define declarative workflows for ${name}`);
+
+    const skillPath = path.join(personaDir, 'SKILL.md');
+    assert.ok(fs.existsSync(skillPath), `Local SKILL.md must exist for: ${name}`);
+
+    const activeSkillPath = path.join(ROOT, 'config', 'skills', name, 'SKILL.md');
+    assert.ok(fs.existsSync(activeSkillPath), `Active skill in config/skills/${name}/SKILL.md must exist`);
+  }
+});
+
+test('Persona Workflows: security-auditor has 100% declarative step-based workflow pipeline', () => {
+  const manifestPath = path.join(PERSONAS_DIR, 'security-auditor', 'persona.yaml');
+  const content = fs.readFileSync(manifestPath, 'utf8');
+
+  assert.ok(content.includes('audit_code:'), 'security-auditor must contain declarative audit_code workflow');
+  assert.ok(content.includes('steps:'), 'audit_code workflow must define structured steps');
+  assert.ok(content.includes('action: "fetch_sources"'), 'Step 1 must be fetch_sources');
+  assert.ok(content.includes('action: "run_llm_query"'), 'Step 2 must be run_llm_query');
+  assert.ok(content.includes('action: "apply_fix_or_patch"'), 'Step 3 must be apply_fix_or_patch');
+  assert.ok(content.includes('action: "write_report"'), 'Step 4 must be write_report');
+});

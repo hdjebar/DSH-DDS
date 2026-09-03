@@ -46,6 +46,19 @@ mcpServers:
     args: []
 
 workflows:
+  analyze_pipeline:
+    modelTier: reasoning
+    description: "Multi-step automated data profiling and statistical synthesis"
+    steps:
+      - name: "Profile Relational Datasets"
+        action: "inspect_sqlite"
+        scope: "/workspaces/data.db"
+      - name: "Evaluate Anomaly Bounds"
+        action: "run_llm_query"
+        prompt: "Compute outlier distributions, median absolute deviations, and trend trajectories."
+      - name: "Export Executive Dashboard"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/executive_data_summary.md"
   summarize:
     modelTier: default
     command: "Using the data-analyst skill, analyze /workspaces/data.csv and produce a summary table with distribution stats."

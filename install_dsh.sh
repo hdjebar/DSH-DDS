@@ -128,28 +128,21 @@ fetch_or_copy_file "config/profiles/headless/cordis.yml"
 fetch_or_copy_file "config/profiles/headless/cordis.patch.yml"
 fetch_or_copy_file "config/profiles/headless/pnpm-workspace.yaml"
 
-# Personas (all 7 domain packages)
+# Personas (all 7 domain packages - 100% Declarative Architecture)
 fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
 fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
-fetch_or_copy_file "config/personas/sdmx-expert/workflow.sh"
 fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
 fetch_or_copy_file "config/personas/data-analyst/SKILL.md"
-fetch_or_copy_file "config/personas/data-analyst/workflow.sh"
 fetch_or_copy_file "config/personas/devops-sre/persona.yaml"
 fetch_or_copy_file "config/personas/devops-sre/SKILL.md"
-fetch_or_copy_file "config/personas/devops-sre/workflow.sh"
 fetch_or_copy_file "config/personas/mlops-engineer/persona.yaml"
 fetch_or_copy_file "config/personas/mlops-engineer/SKILL.md"
-fetch_or_copy_file "config/personas/mlops-engineer/workflow.sh"
 fetch_or_copy_file "config/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/personas/persona-creator/SKILL.md"
-fetch_or_copy_file "config/personas/persona-creator/workflow.sh"
 fetch_or_copy_file "config/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/personas/security-auditor/SKILL.md"
-fetch_or_copy_file "config/personas/security-auditor/workflow.sh"
 fetch_or_copy_file "config/personas/stats-engineer/persona.yaml"
 fetch_or_copy_file "config/personas/stats-engineer/SKILL.md"
-fetch_or_copy_file "config/personas/stats-engineer/workflow.sh"
 
 # Skills (all 7 domain skills)
 fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
@@ -163,29 +156,21 @@ fetch_or_copy_file "config/skills/stats-engineer/SKILL.md"
 # Templates
 fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
 fetch_or_copy_file "config/templates/personas/base-template/SKILL.md"
-fetch_or_copy_file "config/templates/personas/base-template/workflow.sh"
 fetch_or_copy_file "config/templates/personas/sdmx-expert/persona.yaml"
 fetch_or_copy_file "config/templates/personas/sdmx-expert/SKILL.md"
-fetch_or_copy_file "config/templates/personas/sdmx-expert/workflow.sh"
 fetch_or_copy_file "config/templates/personas/data-analyst/persona.yaml"
 fetch_or_copy_file "config/templates/personas/data-analyst/SKILL.md"
-fetch_or_copy_file "config/templates/personas/data-analyst/workflow.sh"
 fetch_or_copy_file "config/templates/personas/devops-sre/persona.yaml"
 fetch_or_copy_file "config/templates/personas/devops-sre/SKILL.md"
-fetch_or_copy_file "config/templates/personas/devops-sre/workflow.sh"
 fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
-fetch_or_copy_file "config/templates/personas/persona-creator/workflow.sh"
 fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
-fetch_or_copy_file "config/templates/personas/security-auditor/workflow.sh"
 
 # Permissions
 chmod +x "$DSH_INSTALL/dsh.sh" 2>/dev/null || true
 chmod +x "$DSH_INSTALL/reset.sh" 2>/dev/null || true
 chmod +x "$DSH_INSTALL/docker/entrypoint.sh" 2>/dev/null || true
-find "$DSH_INSTALL/config/personas" -name "workflow.sh" -exec chmod +x {} + 2>/dev/null || true
-find "$DSH_INSTALL/config/templates" -name "workflow.sh" -exec chmod +x {} + 2>/dev/null || true
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
 cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"

@@ -219,10 +219,6 @@ function createPersona(name, templateName = 'data-analyst') {
     fs.writeFileSync(path.join(targetDir, file), content, 'utf8');
   }
 
-  if (fs.existsSync(path.join(targetDir, 'workflow.sh'))) {
-    fs.chmodSync(path.join(targetDir, 'workflow.sh'), 0o755);
-  }
-
   if (fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
     fs.copyFileSync(path.join(targetDir, 'SKILL.md'), path.join(targetSkillDir, 'SKILL.md'));
   }
@@ -361,27 +357,54 @@ function runWorkflow(name, workflowKey) {
   const meta = parsePersonaYaml(manifestPath);
   const workflows = (meta.workflows && typeof meta.workflows === 'object') ? meta.workflows : {};
 
-  if (!workflowKey) {
-    console.log(`Available workflows for persona '${safeName}':`);
+  const printWorkflows = () => {
+    console.log(`Available declarative workflows for persona '${safeName}':`);
     for (const [k, v] of Object.entries(workflows)) {
-      console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
+      const tier = v.modelTier || v.model_tier || 'default';
+      const summary = v.command ? v.command : (Array.isArray(v.steps) ? `${v.steps.length} declarative steps` : 'declarative workflow');
+      const desc = v.description ? ` - ${v.description}` : '';
+      console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${tier})${desc}: ${summary}`);
     }
+  };
+
+  if (!workflowKey) {
+    printWorkflows();
     return;
   }
 
   const safeWfKey = validateSlug(workflowKey, 'workflow key');
   if (!Object.prototype.hasOwnProperty.call(workflows, safeWfKey)) {
-    console.log(`Available workflows for persona '${safeName}':`);
-    for (const [k, v] of Object.entries(workflows)) {
-      console.log(`  • \x1b[36m${k}\x1b[0m (tier: ${v.modelTier || 'default'}): ${v.command}`);
-    }
+    printWorkflows();
     process.exit(1);
   }
 
   const wf = workflows[safeWfKey];
-  const tier = wf.modelTier || 'default';
-  console.log(`🚀 Running workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
-  runPersona(safeName, wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), ''), tier);
+  const tier = wf.modelTier || wf.model_tier || 'default';
+  console.log(`🚀 Running declarative workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
+
+  let prompt;
+  if (Array.isArray(wf.steps)) {
+    console.log(`📋 Validated transactional workflow pipeline (${wf.steps.length} steps):`);
+    const stepsFormatted = wf.steps.map((s, idx) => {
+      console.log(`   [${idx + 1}/${wf.steps.length}] ${s.name || s.action} (${s.action})`);
+      const details = [];
+      if (s.scope) details.push(`scope: ${s.scope}`);
+      if (s.ignore) details.push(`ignore: ${s.ignore}`);
+      if (s.target) details.push(`target: ${s.target}`);
+      if (s.verification) details.push(`verification: ${s.verification}`);
+      if (s.destination) details.push(`destination: ${s.destination}`);
+      if (s.projection) details.push(`projection: ${s.projection}`);
+      if (s.prompt) details.push(`prompt: "${s.prompt}"`);
+      return `Step ${idx + 1} - ${s.name || s.action}: Action='${s.action}'${details.length ? ' (' + details.join(', ') + ')' : ''}`;
+    }).join('\n');
+    prompt = `Execute the declarative workflow '${safeWfKey}' following these verified steps:\n${stepsFormatted}`;
+  } else if (wf.command) {
+    prompt = wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), '');
+  } else {
+    prompt = `Execute declarative workflow '${safeWfKey}' for persona '${safeName}'.`;
+  }
+
+  runPersona(safeName, prompt, tier);
 }
 
 function showPersona(name) {
@@ -732,34 +755,13 @@ ${fencedSession ? `\n## 📜 Distilled Interactive Session Insights\n${fencedSes
   fs.writeFileSync(path.join(targetDir, 'SKILL.md'), skillMd, 'utf8');
   fs.writeFileSync(path.join(targetSkillDir, 'SKILL.md'), skillMd, 'utf8');
 
-  // 4. Generate workflow.sh
-  const workflowSh = `#!/usr/bin/env bash
-# ${cleanTitle} Automation Recipes
-
-WORKFLOW="\${1:-default}"
-
-case "$WORKFLOW" in
-  default)
-    ./dsh.sh persona run ${safeName} "execute standard ${cleanTitle} workflow"
-    ;;
-  reasoning)
-    ./dsh.sh persona run ${safeName} --tier reasoning "perform deep ${cleanTitle} analysis"
-    ;;
-  *)
-    echo "Available workflows: default, reasoning"
-    ;;
-esac
-`;
-  fs.writeFileSync(path.join(targetDir, 'workflow.sh'), workflowSh, 'utf8');
-  fs.chmodSync(path.join(targetDir, 'workflow.sh'), 0o755);
-
   console.log(`✅ Successfully distilled and built persona package '\x1b[32m${safeName}\x1b[0m'!`);
   console.log(`📁 Package Path:  config/personas/${safeName}/`);
-  console.log(`   ├── persona.yaml   (Multi-Model Matrix, Profiles & MCPs)`);
-  console.log(`   ├── SKILL.md       (Distilled rules & guidelines)`);
-  console.log(`   └── workflow.sh    (Automated command recipes)`);
+  console.log(`   ├── persona.yaml   (Multi-Model Matrix, Profiles, MCPs & Declarative Workflows)`);
+  console.log(`   └── SKILL.md       (Distilled rules & guidelines)`);
   console.log(`📁 Active Skill:  config/skills/${safeName}/SKILL.md`);
   console.log(`\n🚀 Ready to run:`);
   console.log(`   ./dsh.sh persona run ${safeName} "<task>"`);
+  console.log(`   ./dsh.sh persona workflow ${safeName} default-task`);
   console.log('========================================================================');
 }
