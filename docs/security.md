@@ -25,6 +25,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
 | **SEC-06** | **Supply Chain** | **PASS** | Immutable SHA256 Image Digests & Safe Parser | Pinned base digests and regex-enforced `.env` variable loader prevent injection. |
+| **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and transactional proxy blocking `reset.sh`/`install_dsh.sh`. |
+| **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via build-time Docker patching; zero runtime mutation in `entrypoint.sh`. |
 
 ---
 
@@ -78,6 +80,42 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - Periodically prune or wipe telemetry data:
     ```bash
     rm -rf config/phoenix/*
+    ```
+
+### 6. [SEC-07] Zero Trust Identity Isolation & Persona RBAC
+* **Threat Model**:
+  - Containerization isolates the Docker host from the container, but does not isolate personas from each other.
+  - A prompt-injected or compromised persona (e.g. `data-analyst` handling untrusted CSV/SQL) could attempt to read credentials, mutate skills of `security-auditor`, or trigger administrative scripts (`reset.sh`, `install_dsh.sh`).
+* **Hardening Guideline & Enforcement**:
+  - Every persona manifest (`persona.yaml`) declares a strict `rbac:` policy specifying allowed roles, readable/writable filesystem paths, allowed MCP tools, and explicit `deny` paths.
+  - The transactional execution engine in `config/persona.mjs` (`enforceRbacPolicy()`) intercepts every workflow step prior to execution and fails closed if a target matches a deny pattern or exceeds authorization.
+  - See [ADR 0001: Build-Time Immutability, Zero Trust Persona RBAC, and Deterministic GRC Observability](adr/0001-build-time-immutability-and-rbac.md).
+
+### 7. [SEC-08] Build-Time Immutability vs. Runtime Monkey-Patching
+* **Threat Model**:
+  - Dynamically applying code patches in `docker/entrypoint.sh` at container startup introduces non-reproducibility, drift, and divergence between Git state and in-memory application state.
+* **Hardening Guideline & Enforcement**:
+  - All compatibility shims (`pi-ai` thought-signature preservation and `dsh-bash-local` Landlock auto-workdir creation) are compiled directly into the Docker image layers at build time (`RUN`).
+  - `docker/entrypoint.sh` is strictly read-only regarding application code; zero dynamic string mutations or regex patchers execute at container boot.
+
+### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`)
+* **Governance Standard**:
+  - Enterprise compliance frameworks (EU AI Act, SOC 2, ISO 27001) require verifiable audit trails of autonomous agent decisions.
+  - Every authorization check is appended as a structured JSON Lines record to `/root/.dsh/sessions/audit_grc.jsonl`:
+    ```json
+    {
+      "timestamp": "2026-09-03T01:32:22.185Z",
+      "event_type": "GRC_AUTHORIZATION_DECISION",
+      "persona": "data-analyst",
+      "workflow": "analyze_pipeline",
+      "step_index": 1,
+      "step_name": "Profile Relational Datasets",
+      "action": "inspect_sqlite",
+      "target": "/workspaces/data.db",
+      "decision": "GRANTED",
+      "role": "data_analyst",
+      "reason": "Policy validated"
+    }
     ```
 
 ---

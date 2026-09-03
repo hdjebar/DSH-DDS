@@ -156,6 +156,22 @@ mcpServers:
   sqlite-db:
     command: /root/.local/bin/mcp-server-sqlite
     args: ["--db-path", "/workspaces/data.db"]
+rbac:
+  role: sdmx_expert
+  permissions:
+    filesystem:
+      read: ["/workspaces", "/root/.dsh/personas/sdmx-expert"]
+      write: ["/workspaces", "/root/.dsh/sessions"]
+      deny: ["/etc", "/root/.ssh", "config/personas/*", "reset.sh", "install_dsh.sh"]
+    mcp:
+      allowed: ["fetch", "sqlite-db"]
+workflows:
+  extract_indicators:
+    modelTier: reasoning
+    steps:
+      - name: Fetch SDMX Dataflows
+        action: fetch_dataflows
+        scope: /workspaces/data
 ```
 
 Execute personas directly via the unified CLI wrapper:
@@ -213,7 +229,8 @@ Comprehensive guides organized by audience and operational goal:
 ### 🏛️ Architecture & Security Reference
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 10 plugins and 4 MCP servers.
-* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, `workspace-write` policies, and network isolation.
+* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, Zero Trust persona RBAC, and network isolation.
+* 📜 **[ADR 0001: Build-Time Immutability & RBAC](docs/adr/0001-build-time-immutability-and-rbac.md)** — Architecture Decision Record on build-time immutability, Zero Trust RBAC, and GRC audit logs.
 
 ### 🔬 Theory & Research
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.

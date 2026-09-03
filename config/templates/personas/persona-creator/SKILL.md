@@ -33,10 +33,9 @@ Assign the optimal model tier for each task stage:
 
 ### 4. 6-Layer Persona Package Generation
 Generate the complete directory structure in `config/personas/<name>/`:
-1. `persona.yaml`: Metadata, Multi-Model Matrix, MCP servers, and plugins.
-2. `SKILL.md`: Operational domain rules, guidelines, and schemas.
-3. `workflow.sh`: Repeatable headless automation scripts.
-4. Auto-register in `config/skills/<name>/SKILL.md` for instant UI availability.
+1. `persona.yaml`: Metadata, Multi-Model Matrix, Zero Trust RBAC, MCP servers, plugins, and declarative workflows.
+2. `SKILL.md`: Operational domain rules, guidelines, and output schemas.
+3. Auto-register in `config/skills/<name>/SKILL.md` for instant UI availability.
 
 ---
 
@@ -45,5 +44,5 @@ Generate the complete directory structure in `config/personas/<name>/`:
 When constructing a persona, always output:
 1. 📊 **Architecture Summary**: Persona role, key tools, and workflow topology.
 2. 🎯 **Multi-Model Routing Table**: Which model handles which task tier and why.
-3. 📦 **Complete Generated Files**: Formatted `persona.yaml`, `SKILL.md`, and `workflow.sh`.
+3. 📦 **Complete Generated Files**: Formatted `persona.yaml` (with Zero Trust RBAC and declarative step pipeline) and `SKILL.md`.
 4. 🚀 **Ready-to-Run Verification Commands**: Exact `./dsh.sh persona run` commands to test the new persona.

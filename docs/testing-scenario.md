@@ -62,9 +62,8 @@ Open your terminal and run the **Persona Distiller**:
 🧪 Distilling Interactive Session into Persona Package: 'stats-engineer'
 ✅ Successfully distilled and built persona package 'stats-engineer'!
 📁 Package Path: config/personas/stats-engineer/
-   ├── persona.yaml   (Multi-Model Matrix & MCPs)
-   ├── SKILL.md       (Distilled rules & guidelines)
-   └── workflow.sh    (Automated command recipes)
+   ├── persona.yaml   (Multi-Model Matrix, Zero Trust RBAC & Declarative Workflows)
+   └── SKILL.md       (Distilled rules & domain guidelines)
 📁 Active Skill: config/skills/stats-engineer/SKILL.md
 ```
 

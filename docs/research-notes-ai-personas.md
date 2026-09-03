@@ -41,7 +41,7 @@ flowchart TD
         P3["3. 🌐 Execution Profiles — web canvas / headless CI / cli"]
         P4["4. 🔌 Scoped MCP Tools — Bounded Model Context Protocol servers"]
         P5["5. 🧩 UI Plugins — deepseek-flow / dsh-mnemon"]
-        P6["6. 🤖 Automation Recipes — Deterministic workflow.sh scripts"]
+        P6["6. 🛡️ Declarative Workflows — 100% Declarative step pipelines (workflows)"]
     end
 
     Monolithic_Pattern -.->|Architectural Transition| Persona_Pattern
@@ -77,7 +77,7 @@ Different multi-agent frameworks operationalize agent roles through distinct eng
 | **Tool Integration Model** | Python LangChain/Crew tools | Python functions / toolkits | Action classes | **Model Context Protocol (MCP)** via JSON-RPC / stdio |
 | **Execution Contexts** | In-process Python runtime | In-process / Docker sandbox | Local CLI process | **Execution Profile Matrix** (`web`, `headless`, `cli`, `sandbox`) |
 | **Observability Standard** | OpenTelemetry / AgentOps | OpenTelemetry / Console | Console / Logging | **100% Local Arize Phoenix OTel** (`http://localhost:6006`) |
-| **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & `workflow.sh` |
+| **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Workflows |
 
 ---
 
@@ -89,7 +89,7 @@ flowchart LR
     MODELS --- PROFILES["3. 🌐 Execution Contexts<br/>(web / headless / cli)"]
     PROFILES --- MCPS["4. 🔌 Scoped Tools<br/>(MCP Servers)"]
     MCPS --- PLUGS["5. 🧩 UI Plugins<br/>(deepseek-flow, mnemon)"]
-    PLUGS --- WORKFLOWS["6. 🤖 Automation Recipes<br/>(workflow.sh)"]
+    PLUGS --- WORKFLOWS["6. 🛡️ Declarative Workflows<br/>(workflows:)"]
 ```
 
 1. **Layer 1 — Domain Skill (`SKILL.md`)**: Reusable domain knowledge, constraints, API specifications, and output formatting rules.
@@ -97,7 +97,7 @@ flowchart LR
 3. **Layer 3 — Execution Context Profiles (`profiles`)**: Decouples identity from execution environments (`web` browser workbench, `headless` CI/CD runner, `cli` terminal, `sandbox` isolated container).
 4. **Layer 4 — Scoped MCP Servers (`mcpServers`)**: Model Context Protocol servers bounded per persona to limit tool search spaces and prevent ungrounded invocations.
 5. **Layer 5 — Workbench Plugins (`plugins`)**: Visual DAG design canvas (`deepseek-flow`), multi-session memory systems (`dsh-mnemon`), and file finders.
-6. **Layer 6 — Automation Recipes (`workflow.sh`)**: Version-controlled shell scripts encapsulating repeatable batch routines.
+6. **Layer 6 — Declarative Workflows & ACM (`workflows:`)**: Version-controlled declarative step manifests and Adaptive Case Management routines, eliminating arbitrary executable shell scripts to protect against prompt-injection execution-payload weaponization.
 
 ---
 

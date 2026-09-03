@@ -30,11 +30,13 @@ Before opening a pull request or pushing commits:
 ```bash
 node --test tests/*.test.mjs
 ```
-The test suite validates:
-* **CLI Parser**: Option flags, values, quotes, and rejection of malformed arguments.
-* **YAML Parser**: Valid structured YAML across all persona manifests and profiles.
-* **Secret Scrubber**: Regex redaction for OpenAI, Claude, Google AI Studio, and GitHub PAT tokens.
-* **Installer Parity**: 100% byte-for-byte synchronization between `install_dsh.sh` and canonical repository files.
+* **CLI & YAML Parsers**: Option flags, values, quotes, and robust YAML parsing across manifests.
+* **Secret Scrubber**: Regex redaction for frontier API keys and GitHub PAT tokens.
+* **Installer Parity**: 100% byte-for-byte synchronization between `install_dsh.sh` and canonical files.
+* **Zero Trust RBAC & Confinement**: Enforces explicit persona access matrices, privilege escalation blocks, and GRC audit logs.
+* **Build-Time Immutability**: Asserts build-time compilation of compatibility shims and zero dynamic runtime patching in `entrypoint.sh`.
+* **Declarative Workflows & ACM**: Asserts zero executables in persona packages and validates step pipelines and conditional case management.
+* **Skill Catalog Integrity**: Validates domain rules and schemas across all domain skills.
 
 ### 2. Shell & Dockerfile Linting
 ```bash

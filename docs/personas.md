@@ -310,6 +310,28 @@ mcpServers:                            # [Optional] Dictionary of MCP tool defin
 plugins:                               # [Optional] List of DSH plugins required
   - "plugin-id-or-npm-name"
 
+# 🛡️ Zero Trust RBAC Matrix (ADR 0001)
+rbac:                                  # [Required for PoLP] Persona access control policy
+  role: "role_identifier"              # Specific role name
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/personas/<persona-name>"
+      write:
+        - "/workspaces"
+        - "/root/.dsh/sessions"
+      deny:                            # Explicitly forbidden resources (fail-closed)
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+    mcp:
+      allowed:                         # Whitelisted MCP servers
+        - "sqlite-db"
+        - "fetch"
+
 # 🛡️ Declarative Workflows & Adaptive Case Management (ACM)
 workflows:                             # [Optional] Dictionary of named execution recipes
   <workflow-key>:
