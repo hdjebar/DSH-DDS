@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     g++ \
     build-essential \
-    && npm install -g pnpm@9.15.9 \
+    && npm install -g pnpm@11.25.0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/.dsh/profiles/web
