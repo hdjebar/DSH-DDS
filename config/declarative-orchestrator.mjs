@@ -141,7 +141,11 @@ export class DeclarativeWorkflowEngine {
 
       const targetPath = resolvePath(candidate);
       if (!fs.existsSync(targetPath)) {
-        throw new Error(`Target path '${targetPath}' does not exist on filesystem.`);
+        if (candidate === step.concrete_target || candidate === resolvePath('/workspaces') || candidate === ctx.workspace) {
+          fs.mkdirSync(targetPath, { recursive: true });
+        } else {
+          throw new Error(`Target path '${targetPath}' does not exist on filesystem.`);
+        }
       }
 
       const stat = fs.statSync(targetPath);
