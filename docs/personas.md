@@ -359,6 +359,42 @@ workflows:                             # [Optional] Dictionary of named executio
 
 ---
 
+### 🛡️ Detailed RBAC & Security Specification in `persona.yaml`
+
+The `rbac:` block in `persona.yaml` is the **authoritative access control policy** enforced by `config/rbac-policy.mjs`. It is mandatory for all personas.
+
+#### 1. Schema & Field Reference
+
+| YAML Key | Type | Requirement | Description & Enforcement |
+| :--- | :---: | :---: | :--- |
+| **`rbac.role`** | `string` | **Mandatory** | Semantic identity of the persona (e.g. `security_auditor`, `data_analyst`). Bound to all OTel spans and GRC audit records. |
+| **`rbac.permissions.filesystem.read`** | `list[string]` | **Mandatory** | Whitelist of allowed read paths. Every read target must resolve strictly inside one of these directories. |
+| **`rbac.permissions.filesystem.write`** | `list[string]` | **Mandatory** | Whitelist of allowed write paths. Targets are checked via `isContainedWithin()` and ancestor canonicalization. |
+| **`rbac.permissions.filesystem.deny`** | `list[string]` | **Mandatory** | Strict blacklisted patterns. If a path matches any deny pattern, access fails closed immediately (`RBAC_PATH_DENIED`). |
+| **`rbac.permissions.mcp.allowed`** | `list[string]` | **Mandatory** | Whitelist of MCP servers the persona is permitted to invoke. Unlisted tools are rejected with `RBAC_MCP_FORBIDDEN`. |
+
+#### 2. Standard `deny:` Patterns & Rationale
+
+Every production persona declares the following non-negotiable security blacklist:
+
+| Deny Pattern | Security Rationale |
+| :--- | :--- |
+| **`/etc`** | Protects Linux system configuration, user accounts, and `/etc/shadow`. |
+| **`/root/.ssh`** | Protects SSH private/public keys and credentials from being read or overwritten. |
+| **`config/personas/*`** | **Prevents Self-Mutation**: Personas cannot alter their own manifests or tamper with other personas. |
+| **`reset.sh` & `install_dsh.sh`** | **Prevents Administrative Hijacking**: Blocks agents from running host bootstrap scripts. |
+| **`config/profiles/*`** | Prevents injecting unauthorized plugins or modifying runtime profiles. |
+
+#### 3. Human-in-the-Loop & Step Safety in `workflows:`
+
+Workflows defined in `persona.yaml` replace imperative shell scripts (`workflow.sh`) with safe, typed steps:
+
+* **`approval_required: true`**: Declares that an action (such as isolating an artifact or modifying production files) cannot proceed autonomously. The workflow halts in state `GATED` and logs an immutable audit event in `config/audit/audit_grc.jsonl`.
+* **Typed Capability Adapters**: Steps must use vetted action verbs (e.g., `fetch_sources`, `evaluate_incident`, `forensic_investigation`, `contain_threat`, `write_report`). Any unhandled or arbitrary action causes immediate termination (`status: 'FAILED'`).
+* **Environment Indirection in `mcpServers:`**: No raw API keys or tokens can be committed to `persona.yaml`. All sensitive credentials must use `${ENVIRONMENT_VARIABLE}` syntax.
+
+---
+
 ## 🔒 Security, Trust Boundaries & Secret Scrubbing in Distillation
 
 When distilling interactive web sessions into permanent persona packages, DeepSeek Harness enforces strict security boundaries:
