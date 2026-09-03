@@ -87,6 +87,8 @@ Different multi-agent frameworks operationalize agent roles through distinct eng
 | **Observability Standard** | OpenTelemetry / AgentOps | OpenTelemetry / Console | Console / Logging | **100% Local Arize Phoenix OTel** (`http://localhost:6006`) |
 | **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Orchestrator |
 
+> 🔒 **Data Sovereignty & Inference Plane Clarification**: The 100% on-premise guarantee applies to all telemetry traces, span waterfalls, workspace files, and GRC audit ledgers. When using public cloud models (OpenRouter, DeepSeek, Google, Anthropic), prompt context transits over TLS to the provider's API. For absolute zero-data-egress environments, the stack connects directly to local model inference backends (Ollama, vLLM, llama.cpp).
+
 ---
 
 ## 🧩 5. The 6-Layer Persona Architecture Specification

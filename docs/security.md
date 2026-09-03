@@ -74,10 +74,14 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - Generate a **Fine-Grained Personal Access Token (Beta)** restricted to **Only select repositories**.
   - Grant only *Contents: Read and write* and *Pull requests: Read and write*. Deny repository administration, workflow management, and delete rights.
 
-### 5. [SEC-05] Observability & Telemetry Retention
+### 5. [SEC-05] Observability & Telemetry Retention (Data Sovereignty & Cloud APIs)
 * **Threat Model**:
   - `DSH_TELEMETRY_MODE=FULL` streams entire multi-turn conversation transcripts, system prompts, tool call parameters, and model reasoning blocks into Arize Phoenix (`./config/phoenix`).
   - If processing confidential files or proprietary datasets, these artifacts persist in local SQLite/parquet databases.
+* **Data Sovereignty Boundary & Cloud API Nuance**:
+  - **Local Telemetry Invariant**: All telemetry data, span waterfalls, and GRC audit records (`audit_grc.jsonl`) remain 100% on-premise on the host machine. Unlike SaaS agent observability platforms (e.g., LangSmith, Datadog, AgentOps), zero trace data or prompt history is exported to external servers.
+  - **Cloud Model API Egress**: When configured to use external cloud LLM providers (e.g. OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompts, file snippets, and tool outputs necessarily transit over TLS to the respective model provider's cloud inference endpoints.
+  - **100% Air-Gapped Sovereign Alternative**: For regulated, defense, or high-compliance environments (GDPR Art. 9, HIPAA), pair DSH-DDS with local on-premise model backends (Ollama, vLLM, llama.cpp, LocalAI) or private VPC inference endpoints. Under this configuration, the entire agent lifecycle operates with **absolute zero data egress**.
 * **Hardening Guideline**:
   - If processing sensitive or non-redactable code, configure in `.env`:
     ```env

@@ -165,6 +165,10 @@ An enterprise AI Harness must guarantee full visibility and legal auditability:
 1. **100% Local OpenTelemetry Instrumentation**:
    * *Engine*: Arize Phoenix running locally on port `6006`.
    * *Guarantee*: Zero telemetry egress to third-party clouds. All multi-turn conversation traces, prompt token counts, latency waterfalls, and model evaluation metrics persist in local SQLite/Parquet databases.
+   * *Data Sovereignty & Cloud API Nuance*:
+     - **Local Telemetry & Workspace Boundary**: The harness guarantees that all telemetry traces, prompt histories, evaluation scores, and codebase files remain strictly host-confined. Unlike SaaS observability platforms (LangSmith, Datadog AI, AgentOps), zero observability data leaves the local perimeter.
+     - **Model Inference Egress (Cloud APIs vs. Air-Gapped)**: When configured with public cloud model APIs (OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompt context and tool parameters necessarily transit over TLS to the selected provider.
+     - **True 100% Air-Gapped Sovereignty**: For regulated, defense, or high-compliance workloads (GDPR Art. 9, HIPAA), DSH-DDS routes seamlessly to local on-premise inference engines (Ollama, vLLM, llama.cpp, LocalAI) or private VPC endpoints, establishing absolute zero data egress across both the control plane and inference plane.
 2. **Immutable Non-Repudiable GRC Ledger (`audit_grc.jsonl`)**:
    * *Reference*: [ADR 0002: Out-of-Band GRC Observability](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md).
    * *Standard*: Every authorization check, gate suspension, and workflow outcome appends a structured JSON Lines record to `/root/.dsh/sessions/audit_grc.jsonl`:
@@ -202,6 +206,23 @@ The table below contrasts **DeepSeek Harness (DSH-DDS)** against primary industr
 | **Pillar V: GRC & Governance** | Ephemeral console output | Standard logging | Output text files | Cloud LangSmith (Commercial) | **Local Arize Phoenix OTel + Immutable `audit_grc.jsonl` Ledger** |
 | **Human-in-the-Loop** | Callback hooks | Input prompts | Human participant role | `interrupt_before` / `after` | **Formal Adaptive Case Management (ACM) with `GATED` Audit State** |
 | **Supply Chain Hardening** | Unpinned pip wheels | Unpinned pip wheels | Unpinned pip dependencies | Unpinned pip dependencies | **Pinned SHA-256 Digests + Pinned `pnpm@11.25.0` + Clean-Room Installer Parity** |
+
+### 🎯 Strategic Positioning: DSH-DDS vis-à-vis the SOTA
+
+The positioning of **DSH-DDS** relative to the 2026 state of the art resolves four foundational architectural dilemmas:
+
+1. **Overcoming the "Everything is a Plugin" Dilemma**:
+   * *Industry Vulnerability*: Micro-kernel architectures (Cordis) offer modularity, but without physical boundaries, an in-process plugin inherits full ambient privileges (`process.env`, filesystem).
+   * *DSH-DDS Lead*: Imposes a dual-boundary model—physical kernel sandboxing (Landlock LSM, dropped capabilities) and an authoritative acyclic policy engine—rendering modularity safe and contained.
+2. **Elimination of Remote Code Execution (RCE) Vectors**:
+   * *Industry Vulnerability*: Traditional coding agents rely on arbitrary host shell subprocesses (`bash`, `sh`), enabling indirect prompt injection (OWASP LLM01 / ASI01) to pivot into host compromise.
+   * *DSH-DDS Lead*: Enforces a strict Zero-Shell Invariant ([ADR 0003](adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)), replacing fragile shell scripts with a typed, declarative finite state machine.
+3. **Sovereign Telemetry & Regulatory Compliance (EU AI Act & NIST AI RMF)**:
+   * *Industry Vulnerability*: Commercial agent observability platforms (LangSmith, AgentOps, Datadog AI) require outbound cloud telemetry egress, violating enterprise data privacy mandates.
+   * *DSH-DDS Lead*: Delivers 100% on-premise OpenTelemetry distributed tracing via Arize Phoenix and non-repudiable GRC logging (`audit_grc.jsonl`), with clear architectural separation between local telemetry and external model API inference.
+4. **Boot-Time FinOps & Multi-Model Calibration**:
+   * *Industry Vulnerability*: Static model bindings lead to vendor lock-in and uncontrolled token cost inflation.
+   * *DSH-DDS Lead*: Synchronizes live pricing across 420+ models at boot (`sync_models.mjs`), dynamically calibrating execution across 4 task-specific tiers (Default, Reasoning, Fast, Multimodal).
 
 ---
 
