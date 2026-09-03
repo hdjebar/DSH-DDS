@@ -108,6 +108,7 @@ fetch_or_copy_file "config/persona.mjs"
 fetch_or_copy_file "config/patch_translations.mjs"
 fetch_or_copy_file "config/patch-pi-ai.mjs"
 fetch_or_copy_file "config/patch-bash-local.mjs"
+fetch_or_copy_file "config/declarative-orchestrator.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
 if [ ! -f "$DSH_INSTALL/config/settings.yaml" ] && [ -f "$DSH_INSTALL/config/settings.default.yaml" ]; then
   cp "$DSH_INSTALL/config/settings.default.yaml" "$DSH_INSTALL/config/settings.yaml"
