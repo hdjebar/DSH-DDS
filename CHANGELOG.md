@@ -5,6 +5,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.7.0] - 2026-09-03
+
+### Authoritative Declarative Orchestration & Capability Adapters (ADR 0003)
+* **Authoritative Native Orchestrator**: Retired prompt serialization and Docker CLI subprocess spawning in `persona.mjs::runWorkflow()`. Replaced with direct asynchronous invocation of `DeclarativeWorkflowEngine.executeWorkflow()`.
+* **Fail-Closed Capability Registry**: Registered canonical adapters for all 15 persona actions (`fetch_sources`, `inspect_sqlite`, `run_llm_query`, `write_report`, `apply_fix_or_patch`, `probe_services`, `verify_endpoint`, `read_catalog`, `parse_intent`, `fetch_sdmx_dataflows`, `validate_sdmx_schema`, `evaluate_incident`, `contain_threat`, `forensic_investigation`, `inspect_tabular`). Unhandled or fabricated actions throw `UNKNOWN_ACTION_ERROR` immediately, terminating simulated false successes.
+* **Fail-Closed RBAC & Path Canonicalization**: `enforceRbacPolicy()` now enforces mandatory RBAC contracts (`RBAC_MANIFEST_MISSING`), canonicalizes file paths with `path.resolve()`, and strictly asserts write permissions against `filesystem.write` allowlists.
+* **Cryptographic Parent-Child OTel Correlation**: Implemented 128-bit `traceId` and 64-bit `spanId` hierarchy linking parent workflows and child steps in streaming Arize Phoenix spans.
+* **Hardened Sandbox Audit Tmpfs**: Added `/var/log/dsh:rw,nosuid,nodev,size=32m` mount in `docker-compose.sandbox.yml` to preserve auditability under `read_only: true`.
+* **Comprehensive Test Suite**: Test suite expanded to **43/43 tests passing**. Published `docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md`.
+
+---
+
 ## [1.6.0] - 2026-09-03
 
 ### Out-of-Band GRC Telemetry & Deterministic E2E Sandbox (ADR 0002)

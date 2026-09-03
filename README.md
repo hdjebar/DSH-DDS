@@ -231,6 +231,8 @@ Comprehensive guides organized by audience and operational goal:
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 10 plugins and 4 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, Zero Trust persona RBAC, and network isolation.
 * 📜 **[ADR 0001: Build-Time Immutability & RBAC](docs/adr/0001-build-time-immutability-and-rbac.md)** — Architecture Decision Record on build-time immutability, Zero Trust RBAC, and GRC audit logs.
+* 📜 **[ADR 0002: Out-of-Band GRC & E2E Sandbox](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md)** — Architecture Decision Record on out-of-band GRC telemetry and deterministic E2E sandbox verification.
+* 📜 **[ADR 0003: Authoritative Declarative Orchestrator](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)** — Architecture Decision Record on authoritative JavaScript orchestration, capability adapters, and fail-closed RBAC.
 
 ### 🔬 Theory & Research
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.

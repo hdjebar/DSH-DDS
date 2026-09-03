@@ -33,6 +33,7 @@ services:
       - /root/.cache:rw,size=128m
       - /root/.mnemon:rw,size=32m
       - /root/.dsh:rw,nosuid,nodev,size=512m
+      - /var/log/dsh:rw,nosuid,nodev,size=32m
     environment:
       - DSH_SANDBOX=1
       - DSH_CONFIG_SOURCE=/opt/dsh-config

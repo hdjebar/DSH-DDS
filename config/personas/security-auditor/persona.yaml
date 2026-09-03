@@ -81,7 +81,7 @@ workflows:
         prompt: "Analyze workspace structure for manual patching scripts (e.g. patch-pi-ai.mjs) and verify structural integrity."
       - name: "Trace Thought Signatures"
         action: "apply_fix_or_patch"
-        target: "pi-ai"
+        target: "/workspaces/cases/pi-ai.patch"
         verification: "Ensure thought_signature is captured and structured API returns are preserved cleanly."
       - name: "Export Architecture Mapping Report"
         action: "write_report"

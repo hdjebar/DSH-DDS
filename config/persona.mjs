@@ -11,6 +11,8 @@ import os from 'os';
 import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'node:url';
+import { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer } from './declarative-orchestrator.mjs';
+export { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer };
 
 const require = createRequire(import.meta.url);
 
@@ -81,34 +83,61 @@ export function scrubSecrets(text) {
 
 export function enforceRbacPolicy(personaMeta, step) {
   if (!personaMeta || !personaMeta.rbac || !personaMeta.rbac.permissions) {
-    return { allowed: true, role: personaMeta?.rbac?.role || 'default', reason: 'Unrestricted default' };
+    return {
+      allowed: false,
+      role: 'unassigned',
+      violation: `Missing mandatory Zero Trust RBAC contract for persona '${personaMeta?.name || 'unknown'}'`,
+      code: 'RBAC_MANIFEST_MISSING'
+    };
   }
 
   const { filesystem, mcp } = personaMeta.rbac.permissions;
   const role = personaMeta.rbac.role || personaMeta.name;
 
-  // Check filesystem deny rules
+  // Check filesystem deny rules with path canonicalization
   const deniedPatterns = filesystem?.deny || [];
   const targetsToCheck = [step.target, step.destination, step.scope].filter(Boolean);
 
   for (const target of targetsToCheck) {
+    const rawTarget = String(target);
+    const resolvedTarget = path.resolve(rawTarget);
+
     for (const pattern of deniedPatterns) {
+      const resPattern = path.resolve(pattern);
       if (pattern.endsWith('*')) {
         const prefix = pattern.slice(0, -1);
-        if (target.startsWith(prefix) || target.includes(prefix)) {
+        if (resolvedTarget.startsWith(prefix) || resolvedTarget.includes(prefix) || rawTarget.startsWith(prefix) || rawTarget.includes(prefix)) {
           return {
             allowed: false,
             role,
-            violation: `Target '${target}' matches denied prefix '${pattern}'`,
+            violation: `Target '${rawTarget}' matches denied pattern '${pattern}'`,
             code: 'RBAC_DENY_VIOLATION'
           };
         }
-      } else if (target === pattern || target.includes(pattern)) {
+      } else if (resolvedTarget === pattern || resolvedTarget === resPattern || resolvedTarget.includes(pattern) || rawTarget === pattern || rawTarget.includes(pattern)) {
         return {
           allowed: false,
           role,
-          violation: `Target '${target}' explicitly denied by RBAC policy rule '${pattern}'`,
+          violation: `Target '${rawTarget}' explicitly denied by RBAC policy rule '${pattern}'`,
           code: 'RBAC_DENY_VIOLATION'
+        };
+      }
+    }
+
+    // If step writes, ensure target is in write allowlist (if declared)
+    const isWriteAction = ['write_report', 'apply_fix_or_patch', 'save_artifact', 'create_file'].includes(step.action);
+    if (isWriteAction && Array.isArray(filesystem?.write) && filesystem.write.length > 0) {
+      const allowedWrite = filesystem.write.some(w => {
+        const normW = path.normalize(w);
+        const resW = path.resolve(w);
+        return resolvedTarget.startsWith(resW) || resolvedTarget.startsWith(normW) || rawTarget.startsWith(normW);
+      });
+      if (!allowedWrite) {
+        return {
+          allowed: false,
+          role,
+          violation: `Write target '${rawTarget}' not permitted by filesystem.write allowlist`,
+          code: 'RBAC_WRITE_UNAUTHORIZED'
         };
       }
     }
@@ -258,6 +287,7 @@ export function parsePersonaYaml(filePath) {
     description: doc.description || '',
     profiles: Array.isArray(doc.profiles) ? doc.profiles : (doc.profiles && typeof doc.profiles === 'object' ? Object.keys(doc.profiles) : ['web', 'headless', 'cli']),
     models: {},
+    rbac: doc.rbac || null,
     workflows: doc.workflows || {},
     plugins: doc.plugins || [],
     mcpServers: doc.mcpServers || {}
@@ -491,7 +521,7 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
   }
 }
 
-function runWorkflow(name, workflowKey) {
+export async function runWorkflow(name, workflowKey, options = {}) {
   const safeName = validateSlug(name, 'persona name');
   const manifestPath = path.join(PERSONAS_DIR, safeName, 'persona.yaml');
   if (!fs.existsSync(manifestPath)) {
@@ -525,63 +555,20 @@ function runWorkflow(name, workflowKey) {
 
   const wf = workflows[safeWfKey];
   const tier = wf.modelTier || wf.model_tier || 'default';
-  console.log(`🚀 Running declarative workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
+  console.log(`🚀 Executing authoritative declarative workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
 
-  let prompt;
-  if (Array.isArray(wf.steps)) {
-    const isCaseManagement = wf.type === 'case-management' || wf.steps.some(s => s.when || s.condition || s.approval_required || s.approval || s.on_failure || s.fallback || s.output_variable);
-    const label = isCaseManagement ? 'Adaptive Case Management Workflow' : 'Transactional Workflow Pipeline';
-    console.log(`📋 Validated ${label} (${wf.steps.length} steps):`);
-    const stepsFormatted = wf.steps.map((s, idx) => {
-      const meta = [];
-      if (s.when || s.condition) meta.push(`[WHEN: ${s.when || s.condition}]`);
-      if (s.approval_required || s.approval) meta.push(`[GATE: APPROVAL REQUIRED]`);
-      if (s.on_failure || s.fallback) meta.push(`[ON-FAIL: ${s.on_failure || s.fallback}]`);
-      if (s.output_variable) meta.push(`[OUT: ${s.output_variable}]`);
-      const metaStr = meta.length ? ` ${meta.join(' ')}` : '';
-      console.log(`   [${idx + 1}/${wf.steps.length}] ${s.name || s.action} (${s.action})${metaStr}`);
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const result = await engine.executeWorkflow(safeWfKey, options.context || {});
 
-      // Zero Trust RBAC Authorization Check
-      const rbacCheck = enforceRbacPolicy(meta, s);
-      logGrcAuditEvent({
-        persona: safeName,
-        workflow: safeWfKey,
-        step_index: idx + 1,
-        step_name: s.name || s.action,
-        action: s.action,
-        target: s.target || s.destination || s.scope || null,
-        decision: rbacCheck.allowed ? 'GRANTED' : 'DENIED',
-        role: rbacCheck.role,
-        reason: rbacCheck.allowed ? 'Policy validated' : rbacCheck.violation
-      });
-
-      if (!rbacCheck.allowed) {
-        console.error(`\x1b[31m⛔ Zero Trust RBAC Violation [${rbacCheck.code}]: ${rbacCheck.violation}\x1b[0m`);
-        throw new Error(`Zero Trust RBAC Policy Violation: ${rbacCheck.violation}`);
-      }
-
-      const details = [];
-      if (s.scope) details.push(`scope: ${s.scope}`);
-      if (s.ignore) details.push(`ignore: ${s.ignore}`);
-      if (s.target) details.push(`target: ${s.target}`);
-      if (s.when || s.condition) details.push(`when: "${s.when || s.condition}"`);
-      if (s.approval_required || s.approval) details.push(`approval_required: true`);
-      if (s.on_failure || s.fallback) details.push(`on_failure: "${s.on_failure || s.fallback}"`);
-      if (s.output_variable) details.push(`output_variable: "${s.output_variable}"`);
-      if (s.verification) details.push(`verification: ${s.verification}`);
-      if (s.destination) details.push(`destination: ${s.destination}`);
-      if (s.projection) details.push(`projection: ${s.projection}`);
-      if (s.prompt) details.push(`prompt: "${s.prompt}"`);
-      return `Step ${idx + 1} - ${s.name || s.action}: Action='${s.action}'${details.length ? ' (' + details.join(', ') + ')' : ''}`;
-    }).join('\n');
-    prompt = `Execute the ${isCaseManagement ? 'adaptive case management' : 'declarative'} workflow '${safeWfKey}' following these verified steps:\n${stepsFormatted}`;
-  } else if (wf.command) {
-    prompt = wf.command.replace(new RegExp(`^Using the ${safeName} skill,\\s*`), '');
-  } else {
-    prompt = `Execute declarative workflow '${safeWfKey}' for persona '${safeName}'.`;
+  console.log(`\n✅ Workflow '\x1b[36m${safeWfKey}\x1b[0m' completed with status: \x1b[32m${result.status}\x1b[0m (Trace: ${result.traceId})`);
+  if (Array.isArray(result.executionLogs)) {
+    for (const [idx, log] of result.executionLogs.entries()) {
+      const outSummary = log.output ? (typeof log.output === 'object' ? JSON.stringify(log.output).slice(0, 80) : String(log.output).slice(0, 80)) : '';
+      console.log(`   [${idx + 1}/${result.executionLogs.length}] ✔ ${log.step} (${log.action}) ➔ \x1b[32m${log.status}\x1b[0m ${outSummary}`);
+    }
   }
 
-  runPersona(safeName, prompt, tier);
+  return result;
 }
 
 function showPersona(name) {
@@ -695,7 +682,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
 
       case 'workflow':
       case 'wf':
-        runWorkflow(positionalArgs[0], positionalArgs[1]);
+        await runWorkflow(positionalArgs[0], positionalArgs[1]);
         break;
 
       case 'show':
