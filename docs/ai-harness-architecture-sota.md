@@ -38,6 +38,9 @@ Empirical research across production agent deployments highlights three primary 
 3. **Ambient Privilege Leakage & Remote Code Execution (RCE)**:
    * *Citation*: OWASP Foundation (2025), *Top 10 for Large Language Model Applications* (LLM01: Prompt Injection, LLM08: Excessive Agency).
    * *Mechanism*: Agents that execute commands via unconfined host shells (`sh`, `bash`, `subprocess.Popen`) allow indirect prompt injections embedded in external datasets (e.g., git commits, CSVs, documentation) to pivot into unrestricted arbitrary command execution on the host machine.
+4. **The "Everything is a Plugin" Modularity Trap (Cordis Dependency Chaining)**:
+   * *Citation*: Breath of Code (2026), *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*.
+   * *Mechanism*: Frameworks that enforce an extreme "everything is a plugin" ethos without a privileged core create an illusion of simplicity. In reality, in-process plugins share execution context, memory, and credentials (`process.env`). Modularity becomes a fragile dependency chain where swapping or adding an unvetted community plugin can destabilize the runtime or introduce covert data-exfiltration vectors. Security cannot be a dynamic property of an unvetted plugin tree; it requires an invariant, deterministic harness boundary.
 
 ---
 
@@ -251,6 +254,7 @@ flowchart TD
 6. **Wang, L., Ma, C., Feng, X., Zhang, Z., Yang, H., Chen, J., Tang, J., Chen, X., Lin, Y., Zhao, W. X., Wei, Z., & Wen, J. R.** (2024). *A Survey on Large Language Model based Autonomous Agents*. Frontiers of Computer Science, 18(6), 186345. [arXiv:2308.11432](https://arxiv.org/abs/2308.11432).
 7. **Google Cybersecurity Action Team**. (2023). *Secure AI Framework (SAIF): A Guide to Applying Cybersecurity Best Practices to AI*. Google Security Whitepapers.
 8. **International Organization for Standardization**. (2023). *ISO/IEC 42001:2023: Information technology — Artificial intelligence — Management system*. ISO Standard Publications.
+9. **Breath of Code**. (2026). *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*. Medium Technical Dissections. [https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a](https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a).
 
 ---
 

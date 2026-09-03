@@ -72,3 +72,31 @@ All Model Context Protocol (MCP) servers are pre-installed directly into the con
 ### 4. `sqlite-db` (`mcp-server-sqlite@2025.4.25`)
 * **Transport**: `stdio` (`mcp-server-sqlite --db-path /workspaces/data.db`)
 * **Capabilities**: Relational SQL querying, schema inspection, and metric aggregations across tabular datasets.
+
+---
+
+## 🧠 Architectural Insights: The Cordis Micro-Kernel & "Everything is a Plugin"
+
+DeepSeek Harness is powered by **Cordis**, a TypeScript meta-framework (inversion of control / micro-kernel) that treats every component—from model adapters and memory systems to visual toolbars—as hot-swappable plugins.
+
+### The Trade-Offs of Extreme Modularity (Lessons from *Breath of Code*, 2026)
+
+As detailed in industry analysis (*"Why 'Everything is a Plugin' is Harder Than It Sounds: Lessons from DeepSeek Harness"*):
+
+1. **The Dependency Chain Trap**:
+   * Plugins in Cordis are not isolated black boxes; they share an execution `Context`, injected services, and typed lifecycle events.
+   * Changing or swapping one plugin can cause cascading side effects across other plugins that implicitly rely on its behavior (*Hyrum's Law*).
+2. **Ambient Attack Surface & In-Process Execution**:
+   * Plugins run in-process in Node.js with direct access to `process.env` (API keys, GitHub tokens) and mounted volumes.
+   * In an unharnessed setup, security becomes a fragile function of the *weakest plugin in the tree* rather than an invariant of the system.
+3. **The Necessity of the "Privileged Core"**:
+   * Pure modularity without a deterministic harness creates an overwhelming "orchestration tax" and makes debugging dynamic event streams extremely difficult.
+
+### How DSH-DDS Solves These Challenges (The SOTA AI Harness)
+
+Our repository directly remediates these architectural vulnerabilities through defense-in-depth:
+* **Kernel & Container Containment ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md))**: Linux Landlock LSM, complete capability dropping (`cap_drop: [ALL]`), and read-only root filesystems strictly contain the entire Cordis runtime. Even if a community plugin is compromised, it cannot escape into the host or modify container binaries.
+* **Authoritative Acyclic Policy Engine ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md))**: Centralized RBAC (`config/rbac-policy.mjs`) intercepts all file targets and MCP tool calls prior to execution, rejecting symlink pivot escapes (`checkSymlinkEscape`) and enforcing anti-self-mutation invariants.
+* **Local Observability & Audit Trails ([ADR 0002](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md))**: Arize Phoenix OpenTelemetry records distributed 128-bit span waterfalls across all plugin boundaries, while `audit_grc.jsonl` provides an immutable record of every autonomous authorization decision.
+
+For a full formal analysis, see the whitepaper: **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
