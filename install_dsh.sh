@@ -159,7 +159,6 @@ fetch_or_copy_file "config/skills/mlops-engineer/SKILL.md"
 fetch_or_copy_file "config/skills/persona-creator/SKILL.md"
 fetch_or_copy_file "config/skills/security-auditor/SKILL.md"
 fetch_or_copy_file "config/skills/stats-engineer/SKILL.md"
-fetch_or_copy_file "config/skills/model-sync/SKILL.md"
 
 # Templates
 fetch_or_copy_file "config/templates/personas/base-template/persona.yaml"
