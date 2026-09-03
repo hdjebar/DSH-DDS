@@ -65,3 +65,32 @@ test('Patch Verification: patch-pi-ai fails fast when upstream anchors deviate',
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+const BASH_LOCAL_PATCH = path.join(ROOT, 'config', 'patch-bash-local.mjs');
+
+test('Patch Verification: patch-bash-local applies auto-workdir patch cleanly and idempotently', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-bash-patch-test-'));
+  const mockFile = path.join(tmpDir, 'index.js');
+  fs.writeFileSync(mockFile, 'import z from "foo";\nfunction spawnSpec(spec, argv, stdoutMaxBytes, signal) {\n  return true;\n}\n', 'utf8');
+
+  try {
+    const output = execFileSync(process.execPath, [BASH_LOCAL_PATCH], {
+      env: { ...process.env, DSH_BASH_LOCAL_FILE: mockFile },
+      encoding: 'utf8'
+    });
+    assert.ok(output.includes('applied cleanly'));
+
+    const patched = fs.readFileSync(mockFile, 'utf8');
+    assert.ok(patched.includes('import fs from "node:fs";'));
+    assert.ok(patched.includes('mkdirSync(spec.workdir'));
+
+    // Idempotency
+    const secondOutput = execFileSync(process.execPath, [BASH_LOCAL_PATCH], {
+      env: { ...process.env, DSH_BASH_LOCAL_FILE: mockFile },
+      encoding: 'utf8'
+    });
+    assert.ok(secondOutput.includes('already applied'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

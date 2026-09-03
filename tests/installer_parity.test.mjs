@@ -79,6 +79,7 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'config/persona.mjs',
     'config/patch_translations.mjs',
     'config/patch-pi-ai.mjs',
+    'config/patch-bash-local.mjs',
     'config/settings.default.yaml',
     'dsh.sh',
     'reset.sh',
