@@ -65,6 +65,10 @@ flowchart TD
 * **Reference**: Wang et al. (2024), *From Persona to Personalization: A Survey on Role-Playing Language Agents* (arXiv:2404.18231).
 * **Application**: Surverys modern methodologies for persona construction, confirming that combining explicit profile declarations with domain memory archives stabilizes agent persona adherence across multi-turn interactions.
 
+### D. The Harness-Model Decoupling & Composable Agent Runtimes
+* **Reference**: Level Up Coding (2026), *DeepSeek Harness Isn't a Coding Agent*; Breath of Code (2026), *Why "Everything is a Plugin" is Harder Than It Sounds*.
+* **Application**: Establishes the modern software engineering consensus that $\text{Agent} = \text{Model} + \text{Harness}$. As foundation model weights commoditize across open and proprietary providers, the primary locus of differentiation, security, and operational reliability moves from the model itself to the deterministic harness scaffolding governing runtime execution.
+
 ---
 
 ## 🏢 4. Comparative Framework Analysis

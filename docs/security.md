@@ -38,11 +38,12 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 ### 1. [SEC-01] Access Control & Localhost Endpoints
 * **Threat Model**:
-  - DSH Web Workbench (`http://localhost:3080`) and Arize Phoenix (`http://localhost:6006`) do not implement authentication out of the box.
-  - While ports are strictly bound to `127.0.0.1`, any local process, local user, or malicious browser tab executing Cross-Origin/DNS-rebinding attacks on the host could interact with the agent or inspect telemetry.
+  - DSH Web Workbench (`http://localhost:3080`) and Arize Phoenix (`http://localhost:6006`) do not implement multi-tenant enterprise authentication out of the box.
+  - While recent upstream versions introduced single-user browser tokens, exposing these ports across `0.0.0.0` or public interfaces exposes the agent to DNS-rebinding, Cross-Site Request Forgery (CSRF), and unauthorized tool execution.
+  - Any local untrusted process or malicious browser tab executing cross-origin requests on the host could interact with the agent or exfiltrate Arize Phoenix telemetry.
 * **Hardening Guideline**:
-  - Never bind `DSH_PORT` or `PHOENIX_PORT` to `0.0.0.0` on public machines.
-  - If exposing the service across a LAN, VPN, or Tailscale network, enforce authentication via an upstream reverse proxy (Nginx, Caddy, or Cloudflare Access).
+  - **Loopback Enforcement**: In `docker-compose.yml`, both `3080` and `6006` are strictly bound to `127.0.0.1`, preventing exposure across local area networks (LAN) or public interfaces.
+  - **Secure Remote Access**: If remote access is required, **never expose raw ports to the Internet**. Deploy an authenticated, encrypted transport layer such as **Tailscale**, **Cloudflare Access Tunnels**, or a reverse proxy (Caddy / Nginx) enforcing OAuth2/OIDC authentication.
 
 ### 2. [SEC-02] Process Privileges & Host Configuration Mount
 * **Threat Model**:
