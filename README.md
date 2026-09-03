@@ -240,6 +240,7 @@ Comprehensive guides organized by audience and operational goal:
 ### 🔬 Theory & Research
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.
+* 🚀 **[Future Development Roadmap & Production Blueprint](docs/future-development/README.md)** — Master consolidated audit, capability maturity framework, and 4-phase engineering roadmap.
 
 ---
 
