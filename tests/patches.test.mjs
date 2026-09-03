@@ -71,7 +71,7 @@ const BASH_LOCAL_PATCH = path.join(ROOT, 'config', 'patch-bash-local.mjs');
 test('Patch Verification: patch-bash-local applies auto-workdir patch cleanly and idempotently', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-bash-patch-test-'));
   const mockFile = path.join(tmpDir, 'index.js');
-  fs.writeFileSync(mockFile, 'import z from "foo";\nfunction spawnSpec(spec, argv, stdoutMaxBytes, signal) {\n  return true;\n}\n', 'utf8');
+  fs.writeFileSync(mockFile, 'import z from "foo";\n\tspawnSpec(spec, argv, stdoutMaxBytes, signal) {\n  return true;\n}\n', 'utf8');
 
   try {
     const output = execFileSync(process.execPath, [BASH_LOCAL_PATCH], {
@@ -81,7 +81,7 @@ test('Patch Verification: patch-bash-local applies auto-workdir patch cleanly an
     assert.ok(output.includes('applied cleanly'));
 
     const patched = fs.readFileSync(mockFile, 'utf8');
-    assert.ok(patched.includes('import fs from "node:fs";'));
+    assert.ok(patched.includes('import { existsSync, mkdirSync } from "node:fs";'));
     assert.ok(patched.includes('mkdirSync(spec.workdir'));
 
     // Idempotency

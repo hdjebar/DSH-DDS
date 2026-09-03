@@ -21,16 +21,16 @@ if (content.includes('mkdirSync(spec.workdir')) {
   process.exit(0);
 }
 
-const anchor = 'function spawnSpec(spec, argv, stdoutMaxBytes, signal) {';
+const anchor = 'spawnSpec(spec, argv, stdoutMaxBytes, signal) {';
 if (!content.includes(anchor)) {
   console.error('❌ dsh-bash-local spawnSpec anchor missing — upstream module changed.');
   process.exit(1);
 }
 
-content = 'import fs from "node:fs";\n' + content;
+content = 'import { existsSync, mkdirSync } from "node:fs";\n' + content;
 content = content.replace(
   anchor,
-  'function spawnSpec(spec, argv, stdoutMaxBytes, signal) {\n\t\tif (spec.workdir && !fs.existsSync(spec.workdir)) { try { fs.mkdirSync(spec.workdir, { recursive: true }); } catch {} }'
+  'spawnSpec(spec, argv, stdoutMaxBytes, signal) {\n\t\tif (spec.workdir && !existsSync(spec.workdir)) { try { mkdirSync(spec.workdir, { recursive: true }); } catch {} }'
 );
 
 fs.writeFileSync(FILE, content, 'utf8');
