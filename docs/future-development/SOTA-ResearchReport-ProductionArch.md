@@ -736,7 +736,271 @@ export class TransactionalWorktree {
 
 ---
 
-### 8.5 Hardened Sandbox Specification with Antigravity Auth Mount (`docker-compose.sandbox.yml`)
+### 8.5 OpenTelemetry & Arize Phoenix Tracer (`config/phoenix-tracer.mjs`)
+
+This section specifies the full OpenTelemetry architecture, integrating `AgentPhoenixTracer` into the Node.js 24 / Cordis ESM microkernel and exporting W3C-compliant traces to Arize Phoenix.
+
+#### 8.5.1 Arize Phoenix Container Topology (`docker-compose.yml`)
+
+The local Arize Phoenix telemetry server runs on the internal bridge network (`dsh-internal`), allowing sandboxed agents to stream OTLP spans to `http://dsh-phoenix:4318` without needing external WAN internet access:
+
+```yaml
+# Addition to docker-compose.yml
+services:
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: dsh-phoenix
+    ports:
+      - "6006:6006" # Phoenix UI (Live trace waterfall & token cost graphs)
+      - "4317:4317" # OTLP gRPC collector
+      - "4318:4318" # OTLP HTTP collector
+    environment:
+      - PHOENIX_PORT=6006
+      - PHOENIX_GRPC_PORT=4317
+      - PHOENIX_ENABLE_PROMETHEUS=true
+    volumes:
+      - phoenix-storage:/root/.phoenix
+    networks:
+      - dsh-internal
+    restart: unless-stopped
+
+volumes:
+  phoenix-storage:
+    driver: local
+```
+
+#### 8.5.2 Native Cordis OpenTelemetry Plugin (`config/phoenix-tracer.mjs`)
+
+This native ESM Cordis plugin initializes the OpenTelemetry Node SDK, exports spans via OTLP/HTTP to Arize Phoenix, and listens to internal bus events (`workflow`, `gateway`, `tool`, `search`) to generate parent-child spans matching OpenInference GenAI semantic conventions:
+
+```javascript
+// config/phoenix-tracer.mjs
+import { Context } from 'cordis';
+import { trace, context, SpanStatusCode } from '@opentelemetry/api';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { Resource } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+
+export const name = 'phoenix-tracer';
+
+export function apply(ctx) {
+  const phoenixEndpoint = process.env.PHOENIX_COLLECTOR_URL || 'http://dsh-phoenix:4318/v1/traces';
+
+  // 1. Initialize OpenTelemetry Provider
+  const exporter = new OTLPTraceExporter({ url: phoenixEndpoint });
+  const provider = new NodeTracerProvider({
+    resource: new Resource({
+      [ATTR_SERVICE_NAME]: 'dsh-agent-harness',
+      'service.version': '1.10.0',
+      'deployment.environment': process.env.NODE_ENV || 'development'
+    })
+  });
+
+  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+  provider.register();
+
+  const tracer = trace.getTracer('dsh-agent-tracer');
+  const activeSpans = new Map();
+
+  ctx.provide('tracer');
+  ctx.tracer = {
+    // Start an Agent/Workflow Span (Root)
+    startWorkflowSpan(taskId, workflowName) {
+      const span = tracer.startSpan(`workflow:${workflowName}`, {
+        attributes: {
+          'openinference.span.kind': 'CHAIN',
+          'dsh.task_id': taskId,
+          'workflow.name': workflowName
+        }
+      });
+      activeSpans.set(`workflow:${taskId}`, span);
+      return span;
+    },
+
+    endWorkflowSpan(taskId, success = true, error = null) {
+      const span = activeSpans.get(`workflow:${taskId}`);
+      if (!span) return;
+
+      if (!success) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: error?.message || 'Workflow Failed' });
+        if (error) span.recordException(error);
+      } else {
+        span.setStatus({ code: SpanStatusCode.OK });
+      }
+      span.end();
+      activeSpans.delete(`workflow:${taskId}`);
+    },
+
+    // Record an LLM Provider Call Span
+    traceLLMCall(parentTaskId, modelInfo, promptText, executeFn) {
+      const parentSpan = activeSpans.get(`workflow:${parentTaskId}`);
+      const ctxWithParent = parentSpan ? trace.setSpan(context.active(), parentSpan) : context.active();
+
+      return context.with(ctxWithParent, async () => {
+        const span = tracer.startSpan(`llm:${modelInfo.provider}:${modelInfo.model}`, {
+          attributes: {
+            'openinference.span.kind': 'LLM',
+            'llm.model_name': modelInfo.model,
+            'llm.provider': modelInfo.provider,
+            'llm.input_messages': JSON.stringify(promptText)
+          }
+        });
+
+        const startTime = Date.now();
+        try {
+          const result = await executeFn();
+          span.setAttributes({
+            'llm.output_messages': JSON.stringify(result.content || result.toolCalls),
+            'llm.token_count.total': result.tokensConsumed || 0,
+            'llm.latency_ms': Date.now() - startTime
+          });
+          span.setStatus({ code: SpanStatusCode.OK });
+          return result;
+        } catch (err) {
+          span.recordException(err);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          throw err;
+        } finally {
+          span.end();
+        }
+      });
+    },
+
+    // Record a Tool or Antigravity Search Span
+    traceToolExecution(parentTaskId, toolName, inputArgs, executeFn) {
+      const parentSpan = activeSpans.get(`workflow:${parentTaskId}`);
+      const ctxWithParent = parentSpan ? trace.setSpan(context.active(), parentSpan) : context.active();
+
+      return context.with(ctxWithParent, async () => {
+        const span = tracer.startSpan(`tool:${toolName}`, {
+          attributes: {
+            'openinference.span.kind': 'TOOL',
+            'tool.name': toolName,
+            'tool.parameters': JSON.stringify(inputArgs)
+          }
+        });
+
+        try {
+          const output = await executeFn();
+          span.setAttribute('tool.output', typeof output === 'string' ? output : JSON.stringify(output));
+          span.setStatus({ code: SpanStatusCode.OK });
+          return output;
+        } catch (err) {
+          span.recordException(err);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          throw err;
+        } finally {
+          span.end();
+        }
+      });
+    }
+  };
+
+  // Automatically listen to internal Cordis events
+  ctx.on('search/start', (ev) => {
+    ctx.emit('tracer/log', { message: `Antigravity search initiated: ${ev.query}` });
+  });
+
+  ctx.on('gateway/fallback', (ev) => {
+    ctx.emit('tracer/log', { 
+      warning: `LLM Fallback triggered from ${ev.from} due to ${ev.error}. Retrying: ${ev.willRetry}` 
+    });
+  });
+}
+```
+
+#### 8.5.3 Integrating Telemetry into the Declarative Orchestrator
+
+Wiring the tracer into `config/declarative-orchestrator.mjs` to trace workflows, LLM calls, and tool runs automatically:
+
+```javascript
+// Inside config/declarative-orchestrator.mjs
+export async function runWorkflow(ctx, task) {
+  const taskId = task.id || `task-${Date.now()}`;
+  
+  // 1. Start root Phoenix workflow span
+  ctx.tracer.startWorkflowSpan(taskId, task.name || 'declarative_step');
+
+  try {
+    for (const step of task.steps) {
+      // 2. Trace tool execution under the parent workflow span
+      if (step.tool) {
+        await ctx.tracer.traceToolExecution(taskId, step.tool, step.args, async () => {
+          return await ctx.tools.execute(step.tool, step.args);
+        });
+      }
+
+      // 3. Trace model queries via the failover gateway
+      if (step.model_query) {
+        await ctx.tracer.traceLLMCall(
+          taskId, 
+          { provider: 'gemini', model: 'gemini-2.5-flash' }, 
+          step.model_query, 
+          async () => {
+            return await ctx.gateway.executeWithFailover(
+              [{ role: 'user', content: step.model_query }], 
+              ctx.tools.getSchemas()
+            );
+          }
+        );
+      }
+    }
+    
+    // Mark workflow successful
+    ctx.tracer.endWorkflowSpan(taskId, true);
+  } catch (err) {
+    ctx.tracer.endWorkflowSpan(taskId, false, err);
+    throw err;
+  }
+}
+```
+
+#### 8.5.4 Regression Test for OTel Spans (`tests/phoenix-tracer.test.mjs`)
+
+Verify span emissions using native `node --test`:
+
+```javascript
+// tests/phoenix-tracer.test.mjs
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Context } from 'cordis';
+import * as PhoenixTracer from '../config/phoenix-tracer.mjs';
+
+test('Phoenix Tracer initializes and records tool and LLM spans', async () => {
+  const ctx = new Context();
+  ctx.plugin(PhoenixTracer);
+
+  const taskId = 'test-task-101';
+  ctx.tracer.startWorkflowSpan(taskId, 'unit_test_flow');
+
+  // Test Tool Span wrapping
+  const toolResult = await ctx.tracer.traceToolExecution(taskId, 'mcp-fetch', { url: 'https://example.com' }, async () => {
+    return 'Mock HTTP Body';
+  });
+  assert.equal(toolResult, 'Mock HTTP Body');
+
+  // Test LLM Span wrapping
+  const llmResult = await ctx.tracer.traceLLMCall(
+    taskId,
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet' },
+    'Analyze diff',
+    async () => ({ content: 'Analysis passed', tokensConsumed: 120 })
+  );
+  assert.equal(llmResult.content, 'Analysis passed');
+  assert.equal(llmResult.tokensConsumed, 120);
+
+  // Close Workflow Span
+  assert.doesNotThrow(() => {
+    ctx.tracer.endWorkflowSpan(taskId, true);
+  });
+});
+```
+
+---
+
+### 8.6 Hardened Sandbox Specification with Antigravity Auth Mount (`docker-compose.sandbox.yml`)
 
 ```yaml
 version: "3.8"
