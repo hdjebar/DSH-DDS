@@ -20,6 +20,7 @@ prepare_sandbox_home() {
       --exclude='./sessions' \
       --exclude='./storages' \
       --exclude='./phoenix' \
+      --exclude='./profiles/web/cordis.patch.yml' \
       -cf - . | tar --no-same-owner -C "$DSH_HOME" -xf -
   fi
 
