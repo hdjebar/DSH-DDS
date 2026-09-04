@@ -129,7 +129,7 @@ validate_remote_ref() {
 validate_remote_ref
 
 # Initialize isolated atomic staging workspace
-STAGE_DIR="$(mktemp -d "${DSH_INSTALL}/.dsh-staging.XXXXXX" 2>/dev/null || mktemp -d "/tmp/dsh-staging.XXXXXX")"
+STAGE_DIR="$(mktemp -d "${DSH_INSTALL}.staging.XXXXXX" 2>/dev/null || mktemp -d "/tmp/dsh-staging.XXXXXX")"
 cleanup_staging() {
   if [ -n "${STAGE_DIR:-}" ] && [ -d "$STAGE_DIR" ]; then
     rm -rf "$STAGE_DIR"
@@ -264,7 +264,25 @@ verify_and_promote_staged() {
       cp -a "$DSH_INSTALL/." "$backup_dir/" 2>/dev/null || true
     fi
 
-    if ! (cd "$STAGE_DIR" && tar -cf - .) | (cd "$DSH_INSTALL" && tar -xf -); then
+    local promote_failed=0
+    (
+      cd "$STAGE_DIR"
+      find . -type f | while read -r staged_file; do
+        target_path="$DSH_INSTALL/${staged_file#./}"
+        # Preserve existing user customizations unless force
+        if [ -f "$target_path" ] && [ "${FORCE:-false}" != "true" ]; then
+          case "$staged_file" in
+            ./config/settings.yaml|./config/cordis.patch.yml)
+              continue
+              ;;
+          esac
+        fi
+        mkdir -p "$(dirname "$target_path")"
+        cp -p "$staged_file" "$target_path" || exit 1
+      done
+    ) || promote_failed=1
+
+    if [ "$promote_failed" -ne 0 ]; then
       echo "❌ Error: Promotion failed! Rolling back..." >&2
       if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
         cp -a "$backup_dir/." "$DSH_INSTALL/" 2>/dev/null || true

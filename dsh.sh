@@ -48,6 +48,26 @@ ensure_runtime_dirs() {
   if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ] && [ -f "$SCRIPT_DIR/config/settings.default.yaml" ]; then
     cp "$SCRIPT_DIR/config/settings.default.yaml" "$SCRIPT_DIR/config/settings.yaml" 2>/dev/null || true
   fi
+
+  # Auto-generate host approval Ed25519 keypair if missing (FR-011, FR-017)
+  mkdir -p "$HOME/.dsh/keys" "$SCRIPT_DIR/config/keys"
+  if [ ! -f "$HOME/.dsh/keys/approval_ed25519" ] && [ ! -f "$SCRIPT_DIR/config/keys/approval_ed25519.pub" ]; then
+    node -e '
+      const crypto = require("crypto");
+      const fs = require("fs");
+      const path = require("path");
+      const os = require("os");
+      const privPath = path.join(os.homedir(), ".dsh", "keys", "approval_ed25519");
+      const pubPath = path.join(process.cwd(), "config", "keys", "approval_ed25519.pub");
+      const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519", {
+        publicKeyEncoding: { type: "spki", format: "pem" },
+        privateKeyEncoding: { type: "pkcs8", format: "pem" }
+      });
+      fs.mkdirSync(path.dirname(privPath), { recursive: true });
+      fs.writeFileSync(privPath, privateKey, { mode: 0o600 });
+      fs.writeFileSync(pubPath, publicKey, { mode: 0o644 });
+    ' 2>/dev/null || true
+  fi
 }
 
 case "$COMMAND" in
@@ -331,6 +351,19 @@ case "$COMMAND" in
               console.error(`❌ Error: Checkpoint not found at ${checkpointPath}`);
               process.exit(1);
             }
+
+            console.log('========================================================');
+            console.log('📋 REVIEWING PENDING APPROVAL REQUEST:');
+            console.log(`   Instance ID: ${id}`);
+            console.log(`   Persona:     ${cp.persona}`);
+            console.log(`   Workflow:    ${cp.workflow}`);
+            console.log(`   Step:        #${cp.stepIndex} - ${cp.stepName} (${cp.action || (cp.stepDescriptor && cp.stepDescriptor.action) || 'unknown'})`);
+            if (cp.stepDescriptor) {
+              if (cp.stepDescriptor.target) console.log(`   Target:      ${cp.stepDescriptor.target}`);
+              if (cp.stepDescriptor.scope) console.log(`   Scope:       ${cp.stepDescriptor.scope}`);
+            }
+            console.log(`   Digest:      ${cp.checkpointDigest}`);
+            console.log('========================================================\n');
 
             const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, actor, ttl);
             console.log(`✅ Approved instance: ${id}`);

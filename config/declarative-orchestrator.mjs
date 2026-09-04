@@ -195,6 +195,79 @@ export function applyUnifiedDiff(originalContent, diffText) {
 }
 
 /**
+ * Structural SDMX XML Validator
+ * Parses XML tags, validates balanced tag hierarchy (matching open/close tags),
+ * and verifies that root and structural child definitions meet SDMX 2.1 schema requirements.
+ */
+export function validateStructuralXml(xmlContent) {
+  let cleaned = xmlContent
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
+    .replace(/<\?[\s\S]*?\?>/g, '')
+    .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+    .trim();
+
+  if (!cleaned.startsWith('<') || !cleaned.endsWith('>')) {
+    throw new Error("Invalid XML document: document does not start with '<' and end with '>'");
+  }
+
+  const tagRegex = /<\/?([a-zA-Z_][\w:.-]*)(?:\s+[^>]*?)?(\/?)>/g;
+  const stack = [];
+  let rootFound = false;
+  let rootTag = '';
+  const seenTags = new Set();
+  let match;
+
+  while ((match = tagRegex.exec(cleaned)) !== null) {
+    const fullTag = match[0];
+    const tagName = match[1];
+    const isSelfClosing = match[2] === '/' || fullTag.endsWith('/>');
+    const isClosingTag = fullTag.startsWith('</');
+
+    seenTags.add(tagName.toLowerCase().split(':').pop());
+
+    if (isClosingTag) {
+      if (stack.length === 0) {
+        throw new Error(`Mismatched closing tag '</${tagName}>': no open tags remaining`);
+      }
+      const expected = stack.pop();
+      if (expected !== tagName) {
+        throw new Error(`Tag mismatch: expected closing tag '</${expected}>', found '</${tagName}>'`);
+      }
+    } else if (!isSelfClosing) {
+      if (!rootFound) {
+        rootFound = true;
+        rootTag = tagName;
+      }
+      stack.push(tagName);
+    }
+  }
+
+  if (stack.length > 0) {
+    throw new Error(`Unclosed XML tag(s): ${stack.join(', ')}`);
+  }
+
+  if (!rootFound) {
+    throw new Error("No root XML element found in document");
+  }
+
+  const recognizedRoot = /^(?:Structure|Message|RegistryInterface|schema)$/i.test(rootTag.split(':').pop());
+  const hasStructuralElements = seenTags.has('datastructure') ||
+    seenTags.has('dataflow') ||
+    seenTags.has('codelist') ||
+    seenTags.has('conceptscheme') ||
+    seenTags.has('agencyscheme') ||
+    seenTags.has('element') ||
+    seenTags.has('complextype');
+
+  if (!recognizedRoot || !hasStructuralElements) {
+    throw new Error(`SDMX XML schema lacks required SDMX structural hierarchy (Root: '${rootTag}', structural elements: ${hasStructuralElements})`);
+  }
+
+  return true;
+}
+
+/**
  * 🛡️ Authoritative Declarative Workflow Engine
  */
 export class DeclarativeWorkflowEngine {
@@ -543,29 +616,64 @@ export class DeclarativeWorkflowEngine {
         }
       }
 
-      // Transactional atomic write: write to sibling temporary file then atomically rename (FR-022: preserve mode)
+      // Inspect target metadata and reject symbolic links or non-regular files
+      let origMode = null;
+      let origUid = null;
+      let origGid = null;
+      if (fs.existsSync(target)) {
+        try {
+          const lstat = fs.lstatSync(target);
+          if (lstat.isSymbolicLink()) {
+            return {
+              status: 'failed',
+              error: `Target '${target}' is a symbolic link. Patching symbolic links is strictly disallowed to prevent symlink traversal escapes.`,
+              code: 'PATCH_TARGET_IS_SYMLINK'
+            };
+          }
+          if (!lstat.isFile()) {
+            return {
+              status: 'failed',
+              error: `Target '${target}' is not a regular file.`,
+              code: 'PATCH_TARGET_NOT_FILE'
+            };
+          }
+          origMode = lstat.mode;
+          origUid = lstat.uid;
+          origGid = lstat.gid;
+        } catch (statErr) {
+          return {
+            status: 'failed',
+            error: `Failed to inspect target file metadata on '${target}': ${statErr.message}`,
+            code: 'PATCH_STAT_FAILED'
+          };
+        }
+      }
+
+      // Transactional atomic write: write to sibling temporary file then atomically rename (FR-022: preserve mode & ownership)
       const tempFile = path.join(parentDir, `.${path.basename(target)}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
       try {
-        let origMode = null;
-        if (fs.existsSync(target)) {
-          try {
-            origMode = fs.statSync(target).mode;
-          } catch {}
-        }
         fs.writeFileSync(tempFile, candidateContent, 'utf8');
         if (origMode !== null) {
           try {
             fs.chmodSync(tempFile, origMode);
           } catch {}
         }
+        if (origUid !== null && origGid !== null && process.getuid && process.getuid() === 0) {
+          try {
+            fs.chownSync(tempFile, origUid, origGid);
+          } catch {}
+        }
         fs.renameSync(tempFile, target);
       } catch (writeErr) {
-        try { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile); } catch {}
         return {
           status: 'failed',
           error: `Transactional write failed on target '${target}': ${writeErr.message}`,
           code: 'PATCH_WRITE_FAILED'
         };
+      } finally {
+        try {
+          if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+        } catch {}
       }
 
       return {
@@ -788,12 +896,12 @@ export class DeclarativeWorkflowEngine {
             };
           }
         } else if (content.trim().startsWith('<')) {
-          const hasXmlStructure = /<(?:\w+:)?(?:DataStructure|Dataflow|Codelist|ConceptScheme)\b/i.test(content) &&
-                                  /<(?:\w+:)?(?:Structure|Message)\b/i.test(content);
-          if (!hasXmlStructure) {
+          try {
+            validateStructuralXml(content);
+          } catch (xmlErr) {
             return {
               status: 'failed',
-              error: `SDMX XML schema validation failed: missing Structure definition or DataStructure/Dataflow/Codelist tags in '${schemaPath}'`,
+              error: `SDMX XML schema validation failed: ${xmlErr.message} in '${schemaPath}'`,
               code: 'SDMX_SCHEMA_INVALID'
             };
           }
@@ -1315,13 +1423,13 @@ export class DeclarativeWorkflowEngine {
       workflow: safeWfName,
       instanceId,
       traceId,
-      status: workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED'),
-      error: workflowError,
-      suspendedReason,
-      executionLogs: results,
-      finalContext: currentContext
-    };
-  }
+          status: workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED'),
+          error: workflowError,
+          suspendedReason,
+          executionLogs: results,
+          finalContext: currentContext
+        };
+      }
 
   // PR-009 & FR-005: Durable Resume from Approval Checkpoint with Authenticated Non-Replay Governance
   async resumeWorkflow(instanceId, options = {}) {
@@ -1331,183 +1439,236 @@ export class DeclarativeWorkflowEngine {
       'checkpoints'
     );
     const checkpointPath = path.join(checkpointDir, `${instanceId}.json`);
-    if (!fs.existsSync(checkpointPath)) {
-      throw new Error(`Checkpoint for workflow instance '${instanceId}' not found.`);
-    }
 
-    const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
-
-    // FR-012: Checkpoint Identity Binding: requested ID must strictly match checkpoint.instanceId
-    if (checkpoint.instanceId !== instanceId) {
-      throw new Error(`Checkpoint '${instanceId}' rejected: instanceId in file content '${checkpoint.instanceId}' does not match target checkpoint ID '${instanceId}'. Replays and renamed copies are strictly prohibited.`);
-    }
-
-    // 1. Replay Protection: Checkpoint must currently be in SUSPENDED_APPROVAL_REQUIRED state
-    if (checkpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
-      throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${checkpoint.status}' (replays rejected).`);
-    }
-
-    // 2. Expiration Check (24h default TTL)
-    const createdAt = new Date(checkpoint.createdAt).getTime();
-    const ttlMs = options.ttlMs || (24 * 60 * 60 * 1000);
-    if (Date.now() - createdAt > ttlMs) {
-      checkpoint.status = 'EXPIRED';
-      fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
-      throw new Error(`Checkpoint '${instanceId}' has expired (TTL: 24h).`);
-    }
-
-    // 3. Digest Integrity Check: recompute digest over canonical immutable data (FR-018)
-    const canonicalCheckpointData = {
-      instanceId: checkpoint.instanceId,
-      persona: checkpoint.persona,
-      workflow: checkpoint.workflow,
-      stepIndex: checkpoint.stepIndex,
-      stepName: checkpoint.stepName,
-      action: checkpoint.action,
-      stepDescriptor: checkpoint.stepDescriptor,
-      workflowHash: checkpoint.workflowHash,
-      createdAt: checkpoint.createdAt,
-      contextSnapshot: checkpoint.contextSnapshot
-    };
-    if (checkpoint.stepDescriptor === undefined && checkpoint.workflowHash === undefined) {
-      delete canonicalCheckpointData.stepDescriptor;
-      delete canonicalCheckpointData.workflowHash;
-    }
-    const computedDigest = crypto.createHash('sha256')
-      .update(JSON.stringify(canonicalCheckpointData))
-      .digest('hex');
-
-    if (computedDigest !== checkpoint.checkpointDigest) {
-      throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
-    }
-
-    // 4. Manifest Integrity Check (FR-018): Ensure manifest and step definition match approval descriptor
-    if (checkpoint.persona !== this.meta.name) {
-      throw new Error(`Checkpoint persona '${checkpoint.persona}' does not match engine persona '${this.meta.name}'.`);
-    }
-
-    const workflows = this.meta.workflows || {};
-    const safeWfName = validateSlug(checkpoint.workflow, 'workflow name');
-    const workflow = workflows[safeWfName];
-    if (!workflow) {
-      throw new Error(`Workflow '${safeWfName}' not found in persona manifest '${this.meta.name}'.`);
-    }
-
-    const steps = Array.isArray(workflow.steps) ? workflow.steps : [];
-    const startIndex = checkpoint.stepIndex;
-    if (startIndex < 0 || startIndex >= steps.length) {
-      throw new Error(`Invalid step index ${startIndex} in checkpoint.`);
-    }
-
-    if (checkpoint.stepDescriptor) {
-      const currentStep = steps[startIndex];
-      if (JSON.stringify(checkpoint.stepDescriptor) !== JSON.stringify(currentStep)) {
-        throw new Error(`Checkpoint '${instanceId}' rejected: step definition in manifest has changed since approval was granted.`);
-      }
-    }
-
-    // 5. Token Verification (FR-011, FR-017): Asymmetric Ed25519 verification with HMAC fallback
-    const rawToken = options.approvalToken || options.token;
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<signature>). Standalone boolean approval is disallowed.`);
-    }
-
-    const parts = rawToken.split('.');
-    if (parts.length !== 3) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: malformed approval token format. Expected '<actor>.<expiresAt>.<signature>'.`);
-    }
-    const [actor, expiresAtStr, signature] = parts;
-    const expiresAt = Number(expiresAtStr);
-    if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
-    }
-
-    const payload = `${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`;
-    const payloadBuf = Buffer.from(payload, 'utf8');
-
-    let publicKey = options.publicKey || process.env.DSH_APPROVAL_PUBLIC_KEY;
-    if (!publicKey) {
-      const pubKeyPaths = [
-        path.join(process.cwd(), 'config', 'keys', 'approval_ed25519.pub'),
-        path.join(process.cwd(), '.host_keys', 'approval_ed25519.pub'),
-        path.join('/root/.dsh', 'keys', 'approval_ed25519.pub'),
-        path.join(process.env.DSH_CONFIG_SOURCE || '', 'keys', 'approval_ed25519.pub')
-      ];
-      for (const kp of pubKeyPaths) {
-        if (kp && fs.existsSync(kp)) {
-          try {
-            publicKey = fs.readFileSync(kp, 'utf8');
-            break;
-          } catch {}
-        }
-      }
-    }
-
-    let verified = false;
-    if (publicKey) {
-      try {
-        let sigBuf;
-        try {
-          sigBuf = Buffer.from(signature, 'base64url');
-        } catch {
-          sigBuf = Buffer.from(signature, 'hex');
-        }
-        verified = crypto.verify(null, payloadBuf, publicKey, sigBuf);
-      } catch {
-        verified = false;
-      }
-    }
-
-    const tokenSecret = options.approvalSecret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
-    if (!verified && tokenSecret && typeof tokenSecret === 'string' && tokenSecret.trim().length >= 16) {
-      const expectedSignature = crypto.createHmac('sha256', tokenSecret)
-        .update(payload)
-        .digest('hex');
-      const signatureBuf = Buffer.from(signature, 'hex');
-      const expectedBuf = Buffer.from(expectedSignature, 'hex');
-      if (signatureBuf.length > 0 && signatureBuf.length === expectedBuf.length && crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
-        verified = true;
-      }
-    }
-
-    if (!verified) {
-      if (!publicKey && (!tokenSecret || tokenSecret.trim().length < 16)) {
-        throw new Error(`Resume of checkpoint '${instanceId}' rejected: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured to verify approval tokens.`);
-      }
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token signature.`);
-    }
-
-    // 6. FR-013: Atomic State Transition via Exclusive Lock File
+    // FR-013: Exclusive Lock Acquisition BEFORE reading or validating checkpoint
     const lockPath = path.join(checkpointDir, `${instanceId}.resuming.lock`);
     let lockFd = null;
-    try {
-      lockFd = fs.openSync(lockPath, 'wx');
-    } catch (lockErr) {
-      if (lockErr.code === 'EEXIST') {
-        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: another process is concurrently resuming this checkpoint (exclusive lock acquisition failed).`);
+
+    const acquireLock = () => {
+      try {
+        const fd = fs.openSync(lockPath, 'wx');
+        const lockInfo = JSON.stringify({ pid: process.pid, createdAt: Date.now() });
+        fs.writeFileSync(fd, lockInfo, 'utf8');
+        return fd;
+      } catch (lockErr) {
+        if (lockErr.code === 'EEXIST') {
+          // Check for stale lock recovery (owner dead or age > 30s)
+          let isStale = false;
+          try {
+            const stat = fs.statSync(lockPath);
+            const lockAgeMs = Date.now() - stat.mtimeMs;
+            if (lockAgeMs > 30000) {
+              isStale = true;
+            } else {
+              const raw = fs.readFileSync(lockPath, 'utf8');
+              if (raw && raw.trim()) {
+                const data = JSON.parse(raw);
+                if (data.pid && typeof data.pid === 'number') {
+                  try {
+                    process.kill(data.pid, 0);
+                  } catch (kErr) {
+                    if (kErr.code === 'ESRCH') isStale = true;
+                  }
+                }
+              }
+            }
+          } catch {
+            isStale = false;
+          }
+
+          if (isStale) {
+            try {
+              fs.unlinkSync(lockPath);
+              const fd = fs.openSync(lockPath, 'wx');
+              const lockInfo = JSON.stringify({ pid: process.pid, createdAt: Date.now() });
+              fs.writeFileSync(fd, lockInfo, 'utf8');
+              return fd;
+            } catch {}
+          }
+
+          throw new Error(`Checkpoint '${instanceId}' cannot be resumed: another process is concurrently resuming this checkpoint (exclusive lock acquisition failed).`);
+        }
+        throw lockErr;
       }
-      throw lockErr;
-    }
+    };
+
+    lockFd = acquireLock();
+    let checkpoint;
+    let safeWfName;
+    let workflow;
+    let steps;
+    let startIndex;
 
     try {
-      const freshCheckpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
-      if (freshCheckpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
-        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${freshCheckpoint.status}' (replays rejected).`);
+      if (!fs.existsSync(checkpointPath)) {
+        throw new Error(`Checkpoint for workflow instance '${instanceId}' not found.`);
       }
 
-      // Transition checkpoint to IN_PROGRESS on disk before proceeding
+      checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+
+      // FR-012: Checkpoint Identity Binding: requested ID must strictly match checkpoint.instanceId
+      if (checkpoint.instanceId !== instanceId) {
+        throw new Error(`Checkpoint '${instanceId}' rejected: instanceId in file content '${checkpoint.instanceId}' does not match target checkpoint ID '${instanceId}'. Replays and renamed copies are strictly prohibited.`);
+      }
+
+      // 1. Replay Protection: Checkpoint must currently be in SUSPENDED_APPROVAL_REQUIRED state
+      if (checkpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
+        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${checkpoint.status}' (replays rejected).`);
+      }
+
+      // 2. Expiration Check (24h default TTL)
+      const createdAt = new Date(checkpoint.createdAt).getTime();
+      const ttlMs = options.ttlMs || (24 * 60 * 60 * 1000);
+      if (Date.now() - createdAt > ttlMs) {
+        checkpoint.status = 'EXPIRED';
+        const tempCp = path.join(checkpointDir, `.${instanceId}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
+        fs.writeFileSync(tempCp, JSON.stringify(checkpoint, null, 2), 'utf8');
+        fs.renameSync(tempCp, checkpointPath);
+        throw new Error(`Checkpoint '${instanceId}' has expired (TTL: 24h).`);
+      }
+
+      // 3. Digest Integrity Check: recompute digest over canonical immutable data (FR-018)
+      const canonicalCheckpointData = {
+        instanceId: checkpoint.instanceId,
+        persona: checkpoint.persona,
+        workflow: checkpoint.workflow,
+        stepIndex: checkpoint.stepIndex,
+        stepName: checkpoint.stepName,
+        action: checkpoint.action,
+        stepDescriptor: checkpoint.stepDescriptor,
+        workflowHash: checkpoint.workflowHash,
+        createdAt: checkpoint.createdAt,
+        contextSnapshot: checkpoint.contextSnapshot
+      };
+      if (checkpoint.stepDescriptor === undefined && checkpoint.workflowHash === undefined) {
+        delete canonicalCheckpointData.stepDescriptor;
+        delete canonicalCheckpointData.workflowHash;
+      }
+      const computedDigest = crypto.createHash('sha256')
+        .update(JSON.stringify(canonicalCheckpointData))
+        .digest('hex');
+
+      if (computedDigest !== checkpoint.checkpointDigest) {
+        throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
+      }
+
+      // 4. Manifest Integrity Check (FR-018): Ensure manifest and step definition match approval descriptor
+      if (checkpoint.persona !== this.meta.name) {
+        throw new Error(`Checkpoint persona '${checkpoint.persona}' does not match engine persona '${this.meta.name}'.`);
+      }
+
+      const workflows = this.meta.workflows || {};
+      safeWfName = validateSlug(checkpoint.workflow, 'workflow name');
+      workflow = workflows[safeWfName];
+      if (!workflow) {
+        throw new Error(`Workflow '${safeWfName}' not found in persona manifest '${this.meta.name}'.`);
+      }
+
+      steps = Array.isArray(workflow.steps) ? workflow.steps : [];
+      startIndex = checkpoint.stepIndex;
+      if (startIndex < 0 || startIndex >= steps.length) {
+        throw new Error(`Invalid step index ${startIndex} in checkpoint.`);
+      }
+
+      if (checkpoint.stepDescriptor) {
+        const currentStep = steps[startIndex];
+        if (JSON.stringify(checkpoint.stepDescriptor) !== JSON.stringify(currentStep)) {
+          throw new Error(`Checkpoint '${instanceId}' rejected: step definition in manifest has changed since approval was granted.`);
+        }
+      }
+
+      // 5. Token Verification (FR-011, FR-017): Asymmetric Ed25519 verification
+      const rawToken = options.approvalToken || options.token;
+      if (!rawToken || typeof rawToken !== 'string') {
+        throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<signature>). Standalone boolean approval is disallowed.`);
+      }
+
+      const parts = rawToken.split('.');
+      if (parts.length !== 3) {
+        throw new Error(`Resume of checkpoint '${instanceId}' rejected: malformed approval token format. Expected '<actor>.<expiresAt>.<signature>'.`);
+      }
+      const [actor, expiresAtStr, signature] = parts;
+      const expiresAt = Number(expiresAtStr);
+      if (isNaN(expiresAt) || Date.now() > expiresAt) {
+        throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
+      }
+
+      const payload = `${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`;
+      const payloadBuf = Buffer.from(payload, 'utf8');
+
+      let publicKey = options.publicKey || process.env.DSH_APPROVAL_PUBLIC_KEY;
+      if (!publicKey) {
+        const pubKeyPaths = [
+          path.join(process.cwd(), 'config', 'keys', 'approval_ed25519.pub'),
+          path.join(process.cwd(), '.host_keys', 'approval_ed25519.pub'),
+          path.join('/root/.dsh', 'keys', 'approval_ed25519.pub'),
+          path.join(process.env.DSH_CONFIG_SOURCE || '', 'keys', 'approval_ed25519.pub')
+        ];
+        for (const kp of pubKeyPaths) {
+          if (kp && fs.existsSync(kp)) {
+            try {
+              publicKey = fs.readFileSync(kp, 'utf8');
+              break;
+            } catch {}
+          }
+        }
+      }
+
+      const isSandboxContainer = process.env.DSH_SANDBOX === '1' || process.env.NODE_ENV === 'production';
+
+      let verified = false;
+      if (publicKey) {
+        try {
+          let sigBuf;
+          try {
+            sigBuf = Buffer.from(signature, 'base64url');
+          } catch {
+            sigBuf = Buffer.from(signature, 'hex');
+          }
+          verified = crypto.verify(null, payloadBuf, publicKey, sigBuf);
+        } catch {
+          verified = false;
+        }
+      }
+
+      // In production/container sandbox, HMAC fallback is completely forbidden to prevent secret-sharing
+      const tokenSecret = options.approvalSecret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
+      if (!verified && !isSandboxContainer && tokenSecret && typeof tokenSecret === 'string' && tokenSecret.trim().length >= 16) {
+        const expectedSignature = crypto.createHmac('sha256', tokenSecret)
+          .update(payload)
+          .digest('hex');
+        const signatureBuf = Buffer.from(signature, 'hex');
+        const expectedBuf = Buffer.from(expectedSignature, 'hex');
+        if (signatureBuf.length > 0 && signatureBuf.length === expectedBuf.length && crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+          verified = true;
+        }
+      }
+
+      if (!verified) {
+        if (isSandboxContainer && !options.allowHmacTestOnly) {
+          throw new Error(`Resume of checkpoint '${instanceId}' rejected: DSH_APPROVAL_PUBLIC_KEY is required in container environment. Symmetric HMAC verification is strictly disabled in sandbox to enforce host signing authority.`);
+        }
+        if (!publicKey && (!tokenSecret || tokenSecret.trim().length < 16)) {
+          throw new Error(`Resume of checkpoint '${instanceId}' rejected: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured to verify approval tokens.`);
+        }
+        throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token signature.`);
+      }
+
+      // Transition checkpoint to IN_PROGRESS on disk atomically via temp-write + rename
       checkpoint.status = 'IN_PROGRESS';
       checkpoint.resumedAt = new Date().toISOString();
       checkpoint.approvedBy = actor;
       checkpoint.approvedAt = new Date().toISOString();
-      fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
+
+      const tempCheckpoint = path.join(checkpointDir, `.${instanceId}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
+      fs.writeFileSync(tempCheckpoint, JSON.stringify(checkpoint, null, 2), 'utf8');
+      fs.renameSync(tempCheckpoint, checkpointPath);
     } finally {
-      try {
-        if (lockFd !== null) {
-          fs.closeSync(lockFd);
-          if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
-        }
-      } catch {}
+      if (lockFd !== null) {
+        try { fs.closeSync(lockFd); } catch {}
+        try { if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath); } catch {}
+        lockFd = null;
+      }
     }
 
     let currentContext = { ...checkpoint.contextSnapshot, approved: true, ...(options.context || {}) };

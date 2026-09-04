@@ -1514,6 +1514,156 @@ test('FR-022 Regression: apply_fix_or_patch preserves executable file permission
   assert.equal(finalMode, 0o755, 'Target executable mode (0755) must be preserved after atomic rename');
 });
 
+test('Hardening Regression: validate_sdmx_schema structurally validates SDMX XML and rejects malformed tags', async () => {
+  const meta = {
+    name: 'sdmx-expert',
+    rbac: { role: 'sdmx_analyst', permissions: { filesystem: { read: [testIsolatedDir], write: [testIsolatedDir] } } },
+    workflows: {}
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Well-formed SDMX 2.1 XML schema
+  const validXmlPath = path.join(testIsolatedDir, 'valid_sdmx.xml');
+  fs.writeFileSync(validXmlPath, `<?xml version="1.0" encoding="utf-8"?>
+<Structure xmlns="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure">
+  <Structures>
+    <DataStructures>
+      <DataStructure id="DSD_LU1" agencyID="LU1"/>
+    </DataStructures>
+  </Structures>
+</Structure>`);
+
+  const resValid = await engine.executeStep(
+    { action: 'validate_sdmx_schema', target: validXmlPath },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(resValid.status, 'success');
+  assert.equal(resValid.sdmx_schema.validated, true);
+
+  // 2. Malformed XML (mismatched/unclosed tag)
+  const malformedXmlPath = path.join(testIsolatedDir, 'malformed_sdmx.xml');
+  fs.writeFileSync(malformedXmlPath, `<?xml version="1.0" encoding="utf-8"?>
+<Structure xmlns="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure">
+  <Structures>
+    <DataStructures>
+      <DataStructure id="DSD_LU1">
+    </Structures>
+  </DataStructures>
+</Structure>`);
+
+  const resMalformed = await engine.executeStep(
+    { action: 'validate_sdmx_schema', target: malformedXmlPath },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(resMalformed.status, 'failed');
+  assert.equal(resMalformed.code, 'SDMX_SCHEMA_INVALID');
+  assert.ok(resMalformed.error.includes('Tag mismatch') || resMalformed.error.includes('Mismatched closing tag'));
+});
+
+test('Hardening Regression: apply_fix_or_patch strictly rejects symbolic link targets (PATCH_TARGET_IS_SYMLINK)', async () => {
+  const meta = {
+    name: 'devops-sre',
+    rbac: { role: 'sre', permissions: { filesystem: { read: [testIsolatedDir], write: [testIsolatedDir] } } },
+    workflows: {}
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  const realTarget = path.join(testIsolatedDir, 'real_source.js');
+  const symlinkTarget = path.join(testIsolatedDir, 'symlink_patch.js');
+  fs.writeFileSync(realTarget, 'console.log("real");\n');
+  try {
+    fs.symlinkSync(realTarget, symlinkTarget);
+  } catch (err) {
+    if (err.code === 'EPERM') return; // Skip if OS lacks symlink creation privileges
+  }
+
+  const res = await engine.executeStep(
+    { action: 'apply_fix_or_patch', target: symlinkTarget, content: 'console.log("patched");\n' },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(res.status, 'failed');
+  assert.equal(res.code, 'PATCH_TARGET_IS_SYMLINK');
+  assert.ok(res.error.includes('symbolic link'));
+});
+
+test('Hardening Regression: resumeWorkflow recovers from stale lock held by dead process PID', async () => {
+  const secret = 'strong-secret-key-32-characters!';
+  const meta = {
+    name: 'security-auditor',
+    rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+    workflows: {
+      stale_lock_flow: {
+        steps: [
+          { name: 'Gate', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'stale.json'), approval_required: true }
+        ]
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('stale_lock_flow');
+
+  const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+  const cp = JSON.parse(fs.readFileSync(path.join(checkpointDir, `${suspended.instanceId}.json`), 'utf8'));
+  const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, secret);
+
+  // Simulate stale lock created by a dead PID (PID 9999999)
+  const lockPath = path.join(checkpointDir, `${suspended.instanceId}.resuming.lock`);
+  fs.writeFileSync(lockPath, JSON.stringify({ pid: 9999999, createdAt: Date.now() - 5000 }), 'utf8');
+
+  // resumeWorkflow detects dead PID, breaks stale lock, and resumes successfully
+  const resumed = await engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret });
+  assert.equal(resumed.status, 'COMPLETED');
+  assert.equal(fs.existsSync(lockPath), false, 'Lock must be cleaned up on completion');
+});
+
+test('Hardening Regression: resumeWorkflow in container sandbox (DSH_SANDBOX=1) forbids HMAC tokens and requires Ed25519', async () => {
+  const prevSandbox = process.env.DSH_SANDBOX;
+  process.env.DSH_SANDBOX = '1';
+
+  try {
+    const meta = {
+      name: 'security-auditor',
+      rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+      workflows: {
+        sandbox_flow: {
+          steps: [
+            { name: 'Gate', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'sb.json'), approval_required: true }
+          ]
+        }
+      }
+    };
+    const engine = new DeclarativeWorkflowEngine(meta);
+    const suspended = await engine.executeWorkflow('sandbox_flow');
+
+    const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+    const cp = JSON.parse(fs.readFileSync(path.join(checkpointDir, `${suspended.instanceId}.json`), 'utf8'));
+
+    // Mint HMAC token
+    const hmacSecret = 'symmetric-secret-32-chars-long!';
+    const hmacToken = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, hmacSecret);
+
+    // Sandbox container must refuse HMAC token with fail-closed security error
+    await assert.rejects(
+      async () => engine.resumeWorkflow(suspended.instanceId, { token: hmacToken, approvalSecret: hmacSecret }),
+      /DSH_APPROVAL_PUBLIC_KEY is required in container environment/
+    );
+
+    // Provide asymmetric Ed25519 keypair
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+    const edToken = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, privateKey);
+
+    // Resumes cleanly with asymmetric public key in sandbox
+    const resumed = await engine.resumeWorkflow(suspended.instanceId, { token: edToken, publicKey });
+    assert.equal(resumed.status, 'COMPLETED');
+  } finally {
+    if (prevSandbox === undefined) {
+      delete process.env.DSH_SANDBOX;
+    } else {
+      process.env.DSH_SANDBOX = prevSandbox;
+    }
+  }
+});
+
 test.after(() => {
   fs.rmSync(testIsolatedDir, { recursive: true, force: true });
 });
