@@ -6,22 +6,29 @@ This document defines the actionable, milestone-by-milestone engineering roadmap
 
 ## 🎯 Milestone Overview
 
-```
-v1.10.0+ (Current Production Baseline)
-  │  • Level 3.10 Governed Harness: Arize Phoenix tracing, 54 node:test unit tests across 9 suites,
-  │    DeclarativeWorkflowEngine, 4 MCP servers, Antigravity search, hardened sandbox.
-  │
-  ├──► Milestone 1 (v1.11.0): Zero-Trust Egress, Failover & Telemetry Container Hardening
-  │      • dsh: Envoy forward proxy, in-flight failover gateway, on-the-fly MCP lifecycle.
-  │      • phoenix: Cgroup limits (2048M), rolling retention (14 days), OTLP 4317/4318 standard.
-  │
-  ├──► Milestone 2 (v1.12.0): Transactional State Management & Automated Evaluation
-  │      • dsh: Ephemeral Git worktree staging (worktree-staging.mjs), zero-diff rollback.
-  │      • phoenix: Phoenix LLM-as-a-Judge evaluators, token-gated auth.
-  │
-  └──► Milestone 3 (v2.0.0): Level 4.0 High-Assurance Sovereign Harness
-         • dsh: Dual-LLM Context Quarantine, gVisor (runsc) kernel isolation.
-         • phoenix: Parquet cold-storage sync to S3/GCS.
+```mermaid
+flowchart LR
+    subgraph V110["v1.10.0+ (Current Production Baseline)"]
+        direction TB
+        B1["Level 3.10 Governed Harness:<br/>• Arize Phoenix tracing (:6006)<br/>• 54 node:test unit tests (9 suites)<br/>• DeclarativeWorkflowEngine<br/>• 4 pre-compiled MCP servers<br/>• Google Antigravity ('agy') search<br/>• Hardened read-only sandbox"]
+    end
+
+    subgraph V111["Milestone 1 (v1.11.0 Target: Level 3.45)"]
+        direction TB
+        T1["Zero-Trust Egress & Failover:<br/>• dsh: Envoy forward proxy sidecar<br/>• dsh: In-flight failover gateway<br/>• dsh: Dynamic MCP lifecycle<br/>• phoenix: Cgroups (2048M) & retention (14d)"]
+    end
+
+    subgraph V112["Milestone 2 (v1.12.0 Target: Level 3.70)"]
+        direction TB
+        T2["Transactional State & Eval:<br/>• dsh: Ephemeral Git worktree staging<br/>• dsh: Pre-task zero-diff rollback<br/>• phoenix: LLM-as-a-Judge evaluators"]
+    end
+
+    subgraph V200["Milestone 3 (v2.0.0 Target: Level 4.0)"]
+        direction TB
+        T3["High-Assurance Sovereign Harness:<br/>• dsh: Dual-LLM context quarantine<br/>• dsh: gVisor ('runsc') kernel isolation<br/>• phoenix: Parquet cold-storage sync"]
+    end
+
+    V110 --> V111 --> V112 --> V200
 ```
 
 ---

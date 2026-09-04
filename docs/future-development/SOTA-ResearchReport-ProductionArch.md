@@ -60,25 +60,23 @@ $$(0.95)^{10} \approx 59.87\%$$
 
 To address this reliability deficit, modern agent systems treat the LLM as a **probabilistic reasoning core encapsulated within deterministic software bounds**.
 
-```
-                  UNCONTROLLED AUTONOMY vs. HARNESS-BOUND AGENT
-                  
-  Naive Autonomous Agent:
-  [Prompt] ---> ( LLM Loop ) <---> [Direct API Calls / Shell / DB] (Unsafe, Unbounded)
-  
-  Harness-Bound Production Agent (DSH-DDS v1.10.0 Verified Posture):
-                +-------------------------------------------------------------+
-                |                       AGENT HARNESS                         |
-                |  +-------------------+  Typed Envelope  +----------------+  |
-  [Intent] ---> |  | RBAC / Policy Gate| ---------------> | Declarative    |  | ---> [Hardened Sandbox:
-                |  | (rbac-policy.mjs) | <--------------- | Orchestrator   |  |       MCP Tools &
-                |  +-------------------+   State Check    +----------------+  |       Antigravity (`agy`)]
-                |          |                                       |          |
-                |          v                                       v          |
-                |   [Phoenix Tracing &                     [Invariant Tests   |
-                |    GRC Audit Logs]                        & Step Bounds]    |
-                +-------------------------------------------------------------+
+```mermaid
+flowchart TD
+    subgraph Naive["Naive Autonomous Agent (Unbounded Risk)"]
+        direction LR
+        P1["User Prompt"] --> L1("LLM Reasoning Loop")
+        L1 <--> A1["Direct Host Shell / Unchecked DB / Arbitrary APIs"]
+    end
 
+    subgraph Governed["Harness-Bound Production Agent (DSH-DDS v1.10.0 Verified Posture)"]
+        direction TB
+        Intent["Task Intent"] --> RBAC["RBAC / Policy Gate<br/>(config/rbac-policy.mjs)"]
+        RBAC -- "Typed Execution Envelope" --> Orch["Declarative Workflow Engine<br/>(config/declarative-orchestrator.mjs)"]
+        Orch -- "State & Path Check" --> RBAC
+        Orch --> Sandbox["Hardened Sandbox Execution:<br/>4 MCP Tools & Antigravity ('agy')"]
+        RBAC --> Audit["Phoenix Tracing (:6006) &<br/>GRC Audit Logs"]
+        Orch --> Invariants["Deterministic Step Bounds &<br/>Regression Invariant Tests"]
+    end
 ```
 
 ### 1.1 The 5-Level Agent Harness Capability Maturity Model (Levels 0–4)
@@ -148,128 +146,96 @@ A common error in agent harness engineering is treating runtime composition, orc
 
 Enterprise agent harnesses avoid unconstrained choreography for core tasks because non-deterministic emergent interactions violate safety and compliance guarantees. `DSH-DDS` implements a three-tier hybrid pattern:
 
-```
-====================================================================================================
-                       THE SOTA TRIFECTA: COMPOSITION + ORCHESTRATION + CHOREOGRAPHY
-====================================================================================================
+```mermaid
+flowchart TD
+    subgraph L1["LEVEL 1: MACRO-CHOREOGRAPHY (Decoupled Event Bus)"]
+        ExtTrigger["External Trigger / Issue Created / Webhook"] --> Hook["Host Event Hook"]
+        Hook --> Ingress["DSH-DDS Ingress CLI (dsh.sh)"]
+    end
 
- LEVEL 1: MACRO-CHOREOGRAPHY (Decoupled Event Bus: GitHub Webhooks / Host Events)
- --------------------------------------------------------------------------------------------------
-   [External Trigger / Issue Created] ----> Host Event Hook ----> [DSH-DDS Ingress CLI]
-                                                                        | (Dispatches Task Intent)
-                                                                        v
- ==================================================================================================
- LEVEL 2: MICRO-ORCHESTRATION (Declarative Workflow Engine: config/declarative-orchestrator.mjs)
- --------------------------------------------------------------------------------------------------
-   [Task Initialized]
-           |
-           v
-   +---------------+   `when:` Guard   +---------------+     Asserts     +---------------+
-   | Step 1: Plan  | ----------------> | Step 2: Tool  | --------------> | Step 3: Verify|
-   +---------------+                   +---------------+                 +---------------+
-           ^                                   |                                 | Test Fails
-           |                                   v Error                           |
-           +----------------------- [Compensate & Halt] <------------------------+
-                                               |
- ==================================================================================================
- LEVEL 3: RUNTIME COMPOSITION (Cordis Service Registry & Boundary Injection)
- --------------------------------------------------------------------------------------------------
-   At each step execution boundary, the Cordis kernel dynamically composes:
-   [Active Model via `models`] + [MCP Tools / Antigravity agy] + [RBAC Validator] + [Phoenix Tracer]
-====================================================================================================
+    Ingress -->|"Dispatches Task Intent"| Step1
 
+    subgraph L2["LEVEL 2: MICRO-ORCHESTRATION (Declarative Workflow Engine)"]
+        Step1["Step 1: Plan & Validate"] -->|"when: Guard Condition"| Step2["Step 2: Typed Tool Execution"]
+        Step2 -->|"Post-Execution Assertions"| Step3["Step 3: Verification & Test"]
+        Step2 -- "Execution Error" --> Comp["Compensate & Halt"]
+        Step3 -- "Invariant Failure" --> Comp
+        Comp -.->|"Bounded Iteration"| Step1
+    end
+
+    subgraph L3["LEVEL 3: RUNTIME COMPOSITION (Cordis Service Registry)"]
+        direction LR
+        Kernel["Cordis Kernel"]
+        Kernel --- ModelSvc["'models' Service<br/>(Gemini 2.5 & OpenRouter)"]
+        Kernel --- ToolSvc["Typed Tools<br/>(4 MCP Servers + 'agy')"]
+        Kernel --- RBACSvc["RBAC Boundary Gate<br/>(Strict Path Containment)"]
+        Kernel --- TraceSvc["Phoenix Tracer<br/>(OTel Spans & Costs)"]
+    end
+
+    Step2 -.- L3
 ```
 
 ---
 
 ## 3. Verified Repository Architecture & Subsystem Reality
 
-```
-====================================================================================================
-                        DSH-DDS VERIFIED ARCHITECTURE & INTERACTION MAP
-====================================================================================================
+```mermaid
+graph TB
+    subgraph HostEnv["Host / Operator Shell Boundary"]
+        CLI["CLI Lifecycle: dsh.sh"]
+        Install["Installer: install_dsh.sh"]
+        Reset["State Purge: reset.sh"]
+        AuthStorage["Host Google Auth: ~/.config/antigravity (:ro)"]
+        Workspaces["Host Storage: ./workspaces"]
+        ConfigStorage["Persistent Config: ./config"]
+    end
 
-               +-------------------------------------------------------------+
-               |                   HOST / OPERATOR SHELL                     |
-               |  - install_dsh.sh (Path symlinks, dependency preflight)     |
-               |  - dsh.sh (CLI wrapper, flag parser, env-loader)            |
-               |  - reset.sh (Destructive volume & container state purge)    |
-               |  - Host Google Auth Cache: ~/.config/antigravity            |
-               +-------------------------------------------------------------+
-                                      |
-                         Sourcing & Interpolation
-                                      v
-               +-------------------------------------------------------------+
-               |              CONFIG & BOOTSTRAP SUBSYSTEM                   |
-               |  - .env: OPENROUTER_API_KEY, GEMINI_API_KEY                |
-               |  - config/ (Global defaults, provider profiles)             |
-               |  - Bootstrap Router: Configures OpenRouter & Gemini keys    |
-               +-------------------------------------------------------------+
-                                      |
-                           Docker Compose CLI API
-                                      v
-+--------------------------------------------------------------------------------------------------+
-| DOCKER RUNTIME ENGINE                                                                            |
-|                                                                                                  |
-|   +------------------------------------+        +--------------------------------------------+   |
-|   |  Service: dsh-core                 |        |  Service: dsh-sandbox                      |   |
-|   |  (docker-compose.yml)              |        |  (docker-compose.sandbox.yml)              |   |
-|   |  - Full development toolchain      |        |  - read_only: true (Immutable rootfs)      |   |
-|   |  - Arize Phoenix 20.5.0 on :6006   |        |  - cap_drop: [ALL] (No Linux capabilities) |   |
-|   |  - Dynamic workspace mounting      |        |  - cgroups: cpus=2.0, mem=4096M, pids=128  |   |
-|   |  - Standard Bridge Networking      |        |  - internal: true (No WAN egress)          |   |
-|   +------------------------------------+        +--------------------------------------------+   |
-|                    |                                                  |                          |
-|                    +------------------+           +-------------------+                          |
-|                                       |           |                                              |
-|                                       v           v                                              |
-|   +------------------------------------------------------------------------------------------+   |
-|   | GUEST RUNTIME & CORDIS MICROKERNEL (Node.js 24 / ESM)                                    |   |
-|   |                                                                                          |   |
-|   |   +------------------------------------+      +--------------------------------------+   |   |
-|   |   | Cordis Plugin: `models`            |      | Declarative Workflow Engine          |   |   |
-|   |   | - Dynamic Provider Toggle          | <--> | - config/declarative-orchestrator.mjs|   |   |
-|   |   | - Direct Gemini 2.5 API            |      | - 15 Typed Capabilities              |   |   |
-|   |   | - OpenRouter Meta-Broker Gateway   |      | - Step Bounds & Approval Gates       |   |   |
-|   |   +------------------------------------+      +--------------------------------------+   |   |
-|   |                     |                                    |                               |   |
-|   |                     +-----------------+                  |                               |   |
-|   |                                       |                  |                               |   |
-|   |                                       v                  v                               |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   |   | Typed Tool Execution: @deepseek-ai/dsh-mcp-client & Google Antigravity           |   |   |
-|   |   | - mcp-fetch       : Schema-validated HTTP fetcher                                |   |   |
-|   |   | - mcp-context7    : Codebase context analysis                                    |   |   |
-|   |   | - mcp-github      : GitHub API & PR operations                                   |   |   |
-|   |   | - mcp-sqlite-db   : Typed relational queries                                     |   |   |
-|   |   | - Google Antigravity (`agy`): Cloud-delegated web research & synthesis engine    |   |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   |                                       |                                                  |   |
-|   |                                       v                                                  |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   |   | RBAC & Security Boundary Layer (config/rbac-policy.mjs)                          |   |   |
-|   |   | - canonicalizeWithAncestorRealpath() (Resolves symlink escapes)                  |   |   |
-|   |   | - isContainedWithin() (Strict workspace path boundary enforcement)              |   |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   |                                       |                                                  |   |
-|   |                                       v                                                  |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   |   | Observability Layer: AgentPhoenixTracer (:6006)                                  |   |   |
-|   |   | - OpenTelemetry (OTel) Spans & W3C TraceContext                                  |   |   |
-|   |   | - Live token cost accounting & trajectory inspection                             |   |   |
-|   |   +----------------------------------------------------------------------------------+   |   |
-|   +------------------------------------------------------------------------------------------+   |
-+--------------------------------------------------------------------------------------------------+
-          |                                                              |
-          v Host Bind Mounts                                             v External WAN (Dev Profile)
-+------------------------------------+         +---------------------------------------------------+
-| HOST FILESYSTEM                    |         | UPSTREAM PROVIDERS & INTERNET                     |
-| - ./workspaces -> /workspace       |         | - Google Gemini REST API (generativelanguage)     |
-| - ./.agents    -> /home/.../.agents|         | - OpenRouter Aggregator (openrouter.ai/api/v1)    |
-| - ./config     -> /etc/dsh/config  |         | - Google Antigravity Cloud (*.antigravity.google) |
-| - ~/.config/antigravity (Auth :ro) |         | - GitHub & Registries (Unrestricted in dev mode)  |
-+------------------------------------+         +---------------------------------------------------+
+    subgraph DockerRuntime["Docker Container Runtime Engine"]
+        subgraph CoreContainer["Container: dsh-core (:3080)"]
+            CordisCore["Node.js 24 / Cordis Microkernel"]
+            ModelsPlugin["Cordis Plugin: 'models'<br/>(Gemini & OpenRouter)"]
+            WorkflowEng["Declarative Orchestrator<br/>(15 Capabilities & ACM Gates)"]
+            MCPClients["@deepseek-ai/dsh-mcp-client<br/>(fetch, context7, github, sqlite-db)"]
+            AgyCli["Google Antigravity CLI ('agy')<br/>(Cloud-Delegated Search Engine)"]
+            RBACGate["RBAC Policy Gate<br/>(canonicalizeWithAncestorRealpath)"]
+            PhoenixTracer["AgentPhoenixTracer<br/>(OTel Spans & Token Costing)"]
+        end
 
+        subgraph SandboxContainer["Container: dsh-sandbox (Locked Profile)"]
+            RO["read_only: true (Immutable rootfs)"]
+            Caps["cap_drop: [ALL]"]
+            NoPriv["no-new-privileges: true"]
+            CGroups["cgroups: cpus=2.0, mem=4096M, pids=128"]
+            NetLock["internal: true (Direct WAN Blocked)"]
+        end
+
+        subgraph PhoenixContainer["Container: dsh-phoenix (:6006)"]
+            PhoenixUI["Arize Phoenix 20.5.0 Web UI (:6006)"]
+            OTLPCollector["OTLP HTTP/gRPC Collector (:4317 / :4318)"]
+            PhoenixDB["Persistent Telemetry: ./config/phoenix"]
+        end
+    end
+
+    subgraph ExternalCloud["External Cloud Providers & Upstream APIs"]
+        GeminiAPI["Google Gemini REST API"]
+        OpenRouterAPI["OpenRouter Aggregator"]
+        AntigravityAPI["Google Antigravity Cloud (*.antigravity.google)"]
+        Registries["GitHub API, npm & PyPI"]
+    end
+
+    CLI --> CoreContainer
+    Workspaces -->|"Mounted to /workspace"| CoreContainer
+    ConfigStorage -->|"Mounted to /etc/dsh/config"| CoreContainer
+    AuthStorage -.->|"Mounted :ro"| CoreContainer
+    CoreContainer --> PhoenixTracer
+    PhoenixTracer -->|"OTLP Spans (:4318)"| OTLPCollector
+    OTLPCollector --> PhoenixDB
+    PhoenixDB --> PhoenixUI
+
+    ModelsPlugin --> GeminiAPI
+    ModelsPlugin --> OpenRouterAPI
+    AgyCli --> AntigravityAPI
+    MCPClients --> Registries
 ```
 
 ### Table 3.2: Verified File and Component Registry
@@ -355,49 +321,45 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 
 `DSH-DDS` enforces build-time and runtime evaluation using native `node:test` test suites combined with Arize Phoenix OpenTelemetry span validation.
 
-```
-====================================================================================================
-                        DSH-DDS AUTOMATED CI/CD RELEASE EVALUATION PIPELINE
-====================================================================================================
+```mermaid
+flowchart TD
+    PR["Push to Main / Pull Request Trigger"] --> Stage1
 
-  [Pull Request / Push to Main]
-                 |
-                 v
-  +-------------------------------------------------------------+
-  | STAGE 1: STATIC ANALYSIS & LINTING                          |
-  | - Node syntax & ESM module validation (`node --check`)      |
-  | - Hadolint (Dockerfile, Dockerfile.sandbox)                 |
-  | - ShellCheck (dsh.sh, install_dsh.sh, reset.sh)             |
-  +-------------------------------------------------------------+
-                 | PASS
-                 v
-  +-------------------------------------------------------------+
-  | STAGE 2: CONTAINER ISOLATION & INVARIANT AUDIT              |
-  | - Assert `cap_drop: ALL` active                             |
-  | - Assert root filesystem is immutable (`touch /bin/fail`)   |
-  | - Assert cgroup limits enforced (`pids_limit: 128`)         |
-  +-------------------------------------------------------------+
-                 | PASS
-                 v
-  +-------------------------------------------------------------+
-  | STAGE 3: NATIVE REGRESSION TEST SUITE (`node --test`)       |
-  | - 54 unit & integration tests across 9 test suites:         |
-  |   * `rbac_confinement.test.mjs` (Path boundaries & escapes) |
-  |   * `orchestrator.test.mjs` (Adapters, Phoenix OTel, AUD)   |
-  |   * `cli_parser.test.mjs` (Flags, approval gates, AUD-013)  |
-  |   * `e2e_sandbox_confinement.test.mjs` (Kernel confinement) |
-  |   * `installer_clean_room.test.mjs` & `installer_parity`    |
-  |   * `patches.test.mjs`, `personas.test.mjs`, `skills.test`  |
-  +-------------------------------------------------------------+
-                 | PASS
-                 v
-  +-------------------------------------------------------------+
-  | STAGE 4: BLOCKING METRIC GATES                              |
-  | - Verified Task Success Rate (VTSR) >= 80%                  |
-  | - Unauthorized Action Rate (UAR) == 0.0%                    |
-  | - Secret Exposure Rate (SxER) == 0.0%                       |
-  +-------------------------------------------------------------+
+    subgraph Stage1["Stage 1: Static Analysis & Linting"]
+        Syntax["Node syntax & ESM validation ('node --check')"]
+        Hadolint["Hadolint (Dockerfile & Dockerfile.sandbox)"]
+        ShellCheck["ShellCheck (dsh.sh, install_dsh.sh, reset.sh)"]
+    end
 
+    Stage1 -->|"PASS"| Stage2
+
+    subgraph Stage2["Stage 2: Container Isolation & Invariant Audit"]
+        CapDrop["Verify cap_drop: [ALL] Active"]
+        RootFS["Verify Root Filesystem is Immutable ('touch /bin/fail' -> EROFS)"]
+        Pids["Verify cgroup Ceiling Enforced (pids_limit: 128)"]
+    end
+
+    Stage2 -->|"PASS"| Stage3
+
+    subgraph Stage3["Stage 3: Native Regression Test Suite ('node --test')"]
+        Suite1["rbac_confinement.test.mjs (Zero-Trust RBAC & symlink traversal)"]
+        Suite2["orchestrator.test.mjs (15 Adapters, Phoenix OTel, AUD-001/005)"]
+        Suite3["cli_parser.test.mjs (Flags, approval gates, AUD-006/007/013)"]
+        Suite4["e2e_sandbox_confinement.test.mjs (Kernel isolation invariants)"]
+        Suite5["installer_clean_room.test.mjs & installer_parity.test.mjs"]
+        Suite6["patches.test.mjs, personas.test.mjs, skills.test.mjs"]
+    end
+
+    Stage3 -->|"PASS (54/54 Tests 100%)"| Stage4
+
+    subgraph Stage4["Stage 4: Blocking Release Metric Gates"]
+        VTSR["Verified Task Success Rate (VTSR) >= 80%"]
+        UAR["Unauthorized Action Rate (UAR) == 0.0%"]
+        SER["Sandbox Escape Rate (SER) == 0.0%"]
+        SxER["Secret Exposure Rate (SxER) == 0.0%"]
+    end
+
+    Stage4 --> Approved["Production Release Certified (Level 3.10)"]
 ```
 
 ### Table 6.1: Metric Definitions & CI Blocking Thresholds
@@ -414,23 +376,29 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 
 ## 7. Prioritized Engineering Roadmap (v1.11.0 to v2.0.0)
 
-```
-v1.10.0 Verified (Current Baseline: Level 3.10)
-  │  • Level 3.10 Governed: Arize Phoenix tracing, 54 node:test unit tests across 9 suites,
-  │    declarative orchestration, MCP servers, Antigravity search, hardened sandbox.
-  │
-  ├──► v1.11.0 Target: Network Egress Proxy & In-Flight Failover (Level 3.45)
-  │      • Deploy Envoy forward proxy sidecar allowlisting Gemini, OpenRouter & Antigravity.
-  │      • Integrate native Cordis in-flight failover gateway (`config/failover-gateway.mjs`).
-  │
-  ├──► v1.12.0 Target: Transactional State Management (Level 3.70)
-  │      • Integrate `TransactionalWorktree` into `declarative-orchestrator.mjs`.
-  │      • Add automated pre-task diff rollback hooks on test failure.
-  │
-  └──► v2.0.0 Target: High-Assurance Sovereign Harness (Level 4.0)
-         • Dual-LLM context quarantine to structurally eliminate Indirect Prompt Injection.
-         • gVisor (`runsc`) OCI runtime integration for kernel-isolated micro-sandboxing.
+```mermaid
+flowchart LR
+    subgraph V110["v1.10.0 Verified (Current Baseline: Level 3.10)"]
+        direction TB
+        B1["Governed Production Harness:<br/>• Arize Phoenix 20.5.0 (:6006)<br/>• 54 native node:test unit tests<br/>• Declarative Workflow Engine (15 capabilities)<br/>• 4 pre-compiled MCP Servers<br/>• Google Antigravity ('agy') Cloud Search<br/>• Read-only Immutable Sandbox Container"]
+    end
 
+    subgraph V111["Milestone 1 (v1.11.0 Target: Level 3.45)"]
+        direction TB
+        T1["Zero-Trust Egress & Failover:<br/>• Envoy Egress Forward Proxy Sidecar<br/>• Cordis In-Flight Failover Gateway<br/>• Dynamic On-The-Fly MCP Lifecycle<br/>• Phoenix Cgroup & Retention Caps"]
+    end
+
+    subgraph V112["Milestone 2 (v1.12.0 Target: Level 3.70)"]
+        direction TB
+        T2["Transactional State Management:<br/>• Ephemeral Git Worktree Staging<br/>• Automated Pre-Task Zero-Diff Rollback<br/>• Phoenix LLM-as-a-Judge Evaluation"]
+    end
+
+    subgraph V200["Milestone 3 (v2.0.0 Target: Level 4.0)"]
+        direction TB
+        T3["High-Assurance Sovereign Harness:<br/>• Dual-LLM Context Quarantine (IPI Immunity)<br/>• gVisor ('runsc') Kernel Hypervisor Isolation<br/>• Parquet Telemetry Cold-Storage Export"]
+    end
+
+    V110 --> V111 --> V112 --> V200
 ```
 
 ### Table 7.1: Actionable Upgrade Roadmap

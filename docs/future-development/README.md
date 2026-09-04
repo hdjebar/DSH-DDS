@@ -53,25 +53,28 @@ Level 4: High-Assurance      -> MicroVMs (Firecracker/gVisor), Dual-LLM quaranti
 
 `DSH-DDS` operates as a cohesive dual-container stack:
 
-```
-                      DSH-DDS PRODUCTION TOPOLOGY
-                      
-     +-----------------------+              +-----------------------+
-     |   Service: dsh        |   HTTP OTLP  |   Service: phoenix    |
-     |   (@deepseek-ai/dsh)  | -----------> |   (Arize Phoenix)     |
-     |   - Port: 3080 (Web)  |   Port 6006  |   - Port: 6006 (UI)   |
-     |   - Node.js 24 Cordis |              |   - Port: 4317 (gRPC) |
-     |   - 4 MCP Servers     |              |   - OTel Spans & Costs|
-     |   - Antigravity (agy) |              |   - ./config/phoenix  |
-     +-----------------------+              +-----------------------+
-                 |                                      |
-                 v Host Bind Mounts                     v Persistent Storage
-     +--------------------------------------------------------------+
-     | HOST STORAGE & ISOLATION BOUNDARY                            |
-     | - ./workspaces       -> /workspace (Isolated dev workspace)  |
-     | - ./config           -> /root/.dsh (Persistent profile)      |
-     | - ~/.config/antigravity -> Host Google OAuth cache (:ro)     |
-     +--------------------------------------------------------------+
+```mermaid
+graph LR
+    subgraph DSHCore["Service: dsh-core (:3080)"]
+        DSHApp["Node.js 24 / Cordis Microkernel<br/>• 4 MCP Servers<br/>• Antigravity ('agy') Search<br/>• Declarative Orchestrator"]
+    end
+
+    subgraph PhoenixSvc["Service: phoenix (:6006)"]
+        PhoenixApp["Arize Phoenix 20.5.0<br/>• Web UI (:6006)<br/>• OTLP gRPC/HTTP (:4317 / :4318)<br/>• OTel Spans & Token Costing"]
+    end
+
+    subgraph HostMounts["Host Storage & Isolation Boundary"]
+        Workspaces["./workspaces -> /workspace"]
+        Config["./config -> /etc/dsh/config"]
+        Auth["~/.config/antigravity -> Host Google Auth (:ro)"]
+        PhoenixData["./config/phoenix -> Persistent Telemetry"]
+    end
+
+    DSHApp -->|"HTTP OTLP (:4318)"| PhoenixApp
+    Workspaces --> DSHApp
+    Config --> DSHApp
+    Auth -.-> DSHApp
+    PhoenixApp --> PhoenixData
 ```
 
 ---
