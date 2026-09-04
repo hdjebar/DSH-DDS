@@ -294,3 +294,77 @@ test('FR-009 Regression: dsh.sh approve fails closed when DSH_APPROVAL_SECRET is
   }
   assert.equal(thrown, true, 'dsh.sh approve must exit with non-zero when secret is missing');
 });
+
+test('FR-011 CLI Regression: dsh.sh approve parses --actor and --ttl options and validates formats', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  const dshScript = path.resolve(process.cwd(), 'dsh.sh');
+  const testEnv = { ...process.env, DSH_APPROVAL_SECRET: 'test-approval-secret-32-chars-long' };
+
+  // 1. Rejects invalid actor formats
+  for (const badActor of ['invalid actor', 'bad;actor', 'foo$bar']) {
+    assert.throws(() => {
+      execFileSync(dshScript, ['approve', 'test-inst', `--actor=${badActor}`], { stdio: 'pipe', env: testEnv });
+    }, /Invalid actor/);
+  }
+
+  // 2. Rejects invalid TTL formats
+  for (const badTtl of ['not-a-number', '-50', '3600s']) {
+    assert.throws(() => {
+      execFileSync(dshScript, ['approve', 'test-inst', `--ttl=${badTtl}`], { stdio: 'pipe', env: testEnv });
+    }, /Invalid TTL/);
+  }
+
+  // 3. Generates approval token with custom actor and TTL (--option=value and --option value)
+  const testInstanceId = `test-inst-cli-${Date.now()}`;
+  const checkpointDir = path.join(process.cwd(), 'config', 'sessions', 'checkpoints');
+  const checkpointFile = path.join(checkpointDir, `${testInstanceId}.json`);
+  fs.mkdirSync(checkpointDir, { recursive: true });
+
+  const mockCheckpoint = {
+    instanceId: testInstanceId,
+    persona: 'security-auditor',
+    workflow: 'incident_triage',
+    suspendedAtStep: 0,
+    status: 'SUSPENDED_APPROVAL_REQUIRED',
+    checkpointDigest: 'mock-digest-hash-0123456789abcdef0123456789abcdef'
+  };
+  fs.writeFileSync(checkpointFile, JSON.stringify(mockCheckpoint, null, 2), 'utf8');
+
+  try {
+    // Test --actor=value --ttl=value
+    const out1 = execFileSync(
+      dshScript,
+      ['approve', testInstanceId, '--actor=compliance-officer', '--ttl=1800'],
+      { stdio: 'pipe', env: testEnv, encoding: 'utf8' }
+    );
+    assert.ok(out1.includes(`Approved instance: ${testInstanceId}`));
+    assert.ok(out1.includes('Actor: compliance-officer'));
+    const tokenMatch1 = out1.match(/Approval Token:\s*([A-Za-z0-9_-]+\.[0-9]+\.[A-Za-z0-9_-]+)/);
+    assert.ok(tokenMatch1, 'Approval token must be present in stdout');
+    const parts1 = tokenMatch1[1].split('.');
+    assert.equal(parts1[0], 'compliance-officer');
+    const exp1 = Number(parts1[1]);
+    assert.ok(exp1 > Date.now());
+    assert.ok(exp1 <= Date.now() + 1801 * 1000);
+
+    // Test --actor value --ttl value
+    const out2 = execFileSync(
+      dshScript,
+      ['approve', testInstanceId, '--actor', 'lead-auditor', '--ttl', '7200'],
+      { stdio: 'pipe', env: testEnv, encoding: 'utf8' }
+    );
+    assert.ok(out2.includes('Actor: lead-auditor'));
+    const tokenMatch2 = out2.match(/Approval Token:\s*([A-Za-z0-9_-]+\.[0-9]+\.[A-Za-z0-9_-]+)/);
+    assert.ok(tokenMatch2, 'Approval token must be present in stdout');
+    const parts2 = tokenMatch2[1].split('.');
+    assert.equal(parts2[0], 'lead-auditor');
+    const exp2 = Number(parts2[1]);
+    assert.ok(exp2 > Date.now() + 7000 * 1000);
+  } finally {
+    if (fs.existsSync(checkpointFile)) {
+      fs.unlinkSync(checkpointFile);
+    }
+  }
+});

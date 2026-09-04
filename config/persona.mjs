@@ -55,7 +55,25 @@ const CONFIG_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PERSONAS_DIR = path.join(CONFIG_DIR, 'personas');
 const SKILLS_DIR = path.join(CONFIG_DIR, 'skills');
 const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates/personas');
-const SETTINGS_FILE = path.join(CONFIG_DIR, 'settings.yaml');
+export function getSettingsFilePath() {
+  if (process.env.DSH_SETTINGS_FILE) return process.env.DSH_SETTINGS_FILE;
+  const directPath = path.join(CONFIG_DIR, 'settings.yaml');
+  try {
+    if (fs.existsSync(directPath)) {
+      fs.accessSync(directPath, fs.constants.W_OK);
+      return directPath;
+    }
+  } catch {}
+  const storagesPath = path.join(CONFIG_DIR, 'storages', 'settings.yaml');
+  if (fs.existsSync(storagesPath)) return storagesPath;
+  try {
+    fs.accessSync(CONFIG_DIR, fs.constants.W_OK);
+    return directPath;
+  } catch {}
+  return storagesPath;
+}
+
+const SETTINGS_FILE = getSettingsFilePath();
 
 function getRuntimeDir() {
   if (process.env.DSH_RUNTIME_DIR) {

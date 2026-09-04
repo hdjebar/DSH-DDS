@@ -23,10 +23,11 @@ services:
           cpus: '0.5'
           memory: 512M
     volumes: !override
-      # Configuration is copied into disposable tmpfs; only session data persists.
+      # Configuration is copied into disposable tmpfs; session data persists on host.
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
       - sandbox-session-state:/var/lib/dsh-state
+      - ./config/sessions:/var/lib/dsh-state/sessions:rw
     tmpfs:
       - /tmp:rw,size=64m
       - /run:rw,size=32m

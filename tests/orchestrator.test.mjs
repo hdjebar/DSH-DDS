@@ -813,7 +813,7 @@ test('FR-003 Regression: capability adapters validate syntax, schemas, and persi
     workflows: {
       truthful_adapters_test: {
         steps: [
-          { name: 'Validate Bare Agency', action: 'validate_sdmx_schema', target: 'LU1' },
+          { name: 'Validate Bare Agency', action: 'validate_sdmx_schema', target: path.join(testIsolatedDir, 'LU1') },
           {
             name: 'Apply Bad Syntax JS',
             action: 'apply_fix_or_patch',
@@ -1217,6 +1217,301 @@ test('FR-009 Regression: approval HMAC fails closed without public fallback when
     if (origApprovalSecret !== undefined) process.env.DSH_APPROVAL_SECRET = origApprovalSecret;
     if (origSecret !== undefined) process.env.DSH_SECRET = origSecret;
   }
+});
+
+test('FR-011 & FR-017 Regression: Asymmetric Ed25519 approval signing and verification with host/sandbox boundary', async () => {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+  });
+
+  const origApprovalSecret = process.env.DSH_APPROVAL_SECRET;
+  const origSecret = process.env.DSH_SECRET;
+  const origPrivKey = process.env.DSH_APPROVAL_PRIVATE_KEY;
+  const origPubKey = process.env.DSH_APPROVAL_PUBLIC_KEY;
+
+  delete process.env.DSH_APPROVAL_SECRET;
+  delete process.env.DSH_SECRET;
+  delete process.env.DSH_APPROVAL_PRIVATE_KEY;
+  delete process.env.DSH_APPROVAL_PUBLIC_KEY;
+
+  try {
+    const meta = {
+      name: 'security-auditor',
+      rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+      workflows: {
+        asym_flow: {
+          steps: [
+            { name: 'Gate', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'asym.json'), approval_required: true }
+          ]
+        }
+      }
+    };
+    const engine = new DeclarativeWorkflowEngine(meta);
+    const suspended = await engine.executeWorkflow('asym_flow');
+    assert.equal(suspended.status, 'SUSPENDED_APPROVAL_REQUIRED');
+
+    const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+    const checkpointFile = path.join(checkpointDir, `${suspended.instanceId}.json`);
+    const cp = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
+
+    // 1. In sandbox / container environment (no private key, no secret), token generation fails
+    assert.throws(
+      () => DeclarativeWorkflowEngine.generateApprovalToken(cp, 'host-admin', 3600),
+      /APPROVAL_SECRET_MISSING/
+    );
+
+    // 2. On host, token is signed using asymmetric Ed25519 private key
+    const asymToken = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'host-admin', 3600, privateKey);
+    assert.ok(asymToken.startsWith('host-admin.'));
+
+    // 3. Resuming without public key fails closed
+    await assert.rejects(
+      async () => engine.resumeWorkflow(suspended.instanceId, { token: asymToken }),
+      /APPROVAL_SECRET_MISSING/
+    );
+
+    // 4. Resuming with tampered signature fails
+    const parts = asymToken.split('.');
+    const tamperedToken = `${parts[0]}.${parts[1]}.bad${parts[2].slice(3)}`;
+    await assert.rejects(
+      async () => engine.resumeWorkflow(suspended.instanceId, { token: tamperedToken, publicKey }),
+      /invalid approval token signature/
+    );
+
+    // 5. Resuming with valid Ed25519 public key succeeds
+    const resumed = await engine.resumeWorkflow(suspended.instanceId, { token: asymToken, publicKey });
+    assert.equal(resumed.status, 'COMPLETED');
+    assert.ok(fs.existsSync(path.join(testIsolatedDir, 'cases', 'asym.json')));
+  } finally {
+    if (origApprovalSecret !== undefined) process.env.DSH_APPROVAL_SECRET = origApprovalSecret;
+    if (origSecret !== undefined) process.env.DSH_SECRET = origSecret;
+    if (origPrivKey !== undefined) process.env.DSH_APPROVAL_PRIVATE_KEY = origPrivKey;
+    if (origPubKey !== undefined) process.env.DSH_APPROVAL_PUBLIC_KEY = origPubKey;
+  }
+});
+
+test('FR-012 Regression: Copied and renamed checkpoint files reject sequential token replay', async () => {
+  const secret = 'strong-secret-key-32-characters!';
+  const meta = {
+    name: 'security-auditor',
+    rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+    workflows: {
+      replay_test_flow: {
+        steps: [
+          { name: 'Gate', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'rep.json'), approval_required: true }
+        ]
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('replay_test_flow');
+
+  const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+  const origFile = path.join(checkpointDir, `${suspended.instanceId}.json`);
+  const cp = JSON.parse(fs.readFileSync(origFile, 'utf8'));
+  const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, secret);
+
+  // Adversary copies wf-orig.json to wf-copy.json
+  const copyInstanceId = `wf-${Date.now()}-copy`;
+  const copyFile = path.join(checkpointDir, `${copyInstanceId}.json`);
+  fs.copyFileSync(origFile, copyFile);
+
+  // Resuming copy fails because instanceId in file != requested instanceId
+  await assert.rejects(
+    async () => engine.resumeWorkflow(copyInstanceId, { token, approvalSecret: secret }),
+    /Replays and renamed copies are strictly prohibited/
+  );
+
+  // Legitimate instance resumes successfully
+  const resumed = await engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret });
+  assert.equal(resumed.status, 'COMPLETED');
+
+  // Sequential replay on original fails
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret }),
+    /replays rejected/
+  );
+
+  if (fs.existsSync(copyFile)) fs.unlinkSync(copyFile);
+});
+
+test('FR-013 Regression: Checkpoint state transition is atomic and rejects concurrent resume', async () => {
+  const secret = 'strong-secret-key-32-characters!';
+  const meta = {
+    name: 'security-auditor',
+    rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+    workflows: {
+      lock_test_flow: {
+        steps: [
+          { name: 'Gate', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'lock.json'), approval_required: true }
+        ]
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('lock_test_flow');
+
+  const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+  const cp = JSON.parse(fs.readFileSync(path.join(checkpointDir, `${suspended.instanceId}.json`), 'utf8'));
+  const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, secret);
+
+  // Simulate concurrent thread holding exclusive lock
+  const lockPath = path.join(checkpointDir, `${suspended.instanceId}.resuming.lock`);
+  const lockFd = fs.openSync(lockPath, 'wx');
+
+  try {
+    await assert.rejects(
+      async () => engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret }),
+      /another process is concurrently resuming this checkpoint/
+    );
+  } finally {
+    fs.closeSync(lockFd);
+    fs.unlinkSync(lockPath);
+  }
+
+  // Once lock is released, resume proceeds
+  const resumed = await engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret });
+  assert.equal(resumed.status, 'COMPLETED');
+});
+
+test('FR-018 Regression: Approval token binds complete gated step and workflow definition', async () => {
+  const secret = 'strong-secret-key-32-characters!';
+  const meta = {
+    name: 'security-auditor',
+    rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+    workflows: {
+      tamper_flow: {
+        steps: [
+          { name: 'Original Step', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'tamper1.json'), approval_required: true }
+        ]
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('tamper_flow');
+
+  const checkpointDir = path.join(testIsolatedDir, 'sessions', 'checkpoints');
+  const cp = JSON.parse(fs.readFileSync(path.join(checkpointDir, `${suspended.instanceId}.json`), 'utf8'));
+  const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, 'admin', 3600, secret);
+
+  // Manifest tampering: adversary alters target in persona manifest before resume
+  meta.workflows.tamper_flow.steps[0].target = path.join(testIsolatedDir, 'cases', 'tamper2_malicious.json');
+
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token, approvalSecret: secret }),
+    /step definition in manifest has changed since approval was granted/
+  );
+});
+
+test('FR-020 Regression: validate_sdmx_schema strictly requires real schema file and enforces read RBAC', async () => {
+  const meta = {
+    name: 'sdmx-expert',
+    rbac: {
+      role: 'sdmx_analyst',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {}
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Denies access outside allowlist
+  await assert.rejects(
+    async () => engine.executeStep({ action: 'validate_sdmx_schema', target: '/etc/shadow' }, {}, 'wf', 'tr', 'sp'),
+    /RBAC_READ_UNAUTHORIZED/
+  );
+
+  // 2. Fails when schema file is missing even if context has sdmx_dataflows VALIDATED
+  const missingStep = await engine.executeStep(
+    { action: 'validate_sdmx_schema', target: path.join(testIsolatedDir, 'missing_schema.json') },
+    { sdmx_dataflows: { status: 'VALIDATED', agency: 'LU1', flows_count: 5 } },
+    'wf', 'tr', 'sp'
+  );
+  assert.equal(missingStep.status, 'failed');
+  assert.equal(missingStep.code, 'SDMX_SCHEMA_NOT_FOUND');
+
+  // 3. Validates genuine SDMX DSD JSON file
+  const validDsdPath = path.join(testIsolatedDir, 'valid_dsd.json');
+  fs.writeFileSync(validDsdPath, JSON.stringify({
+    structure: {
+      datastructures: [{ id: 'DSD_TEST', agencyID: 'LU1' }],
+      dataflows: [{ id: 'DF_TEST', name: 'Test Flow' }]
+    }
+  }));
+  const validStep = await engine.executeStep(
+    { action: 'validate_sdmx_schema', target: validDsdPath },
+    {},
+    'wf', 'tr', 'sp'
+  );
+  assert.equal(validStep.status, 'success');
+  assert.equal(validStep.sdmx_schema.validated, true);
+});
+
+test('FR-021 Regression: apply_fix_or_patch validates ES modules with static import/export and top-level await', async () => {
+  const meta = {
+    name: 'devops-sre',
+    rbac: { role: 'sre', permissions: { filesystem: { read: [testIsolatedDir], write: [testIsolatedDir] } } },
+    workflows: {}
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Valid .mjs with static import and export
+  const mjsTarget = path.join(testIsolatedDir, 'module_test.mjs');
+  const validMjs = `import path from 'node:path';\nexport const helper = () => path.join('a', 'b');\nexport default helper;\n`;
+  const res1 = await engine.executeStep(
+    { action: 'apply_fix_or_patch', target: mjsTarget, content: validMjs },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(res1.status, 'success');
+  assert.equal(res1.patch_status.syntax_verified, true);
+  assert.equal(fs.readFileSync(mjsTarget, 'utf8'), validMjs);
+
+  // 2. Valid top-level await
+  const tlaTarget = path.join(testIsolatedDir, 'tla_test.mjs');
+  const validTla = `const val = await Promise.resolve(100);\nexport default val;\n`;
+  const res2 = await engine.executeStep(
+    { action: 'apply_fix_or_patch', target: tlaTarget, content: validTla },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(res2.status, 'success');
+  assert.equal(res2.patch_status.syntax_verified, true);
+
+  // 3. Invalid ES module syntax fails closed
+  const badMjsTarget = path.join(testIsolatedDir, 'bad_module.mjs');
+  const res3 = await engine.executeStep(
+    { action: 'apply_fix_or_patch', target: badMjsTarget, content: 'import { from "node:fs";' },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(res3.status, 'failed');
+  assert.equal(res3.code, 'SYNTAX_VERIFICATION_FAILED');
+  assert.ok(!fs.existsSync(badMjsTarget));
+});
+
+test('FR-022 Regression: apply_fix_or_patch preserves executable file permissions (0755)', async () => {
+  const meta = {
+    name: 'devops-sre',
+    rbac: { role: 'sre', permissions: { filesystem: { read: [testIsolatedDir], write: [testIsolatedDir] } } },
+    workflows: {}
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  const scriptPath = path.join(testIsolatedDir, 'run_tool.sh');
+  fs.writeFileSync(scriptPath, '#!/bin/bash\necho "original"\n', { mode: 0o755 });
+  const initialMode = fs.statSync(scriptPath).mode & 0o777;
+  assert.equal(initialMode, 0o755);
+
+  const res = await engine.executeStep(
+    { action: 'apply_fix_or_patch', target: scriptPath, content: '#!/bin/bash\necho "patched"\n' },
+    {}, 'wf', 'tr', 'sp'
+  );
+  assert.equal(res.status, 'success');
+  const finalMode = fs.statSync(scriptPath).mode & 0o777;
+  assert.equal(finalMode, 0o755, 'Target executable mode (0755) must be preserved after atomic rename');
 });
 
 test.after(() => {

@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import vm from 'vm';
+import { spawnSync } from 'child_process';
 import {
   parseYaml,
   parsePersonaYaml,
@@ -197,15 +198,31 @@ export function applyUnifiedDiff(originalContent, diffText) {
  * 🛡️ Authoritative Declarative Workflow Engine
  */
 export class DeclarativeWorkflowEngine {
-  static generateApprovalToken(checkpoint, actor = 'admin', ttlSeconds = 3600, secret = null) {
-    const tokenSecret = secret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
-    if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length < 16) {
-      throw new Error("APPROVAL_SECRET_MISSING: Cannot generate approval token. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured in the host environment.");
-    }
+  static generateApprovalToken(checkpoint, actor = 'admin', ttlSeconds = 3600, keyOrSecret = null) {
     const expiresAt = Date.now() + (ttlSeconds * 1000);
     const digest = checkpoint.checkpointDigest;
+    const payload = `${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${digest}:${actor}:${expiresAt}`;
+    const payloadBuf = Buffer.from(payload, 'utf8');
+
+    const resolvedKey = keyOrSecret || process.env.DSH_APPROVAL_PRIVATE_KEY;
+
+    if (resolvedKey) {
+      if (typeof resolvedKey === 'string' && (resolvedKey.includes('PRIVATE KEY') || resolvedKey.startsWith('-----BEGIN'))) {
+        const signature = crypto.sign(null, payloadBuf, resolvedKey).toString('base64url');
+        return `${actor}.${expiresAt}.${signature}`;
+      } else if (typeof resolvedKey === 'object' && resolvedKey.type === 'private') {
+        const signature = crypto.sign(null, payloadBuf, resolvedKey).toString('base64url');
+        return `${actor}.${expiresAt}.${signature}`;
+      }
+    }
+
+    const tokenSecret = resolvedKey || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
+    if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length < 16) {
+      throw new Error("APPROVAL_SECRET_MISSING: Cannot generate approval token. A private signing key (DSH_APPROVAL_PRIVATE_KEY) or strong DSH_APPROVAL_SECRET (minimum 16 characters) must be configured in the host environment.");
+    }
+
     const signature = crypto.createHmac('sha256', tokenSecret)
-      .update(`${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${digest}:${actor}:${expiresAt}`)
+      .update(payload)
       .digest('hex');
     return `${actor}.${expiresAt}.${signature}`;
   }
@@ -470,14 +487,46 @@ export class DeclarativeWorkflowEngine {
           candidateContent = patchData;
         }
 
-        // Validate syntax of candidateContent BEFORE modifying target file
+        // Validate syntax of candidateContent BEFORE modifying target file (FR-003, FR-021)
         if (ext === '.js' || ext === '.mjs') {
-          try {
-            new vm.Script(candidateContent);
-          } catch (syntaxErr) {
+          let syntaxOk = false;
+          let syntaxErrorMsg = '';
+
+          // For .mjs or code containing ES module syntax / top-level await, use module check
+          const hasModuleSyntax = ext === '.mjs' ||
+            /\b(?:import|export)\b/.test(candidateContent) ||
+            /\bawait\b/.test(candidateContent);
+
+          if (hasModuleSyntax) {
+            try {
+              const res = spawnSync(process.execPath, ['--input-type=module', '--check'], {
+                input: candidateContent,
+                encoding: 'utf8',
+                timeout: 5000
+              });
+              if (res.status === 0) {
+                syntaxOk = true;
+              } else {
+                syntaxErrorMsg = (res.stderr || res.stdout || 'ES module syntax error').trim();
+              }
+            } catch (err) {
+              syntaxErrorMsg = err.message;
+            }
+          }
+
+          if (!syntaxOk && ext === '.js') {
+            try {
+              new vm.Script(candidateContent);
+              syntaxOk = true;
+            } catch (syntaxErr) {
+              if (!syntaxErrorMsg) syntaxErrorMsg = syntaxErr.message;
+            }
+          }
+
+          if (!syntaxOk) {
             return {
               status: 'failed',
-              error: `Syntax verification failed on target '${target}': ${syntaxErr.message}`,
+              error: `Syntax verification failed on target '${target}': ${syntaxErrorMsg}`,
               code: 'SYNTAX_VERIFICATION_FAILED'
             };
           }
@@ -494,10 +543,21 @@ export class DeclarativeWorkflowEngine {
         }
       }
 
-      // Transactional atomic write: write to sibling temporary file then atomically rename
+      // Transactional atomic write: write to sibling temporary file then atomically rename (FR-022: preserve mode)
       const tempFile = path.join(parentDir, `.${path.basename(target)}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
       try {
+        let origMode = null;
+        if (fs.existsSync(target)) {
+          try {
+            origMode = fs.statSync(target).mode;
+          } catch {}
+        }
         fs.writeFileSync(tempFile, candidateContent, 'utf8');
+        if (origMode !== null) {
+          try {
+            fs.chmodSync(tempFile, origMode);
+          } catch {}
+        }
         fs.renameSync(tempFile, target);
       } catch (writeErr) {
         try { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile); } catch {}
@@ -688,9 +748,9 @@ export class DeclarativeWorkflowEngine {
       }
     });
 
-    // 11. validate_sdmx_schema: Authentic SDMX DSD validator (FR-003)
+    // 11. validate_sdmx_schema: Authentic SDMX DSD validator (FR-003, FR-020)
     this.registerAction('validate_sdmx_schema', async (step, ctx) => {
-      const candidate = step.target || step.schema || step.scope;
+      const candidate = step.target || step.schema || step.path || step.file || step.scope;
       if (!candidate) {
         return {
           status: 'failed',
@@ -702,24 +762,9 @@ export class DeclarativeWorkflowEngine {
       const fileExists = fs.existsSync(schemaPath) && !fs.statSync(schemaPath).isDirectory();
 
       if (!fileExists) {
-        // If candidate is a logical agency/scope (e.g. 'LU1') and ctx has sdmx_dataflows from prior step
-        if (ctx.sdmx_dataflows && ctx.sdmx_dataflows.status === 'VALIDATED') {
-          if (ctx.sdmx_dataflows.agency === candidate || ctx.sdmx_dataflows.flows_count > 0) {
-            return {
-              status: 'success',
-              sdmx_schema: {
-                validated: true,
-                agency: ctx.sdmx_dataflows.agency || candidate,
-                source: 'discovered_dataflows',
-                flows_count: ctx.sdmx_dataflows.flows_count,
-                standards: ['SDMX 2.1', 'ESTAT', 'LUSTAT']
-              }
-            };
-          }
-        }
         return {
           status: 'failed',
-          error: `SDMX schema file not found at '${schemaPath}' and no validated dataflow structure in context for scope '${candidate}'`,
+          error: `SDMX schema file not found at '${schemaPath}'`,
           code: 'SDMX_SCHEMA_NOT_FOUND'
         };
       }
@@ -1193,13 +1238,17 @@ export class DeclarativeWorkflowEngine {
           instanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
           validateSlug(instanceId, 'instanceId');
           const checkpointCreatedAt = new Date().toISOString();
+          const stepIndex = steps.indexOf(step);
+          const workflowHash = crypto.createHash('sha256').update(JSON.stringify(workflow)).digest('hex');
           const canonicalCheckpointData = {
             instanceId,
             persona: this.meta.name,
             workflow: safeWfName,
-            stepIndex: steps.indexOf(step),
+            stepIndex,
             stepName: step.name || action,
             action,
+            stepDescriptor: step,
+            workflowHash,
             createdAt: checkpointCreatedAt,
             contextSnapshot: currentContext
           };
@@ -1288,6 +1337,11 @@ export class DeclarativeWorkflowEngine {
 
     const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
 
+    // FR-012: Checkpoint Identity Binding: requested ID must strictly match checkpoint.instanceId
+    if (checkpoint.instanceId !== instanceId) {
+      throw new Error(`Checkpoint '${instanceId}' rejected: instanceId in file content '${checkpoint.instanceId}' does not match target checkpoint ID '${instanceId}'. Replays and renamed copies are strictly prohibited.`);
+    }
+
     // 1. Replay Protection: Checkpoint must currently be in SUSPENDED_APPROVAL_REQUIRED state
     if (checkpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
       throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${checkpoint.status}' (replays rejected).`);
@@ -1302,7 +1356,7 @@ export class DeclarativeWorkflowEngine {
       throw new Error(`Checkpoint '${instanceId}' has expired (TTL: 24h).`);
     }
 
-    // 3. Digest Integrity Check: recompute digest over canonical immutable data
+    // 3. Digest Integrity Check: recompute digest over canonical immutable data (FR-018)
     const canonicalCheckpointData = {
       instanceId: checkpoint.instanceId,
       persona: checkpoint.persona,
@@ -1310,9 +1364,15 @@ export class DeclarativeWorkflowEngine {
       stepIndex: checkpoint.stepIndex,
       stepName: checkpoint.stepName,
       action: checkpoint.action,
+      stepDescriptor: checkpoint.stepDescriptor,
+      workflowHash: checkpoint.workflowHash,
       createdAt: checkpoint.createdAt,
       contextSnapshot: checkpoint.contextSnapshot
     };
+    if (checkpoint.stepDescriptor === undefined && checkpoint.workflowHash === undefined) {
+      delete canonicalCheckpointData.stepDescriptor;
+      delete canonicalCheckpointData.workflowHash;
+    }
     const computedDigest = crypto.createHash('sha256')
       .update(JSON.stringify(canonicalCheckpointData))
       .digest('hex');
@@ -1321,43 +1381,7 @@ export class DeclarativeWorkflowEngine {
       throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
     }
 
-    // 4. Token Verification: Require out-of-process signed approval token (<actor>.<expiresAt>.<signature>)
-    const tokenSecret = options.approvalSecret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
-    if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length < 16) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured to verify approval tokens.`);
-    }
-
-    const rawToken = options.approvalToken || options.token;
-    if (!rawToken || typeof rawToken !== 'string') {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<hmacSignature>). Standalone boolean approval is disallowed.`);
-    }
-
-    const parts = rawToken.split('.');
-    if (parts.length !== 3) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: malformed approval token format. Expected '<actor>.<expiresAt>.<hmacSignature>'.`);
-    }
-    const [actor, expiresAtStr, signature] = parts;
-    const expiresAt = Number(expiresAtStr);
-    if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
-    }
-    const expectedSignature = crypto.createHmac('sha256', tokenSecret)
-      .update(`${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`)
-      .digest('hex');
-
-    const signatureBuf = Buffer.from(signature, 'hex');
-    const expectedBuf = Buffer.from(expectedSignature, 'hex');
-    if (signatureBuf.length === 0 || signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token signature.`);
-    }
-
-    // 5. Atomic Consumption: Transition checkpoint to IN_PROGRESS on disk before execution
-    checkpoint.status = 'IN_PROGRESS';
-    checkpoint.resumedAt = new Date().toISOString();
-    checkpoint.approvedBy = actor;
-    checkpoint.approvedAt = new Date().toISOString();
-    fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
-
+    // 4. Manifest Integrity Check (FR-018): Ensure manifest and step definition match approval descriptor
     if (checkpoint.persona !== this.meta.name) {
       throw new Error(`Checkpoint persona '${checkpoint.persona}' does not match engine persona '${this.meta.name}'.`);
     }
@@ -1373,6 +1397,117 @@ export class DeclarativeWorkflowEngine {
     const startIndex = checkpoint.stepIndex;
     if (startIndex < 0 || startIndex >= steps.length) {
       throw new Error(`Invalid step index ${startIndex} in checkpoint.`);
+    }
+
+    if (checkpoint.stepDescriptor) {
+      const currentStep = steps[startIndex];
+      if (JSON.stringify(checkpoint.stepDescriptor) !== JSON.stringify(currentStep)) {
+        throw new Error(`Checkpoint '${instanceId}' rejected: step definition in manifest has changed since approval was granted.`);
+      }
+    }
+
+    // 5. Token Verification (FR-011, FR-017): Asymmetric Ed25519 verification with HMAC fallback
+    const rawToken = options.approvalToken || options.token;
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<signature>). Standalone boolean approval is disallowed.`);
+    }
+
+    const parts = rawToken.split('.');
+    if (parts.length !== 3) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: malformed approval token format. Expected '<actor>.<expiresAt>.<signature>'.`);
+    }
+    const [actor, expiresAtStr, signature] = parts;
+    const expiresAt = Number(expiresAtStr);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
+    }
+
+    const payload = `${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`;
+    const payloadBuf = Buffer.from(payload, 'utf8');
+
+    let publicKey = options.publicKey || process.env.DSH_APPROVAL_PUBLIC_KEY;
+    if (!publicKey) {
+      const pubKeyPaths = [
+        path.join(process.cwd(), 'config', 'keys', 'approval_ed25519.pub'),
+        path.join(process.cwd(), '.host_keys', 'approval_ed25519.pub'),
+        path.join('/root/.dsh', 'keys', 'approval_ed25519.pub'),
+        path.join(process.env.DSH_CONFIG_SOURCE || '', 'keys', 'approval_ed25519.pub')
+      ];
+      for (const kp of pubKeyPaths) {
+        if (kp && fs.existsSync(kp)) {
+          try {
+            publicKey = fs.readFileSync(kp, 'utf8');
+            break;
+          } catch {}
+        }
+      }
+    }
+
+    let verified = false;
+    if (publicKey) {
+      try {
+        let sigBuf;
+        try {
+          sigBuf = Buffer.from(signature, 'base64url');
+        } catch {
+          sigBuf = Buffer.from(signature, 'hex');
+        }
+        verified = crypto.verify(null, payloadBuf, publicKey, sigBuf);
+      } catch {
+        verified = false;
+      }
+    }
+
+    const tokenSecret = options.approvalSecret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
+    if (!verified && tokenSecret && typeof tokenSecret === 'string' && tokenSecret.trim().length >= 16) {
+      const expectedSignature = crypto.createHmac('sha256', tokenSecret)
+        .update(payload)
+        .digest('hex');
+      const signatureBuf = Buffer.from(signature, 'hex');
+      const expectedBuf = Buffer.from(expectedSignature, 'hex');
+      if (signatureBuf.length > 0 && signatureBuf.length === expectedBuf.length && crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+        verified = true;
+      }
+    }
+
+    if (!verified) {
+      if (!publicKey && (!tokenSecret || tokenSecret.trim().length < 16)) {
+        throw new Error(`Resume of checkpoint '${instanceId}' rejected: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured to verify approval tokens.`);
+      }
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token signature.`);
+    }
+
+    // 6. FR-013: Atomic State Transition via Exclusive Lock File
+    const lockPath = path.join(checkpointDir, `${instanceId}.resuming.lock`);
+    let lockFd = null;
+    try {
+      lockFd = fs.openSync(lockPath, 'wx');
+    } catch (lockErr) {
+      if (lockErr.code === 'EEXIST') {
+        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: another process is concurrently resuming this checkpoint (exclusive lock acquisition failed).`);
+      }
+      throw lockErr;
+    }
+
+    try {
+      const freshCheckpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+      if (freshCheckpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
+        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${freshCheckpoint.status}' (replays rejected).`);
+      }
+
+      // Transition checkpoint to IN_PROGRESS on disk before proceeding
+      checkpoint.status = 'IN_PROGRESS';
+      checkpoint.resumedAt = new Date().toISOString();
+      checkpoint.approvedBy = actor;
+      checkpoint.approvedAt = new Date().toISOString();
+      fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
+    } finally {
+      try {
+        if (lockFd !== null) {
+          fs.closeSync(lockFd);
+          if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
+        }
+      } catch {}
     }
 
     let currentContext = { ...checkpoint.contextSnapshot, approved: true, ...(options.context || {}) };
@@ -1404,6 +1539,7 @@ export class DeclarativeWorkflowEngine {
           newInstanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
           validateSlug(newInstanceId, 'newInstanceId');
           const nextCreatedAt = new Date().toISOString();
+          const nextWorkflowHash = crypto.createHash('sha256').update(JSON.stringify(workflow)).digest('hex');
           const nextCanonical = {
             instanceId: newInstanceId,
             persona: this.meta.name,
@@ -1411,6 +1547,8 @@ export class DeclarativeWorkflowEngine {
             stepIndex: i,
             stepName: step.name || action,
             action,
+            stepDescriptor: step,
+            workflowHash: nextWorkflowHash,
             createdAt: nextCreatedAt,
             contextSnapshot: currentContext
           };

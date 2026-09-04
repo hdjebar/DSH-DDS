@@ -40,6 +40,7 @@ test('Clean-room Installer: provisions full topology in isolated directory', () 
     assert.ok(fs.existsSync(path.join(installTarget, 'config', 'declarative-orchestrator.mjs')));
     assert.ok(fs.existsSync(path.join(installTarget, 'config', 'rbac-policy.mjs')));
     assert.ok(fs.existsSync(path.join(installTarget, 'config', 'persona.mjs')));
+    assert.ok(fs.existsSync(path.join(installTarget, 'config', 'settings.yaml')), 'settings.yaml must be provisioned on clean installs (FR-016)');
     assert.ok(fs.existsSync(path.join(installTarget, 'config', 'personas', 'security-auditor', 'persona.yaml')));
     assert.ok(fs.existsSync(path.join(installTarget, 'dsh.sh')));
     assert.ok(fs.existsSync(path.join(installTarget, 'docker-compose.yml')));

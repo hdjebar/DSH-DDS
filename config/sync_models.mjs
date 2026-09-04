@@ -158,17 +158,38 @@ async function syncToPhoenix() {
 }
 
 function getRuntimeDir() {
-  if (process.env.DSH_RUNTIME_DIR) {
-    if (!fs.existsSync(process.env.DSH_RUNTIME_DIR)) {
-      try { fs.mkdirSync(process.env.DSH_RUNTIME_DIR, { recursive: true }); } catch {}
+  if (process.env.DSH_CACHE_DIR) {
+    if (!fs.existsSync(process.env.DSH_CACHE_DIR)) {
+      try { fs.mkdirSync(process.env.DSH_CACHE_DIR, { recursive: true }); } catch {}
     }
-    return process.env.DSH_RUNTIME_DIR;
+    return process.env.DSH_CACHE_DIR;
   }
-  return fs.existsSync('/root/.dsh') ? '/root/.dsh' : path.resolve(process.cwd(), 'config');
+
+  // Dedicated writable cache locations (FR-015)
+  const candidates = [
+    '/root/.dsh/cache',
+    '/root/.dsh/storages',
+    process.env.DSH_RUNTIME_DIR,
+    path.resolve(process.cwd(), 'config', 'cache'),
+    path.resolve(process.cwd(), 'config', 'storages'),
+    fs.existsSync('/root/.dsh') ? '/root/.dsh' : path.resolve(process.cwd(), 'config')
+  ].filter(Boolean);
+
+  for (const dir of candidates) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch {}
+  }
+  return '/tmp';
 }
 
 async function persistModelCache(openRouterModels, googleModels) {
-  const targetPath = path.join(getRuntimeDir(), 'models.cache.json');
+  const cacheDir = getRuntimeDir();
+  const targetPath = path.join(cacheDir, 'models.cache.json');
 
   const catalog = {
     total: openRouterModels.length + googleModels.length,
@@ -194,7 +215,8 @@ async function persistModelCache(openRouterModels, googleModels) {
     fs.writeFileSync(targetPath, JSON.stringify(catalog, null, 2), 'utf8');
     console.log(`💾 Persisted live model catalog (${openRouterModels.length} OpenRouter, ${googleModels.length} Gemini) to ${targetPath}`);
   } catch (err) {
-    console.warn('⚠️ Model cache persist warning:', err.message);
+    console.error(`❌ Failed to persist model catalog to ${targetPath}:`, err.message);
+    throw new Error(`PERSIST_MODEL_CACHE_FAILED: Unable to write to ${targetPath}: ${err.message}`);
   }
 }
 
@@ -207,7 +229,9 @@ function updateSyncStatus(status, data = {}) {
   };
   try {
     fs.writeFileSync(targetPath, JSON.stringify(payload, null, 2), 'utf8');
-  } catch {}
+  } catch (err) {
+    console.warn(`⚠️ Failed to update sync status at ${targetPath}:`, err.message);
+  }
 }
 
 async function main() {
@@ -282,10 +306,12 @@ async function main() {
   } catch (err) {
     updateSyncStatus('failed', { error: err.message });
     console.error('❌ Model sync failed:', err.message);
+    process.exitCode = 1;
   }
 }
 
 main().catch(err => {
   updateSyncStatus('failed', { error: err.message });
   console.error('Fatal error during dynamic model sync:', err);
+  process.exit(1);
 });

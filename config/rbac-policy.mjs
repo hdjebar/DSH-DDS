@@ -284,7 +284,7 @@ export function enforceRbacPolicy(personaMeta, step) {
   }
 
   const rawAction = step.action.trim().replace(/^["']|["']$/g, '');
-  const rawTargets = [step.target, step.destination, step.scope]
+  const rawTargets = [step.target, step.destination, step.scope, step.schema, step.path, step.file]
     .filter(Boolean)
     .map(t => t.trim().replace(/^["']|["']$/g, ''));
 
@@ -318,7 +318,8 @@ export function enforceRbacPolicy(personaMeta, step) {
 
   const isReadAction = [
     'fetch_sources', 'inspect_sqlite', 'read_catalog',
-    'forensic_investigation', 'inspect_tabular', 'read_file'
+    'forensic_investigation', 'inspect_tabular', 'read_file',
+    'validate_sdmx_schema'
   ].includes(rawAction);
 
   // AUD-001: Fail-closed if a filesystem write or read action lacks a concrete target

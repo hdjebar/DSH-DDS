@@ -34,12 +34,20 @@ print_help() {
 }
 
 ensure_runtime_dirs() {
-  mkdir -p "$SCRIPT_DIR/config/sessions" \
+  mkdir -p "$SCRIPT_DIR/config/sessions/checkpoints" \
            "$SCRIPT_DIR/config/audit" \
            "$SCRIPT_DIR/config/storages" \
            "$SCRIPT_DIR/config/patch" \
+           "$SCRIPT_DIR/config/personas" \
+           "$SCRIPT_DIR/config/skills" \
+           "$SCRIPT_DIR/config/cache" \
+           "$SCRIPT_DIR/config/keys" \
+           "$SCRIPT_DIR/.host_keys" \
            "$SCRIPT_DIR/workspaces/cases" \
            "$SCRIPT_DIR/workspaces/artifacts"
+  if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ] && [ -f "$SCRIPT_DIR/config/settings.default.yaml" ]; then
+    cp "$SCRIPT_DIR/config/settings.default.yaml" "$SCRIPT_DIR/config/settings.yaml" 2>/dev/null || true
+  fi
 }
 
 case "$COMMAND" in
@@ -97,8 +105,16 @@ case "$COMMAND" in
     echo "📊 DeepSeek Harness Cached Model Catalog:"
     docker compose exec -T dsh node -e "
       import fs from 'fs';
-      const file = '/root/.dsh/models.cache.json';
-      if (fs.existsSync(file)) {
+      const candidates = [
+        '/root/.dsh/cache/models.cache.json',
+        '/root/.dsh/storages/models.cache.json',
+        '/root/.dsh/models.cache.json',
+        'config/cache/models.cache.json',
+        'config/storages/models.cache.json',
+        'config/models.cache.json'
+      ];
+      const file = candidates.find(f => fs.existsSync(f));
+      if (file) {
         try {
           const c = JSON.parse(fs.readFileSync(file, 'utf8'));
           const orCount = c.providers?.openrouter?.total || 0;
@@ -224,7 +240,7 @@ case "$COMMAND" in
   approve)
     INSTANCE_ID="${2:-}"
     if [ -z "$INSTANCE_ID" ]; then
-      echo "❌ Error: Missing instance ID. Usage: ./dsh.sh approve <instanceId> [--actor=<name>]" >&2
+      echo "❌ Error: Missing instance ID. Usage: ./dsh.sh approve <instanceId> [--actor=<name>] [--ttl=<seconds>]" >&2
       exit 1
     fi
     # Strict slug validation in shell BEFORE invoking Node (FR-010)
@@ -233,7 +249,45 @@ case "$COMMAND" in
       exit 1
     fi
 
-    # Resolve approval secret from environment or host .env (FR-009)
+    ACTOR="${USER:-host-operator}"
+    TTL="3600"
+    shift 2 || shift $#
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --actor=*)
+          ACTOR="${1#--actor=}"
+          ;;
+        --actor)
+          shift
+          ACTOR="${1:-host-operator}"
+          ;;
+        --ttl=*)
+          TTL="${1#--ttl=}"
+          ;;
+        --ttl)
+          shift
+          TTL="${1:-3600}"
+          ;;
+      esac
+      shift || true
+    done
+
+    # Validate ACTOR and TTL formats
+    if [[ ! "$ACTOR" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+      echo "❌ Error: Invalid actor '$ACTOR'. Only alphanumeric characters, dots, dashes, and underscores are allowed." >&2
+      exit 1
+    fi
+    if [[ ! "$TTL" =~ ^[0-9]+$ ]]; then
+      echo "❌ Error: Invalid TTL '$TTL'. Must be a positive integer in seconds." >&2
+      exit 1
+    fi
+
+    # Resolve host asymmetric private key or approval secret (FR-011, FR-017)
+    APPROVAL_PRIVATE_KEY="${DSH_APPROVAL_PRIVATE_KEY:-}"
+    if [ -z "$APPROVAL_PRIVATE_KEY" ] && [ -f "$HOME/.dsh/keys/approval_ed25519" ]; then
+      APPROVAL_PRIVATE_KEY="$(cat "$HOME/.dsh/keys/approval_ed25519")"
+    fi
+
     APPROVAL_SECRET="${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}"
     if [ -z "$APPROVAL_SECRET" ] && [ -f "$SCRIPT_DIR/.env" ]; then
       APPROVAL_SECRET="$(grep -E '^DSH_APPROVAL_SECRET=' "$SCRIPT_DIR/.env" | cut -d= -f2- | tr -d ' "' || true)"
@@ -242,28 +296,42 @@ case "$COMMAND" in
       fi
     fi
 
-    if [ -z "$APPROVAL_SECRET" ] || [ "${#APPROVAL_SECRET}" -lt 16 ]; then
+    if [ -z "$APPROVAL_PRIVATE_KEY" ] && ([ -z "$APPROVAL_SECRET" ] || [ "${#APPROVAL_SECRET}" -lt 16 ]); then
       echo "❌ Error: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET (minimum 16 characters) must be set in your environment or .env." >&2
       exit 1
     fi
 
-    ACTOR="${USER:-host-operator}"
-    TTL="3600"
     # Execute parameterized script via stdin with arguments passed via process.argv to prevent JS injection
-    DSH_APPROVAL_SECRET="$APPROVAL_SECRET" node - "$INSTANCE_ID" "$ACTOR" "$TTL" << 'EOF'
+    DSH_APPROVAL_PRIVATE_KEY="$APPROVAL_PRIVATE_KEY" DSH_APPROVAL_SECRET="$APPROVAL_SECRET" node - "$INSTANCE_ID" "$ACTOR" "$TTL" << 'EOF'
       import('fs').then(fs => {
         import('path').then(path => {
-          import('./config/declarative-orchestrator.mjs').then(({ DeclarativeWorkflowEngine }) => {
+          import('./config/declarative-orchestrator.mjs').then(async ({ DeclarativeWorkflowEngine }) => {
             const id = process.argv[2];
             const actor = process.argv[3] || 'host-operator';
             const ttl = Number(process.argv[4]) || 3600;
 
             const checkpointPath = path.join(process.cwd(), 'config', 'sessions', 'checkpoints', `${id}.json`);
-            if (!fs.existsSync(checkpointPath)) {
+            let cp = null;
+            if (fs.existsSync(checkpointPath)) {
+              cp = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+            } else {
+              // Try container checkpoint export if running (FR-019)
+              try {
+                const { execSync } = await import('child_process');
+                const raw = execSync(`docker compose exec -T dsh cat /var/lib/dsh-state/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /root/.dsh/sessions/checkpoints/${id}.json 2>/dev/null`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+                if (raw && raw.trim().startsWith('{')) {
+                  cp = JSON.parse(raw);
+                  fs.mkdirSync(path.dirname(checkpointPath), { recursive: true });
+                  fs.writeFileSync(checkpointPath, JSON.stringify(cp, null, 2), 'utf8');
+                }
+              } catch {}
+            }
+
+            if (!cp) {
               console.error(`❌ Error: Checkpoint not found at ${checkpointPath}`);
               process.exit(1);
             }
-            const cp = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+
             const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, actor, ttl);
             console.log(`✅ Approved instance: ${id}`);
             console.log(`   Actor: ${actor}`);

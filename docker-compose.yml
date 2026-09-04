@@ -11,6 +11,9 @@ services:
       - ./config/audit:/root/.dsh/audit:rw
       - ./config/storages:/root/.dsh/storages:rw
       - ./config/patch:/root/.dsh/patch:rw
+      - ./config/personas:/root/.dsh/personas:rw
+      - ./config/skills:/root/.dsh/skills:rw
+      - ./config/cache:/root/.dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
@@ -29,7 +32,7 @@ services:
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
-      - DSH_APPROVAL_SECRET=${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}
+      - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
     depends_on:
       phoenix:
         condition: service_healthy

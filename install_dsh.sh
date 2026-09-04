@@ -168,8 +168,13 @@ fetch_or_copy_file "config/patch-bash-local.mjs"
 fetch_or_copy_file "config/declarative-orchestrator.mjs"
 fetch_or_copy_file "config/rbac-policy.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
-if [ ! -f "$DSH_INSTALL/config/settings.yaml" ] && [ -f "$DSH_INSTALL/config/settings.default.yaml" ]; then
-  cp "$DSH_INSTALL/config/settings.default.yaml" "$DSH_INSTALL/config/settings.yaml"
+# Stage settings.yaml for clean installs (FR-016)
+if [ ! -f "$DSH_INSTALL/config/settings.yaml" ]; then
+  if [ -f "$STAGE_DIR/config/settings.default.yaml" ]; then
+    cp "$STAGE_DIR/config/settings.default.yaml" "$STAGE_DIR/config/settings.yaml"
+  elif [ -f "$DSH_INSTALL/config/settings.default.yaml" ]; then
+    cp "$DSH_INSTALL/config/settings.default.yaml" "$STAGE_DIR/config/settings.yaml"
+  fi
 fi
 fetch_or_copy_file "dsh.sh"
 fetch_or_copy_file "reset.sh"
@@ -227,7 +232,7 @@ fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
 fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
 
-# Verify staged assets before promoting atomically
+# Verify staged assets before promoting atomically (FR-016)
 verify_and_promote_staged() {
   echo "🔍 Verifying staged installation integrity..."
   local required_staged=(
@@ -236,6 +241,8 @@ verify_and_promote_staged() {
     "config/persona.mjs"
     "config/declarative-orchestrator.mjs"
     "config/rbac-policy.mjs"
+    "config/settings.default.yaml"
+    "config/settings.yaml"
     "dsh.sh"
     "reset.sh"
     "docker-compose.sandbox.yml"
@@ -248,10 +255,27 @@ verify_and_promote_staged() {
     fi
   done
 
-  # Atomically promote staged files into DSH_INSTALL
+  # Atomically promote staged files into DSH_INSTALL with rollback protection (FR-016)
   if [ -d "$STAGE_DIR" ]; then
     echo "🚚 Promoting verified assets into $DSH_INSTALL..."
-    (cd "$STAGE_DIR" && tar -cf - .) | (cd "$DSH_INSTALL" && tar -xf -)
+    local backup_dir=""
+    if [ -d "$DSH_INSTALL" ] && [ "$(ls -A "$DSH_INSTALL" 2>/dev/null)" ]; then
+      backup_dir="$(mktemp -d "${DSH_INSTALL}.backup.XXXXXX" 2>/dev/null || mktemp -d "/tmp/dsh-install-backup.XXXXXX")"
+      cp -a "$DSH_INSTALL/." "$backup_dir/" 2>/dev/null || true
+    fi
+
+    if ! (cd "$STAGE_DIR" && tar -cf - .) | (cd "$DSH_INSTALL" && tar -xf -); then
+      echo "❌ Error: Promotion failed! Rolling back..." >&2
+      if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+        cp -a "$backup_dir/." "$DSH_INSTALL/" 2>/dev/null || true
+        rm -rf "$backup_dir"
+      fi
+      exit 1
+    fi
+
+    if [ -n "$backup_dir" ] && [ -d "$backup_dir" ]; then
+      rm -rf "$backup_dir"
+    fi
     rm -rf "$STAGE_DIR"
     STAGE_DIR=""
   fi
@@ -575,6 +599,9 @@ services:
       - ./config/audit:/root/.dsh/audit:rw
       - ./config/storages:/root/.dsh/storages:rw
       - ./config/patch:/root/.dsh/patch:rw
+      - ./config/personas:/root/.dsh/personas:rw
+      - ./config/skills:/root/.dsh/skills:rw
+      - ./config/cache:/root/.dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
@@ -593,7 +620,7 @@ services:
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
-      - DSH_APPROVAL_SECRET=${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}
+      - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
     depends_on:
       phoenix:
         condition: service_healthy
