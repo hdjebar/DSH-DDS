@@ -146,7 +146,7 @@ jobs:
 
           echo "Verifying Playwright Chromium headless launch and close..."
           docker run --rm --network none --entrypoint node dsh-local:latest -e "
-            const { chromium } = require('/usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/playwright');
+            const { chromium } = require('/usr/local/lib/node_modules/playwright');
             (async () => {
               const browser = await chromium.launch({ headless: true });
               const page = await browser.newPage();
