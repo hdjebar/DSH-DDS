@@ -79,7 +79,7 @@ Run the automated diagnostic suite to verify container health, API credentials, 
 ```text
 🩺 DeepSeek Harness Ecosystem Diagnostics (Doctor)
 ========================================================
-🔍 [1/9] DeepSeek Harness Engine:        ✅ Listening on 127.0.0.1:3079 & 0.0.0.0:3080
+🔍 [1/9] DeepSeek Harness Engine:        ✅ Listening on 0.0.0.0:3080 (HTTP 200)
 🔍 [2/9] Arize Phoenix Telemetry:        ✅ Connected at http://phoenix:6006
 🔍 [3/9] Google AI Studio Bridge:        ✅ Authenticated (gemini-3.7-flash live)
 🔍 [4/9] OpenRouter Gateway:             ✅ Authenticated (420+ models available)
@@ -87,7 +87,7 @@ Run the automated diagnostic suite to verify container health, API credentials, 
 🔍 [6/9] MCP Binaries & Permissions:     ✅ 4 servers verified (fetch, context7, github, sqlite-db)
 🔍 [7/9] Automated Model Sync:           ✅ Active & Healthy
 🔍 [8/9] Pre-Packaged Plugins:           ✅ 10 plugins installed & active
-🔍 [9/9] Storage & Volume Mounts:        ✅ /root/.dsh and /workspaces writable
+🔍 [9/9] Storage & Volume Mounts:        ✅ Config read-only; sessions & audit writable
 ========================================================
 📊 Summary: 23 Passed | 0 Warnings | 0 Failed
 ```

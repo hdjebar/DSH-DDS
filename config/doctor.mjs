@@ -54,6 +54,27 @@ function safeErrorSnippet(rawText) {
     .replace(/\b(Bearer\s+[a-zA-Z0-9._-]{20,})\b/gi, 'Bearer [REDACTED_TOKEN]');
 }
 
+function checkSecretPermissions() {
+  console.log('\n🔒 [0/9] Security & Secret Permissions:');
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    try {
+      const stats = fs.statSync(envPath);
+      const isGroupOrWorldReadable = (stats.mode & 0o077) !== 0;
+      const modeOctal = (stats.mode & 0o777).toString(8);
+      if (isGroupOrWorldReadable) {
+        warn('.env File Permissions', `Mode 0${modeOctal} is accessible by group/others. Run 'chmod 600 .env' to restrict.`);
+      } else {
+        pass('.env File Permissions', `Mode 0${modeOctal} (restricted to owner)`);
+      }
+    } catch (err) {
+      warn('.env File Permissions', `Could not check file mode: ${err.message}`);
+    }
+  } else {
+    pass('.env File Permissions', 'No local .env file present');
+  }
+}
+
 async function checkDshEngine() {
   console.log('\n🔍 [1/9] DeepSeek Harness Engine:');
   const dshPort = process.env.PORT || process.env.DSH_PORT || '3080';
@@ -278,21 +299,33 @@ async function checkPlugins() {
 async function checkStorage() {
   console.log('\n🔍 [9/9] Storage & Volume Mounts:');
   const dirs = [
-    { path: '/root/.dsh', label: 'Config Directory (/root/.dsh)' },
-    { path: '/workspaces', label: 'Workspaces Mount (/workspaces)' }
+    { path: '/root/.dsh', label: 'Config Directory (/root/.dsh)', writable: false },
+    { path: '/root/.dsh/sessions', label: 'Session Storage (/root/.dsh/sessions)', writable: true },
+    { path: '/root/.dsh/audit', label: 'Audit Log Storage (/root/.dsh/audit)', writable: true },
+    { path: '/workspaces', label: 'Workspaces Mount (/workspaces)', writable: true }
   ];
   for (const d of dirs) {
     if (fs.existsSync(d.path)) {
-      try {
-        const probeFile = path.join(d.path, `.probe_${Date.now()}.tmp`);
-        fs.writeFileSync(probeFile, 'ok', 'utf8');
-        fs.unlinkSync(probeFile);
-        pass(d.label, 'Mounted and writable (verified with I/O probe)');
-      } catch (err) {
-        warn(d.label, `Mounted but read-only / write failed (${err.message})`);
+      if (d.writable) {
+        try {
+          const probeFile = path.join(d.path, `.probe_${Date.now()}.tmp`);
+          fs.writeFileSync(probeFile, 'ok', 'utf8');
+          fs.unlinkSync(probeFile);
+          pass(d.label, 'Mounted and writable (verified with I/O probe)');
+        } catch (err) {
+          warn(d.label, `Mounted but read-only / write failed (${err.message})`);
+        }
+      } else {
+        pass(d.label, 'Mounted (read-only configuration plane)');
       }
     } else {
-      fail(d.label, 'Directory missing');
+      // In host offline mode, /root/.dsh won't exist; check config/
+      const hostEquiv = d.path.replace(/^\/root\/\.dsh/, 'config');
+      if (fs.existsSync(hostEquiv)) {
+        pass(d.label, `Mounted at host path (${hostEquiv})`);
+      } else {
+        warn(d.label, 'Directory not mounted or offline');
+      }
     }
   }
 }
@@ -302,6 +335,7 @@ async function runDoctor() {
   console.log('🩺 DeepSeek Harness Ecosystem Diagnostics (Doctor)');
   console.log('========================================================');
 
+  checkSecretPermissions();
   await checkDshEngine();
   await checkPhoenixTelemetry();
   await checkGoogleGemini();

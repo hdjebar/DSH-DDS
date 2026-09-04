@@ -11,11 +11,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
-// AUD-019: Isolate runtime state and audit logs to temporary test directory
+// AUD-019 & PR-011: Isolate runtime state, audit logs, sessions, and workspaces to temporary test directory
 const testIsolatedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-test-isolation-'));
 process.env.DSH_RUNTIME_DIR = testIsolatedDir;
 process.env.DSH_AUDIT_LOG_FILE = path.join(testIsolatedDir, 'audit_grc.jsonl');
 process.env.DSH_SESSIONS_DIR = path.join(testIsolatedDir, 'sessions');
+process.env.DSH_WORKSPACE_ROOT = path.join(testIsolatedDir, 'workspaces');
+process.env.DSH_MOCK_LLM = 'true';
+fs.mkdirSync(process.env.DSH_WORKSPACE_ROOT, { recursive: true });
+fs.mkdirSync(process.env.DSH_SESSIONS_DIR, { recursive: true });
 
 test('RBAC Policy: strict directory boundary containment', () => {
   assert.equal(isContainedWithin('/tmp/allowed/sub/file.txt', '/tmp/allowed'), true);
@@ -61,7 +65,8 @@ test('Declarative Orchestrator: executes structured steps with real capability a
           {
             name: 'Apply Verification Patch',
             action: 'apply_fix_or_patch',
-            target: path.join(tmpDir, 'test.patch')
+            target: path.join(tmpDir, 'test.patch'),
+            content: '# Test verification patch content\n'
           },
           {
             name: 'Write Audit Report',
@@ -482,6 +487,217 @@ test('AUD-005 Regression: semantic adapter failures result in FAILED workflow st
   const sqliteRes = await engine.executeWorkflow('missing_sqlite');
   assert.equal(sqliteRes.status, 'FAILED');
   assert.equal(sqliteRes.executionLogs[0].status, 'FAILED');
+});
+
+test('PR-002 Regression: non-string resource fields fail closed with RBAC_TARGET_INVALID', async () => {
+  const meta = {
+    name: 'type-test-persona',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'security_auditor',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces'],
+          write: ['/workspaces/cases', '/tmp']
+        }
+      }
+    },
+    workflows: {
+      array_target: { steps: [{ name: 'Array Target', action: 'contain_threat', target: ['/tmp/allowed'] }] },
+      object_target: { steps: [{ name: 'Object Target', action: 'contain_threat', target: { path: '/tmp/allowed' } }] },
+      number_target: { steps: [{ name: 'Number Target', action: 'contain_threat', target: 12345 }] },
+      boolean_target: { steps: [{ name: 'Boolean Target', action: 'contain_threat', target: true }] },
+      empty_target: { steps: [{ name: 'Empty Target', action: 'contain_threat', target: '' }] },
+      whitespace_target: { steps: [{ name: 'Whitespace Target', action: 'contain_threat', target: '   ' }] },
+      array_destination: { steps: [{ name: 'Array Destination', action: 'write_report', destination: ['/tmp/report.json'] }] },
+      object_scope: { steps: [{ name: 'Object Scope', action: 'forensic_investigation', scope: { dir: '/workspaces' } }] }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  for (const wfName of Object.keys(meta.workflows)) {
+    await assert.rejects(
+      async () => engine.executeWorkflow(wfName),
+      /Zero Trust RBAC Policy Violation \[RBAC_TARGET_INVALID\]/,
+      `Workflow '${wfName}' must fail closed with RBAC_TARGET_INVALID`
+    );
+  }
+});
+
+test('PR-003 Regression: capability adapters fail closed without simulation', async () => {
+  const meta = {
+    name: 'adapter-truth-persona',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'adapter_role',
+      permissions: {
+        filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] }
+      }
+    },
+    workflows: {
+      patch_without_content: {
+        steps: [
+          { name: 'Patch Target No Content', action: 'apply_fix_or_patch', target: path.join(testIsolatedDir, 'test.patch') }
+        ]
+      },
+      invalid_sdmx_schema: {
+        steps: [
+          { name: 'Validate Missing Schema', action: 'validate_sdmx_schema', target: path.join(testIsolatedDir, 'missing_schema.json') }
+        ]
+      },
+      unimplemented_model: {
+        steps: [
+          { name: 'Call Unknown Model', action: 'run_llm_query', model: 'definitely-not-called-model' }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. apply_fix_or_patch without content fails closed
+  const patchRes = await engine.executeWorkflow('patch_without_content');
+  assert.equal(patchRes.status, 'FAILED');
+  assert.match(patchRes.error, /requires 'patch' or 'content'/);
+
+  // 2. validate_sdmx_schema on missing file fails closed
+  const schemaRes = await engine.executeWorkflow('invalid_sdmx_schema');
+  assert.equal(schemaRes.status, 'FAILED');
+  assert.match(schemaRes.error, /SDMX schema file not found/);
+
+  // 3. run_llm_query with invalid model fails closed
+  const llmRes = await engine.executeWorkflow('unimplemented_model');
+  assert.equal(llmRes.status, 'FAILED');
+  assert.match(llmRes.error, /unavailable/);
+});
+
+test('PR-007 Regression: runAgentWorkflow bridge reports failed execution as success: false', async () => {
+  // Create a temporary persona fixture with a failing workflow
+  const testPersonasDir = path.join(testIsolatedDir, 'personas');
+  const fixtureDir = path.join(testPersonasDir, 'failing-bridge-persona');
+  fs.mkdirSync(fixtureDir, { recursive: true });
+
+  const manifest = `version: "1.0"
+name: failing-bridge-persona
+rbac:
+  role: tester
+  permissions:
+    filesystem:
+      read: ["/workspaces"]
+      write: ["/workspaces"]
+workflows:
+  failing_wf:
+    steps:
+      - name: "Dead Port Probe"
+        action: "probe_services"
+        target: "http://127.0.0.1:9"
+`;
+  fs.writeFileSync(path.join(fixtureDir, 'persona.yaml'), manifest, 'utf8');
+
+  const prevPersonasDir = process.env.DSH_PERSONAS_DIR;
+  try {
+    process.env.DSH_PERSONAS_DIR = testPersonasDir;
+    const res = await runAgentWorkflow('failing-bridge-persona', 'failing_wf');
+    assert.equal(res.success, false, 'runAgentWorkflow must return success: false when workflow execution fails');
+    assert.equal(res.status, 'FAILED');
+    assert.ok(res.error);
+  } finally {
+    process.env.DSH_PERSONAS_DIR = prevPersonasDir;
+  }
+});
+
+test('PR-008 Regression: semantic failure invokes on_failure fallback and recovers', async () => {
+  const fallbackMeta = {
+    name: 'fallback-persona',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'fallback_role',
+      permissions: {
+        filesystem: { read: ['/workspaces'], write: ['/workspaces'] }
+      }
+    },
+    workflows: {
+      semantic_fallback: {
+        steps: [
+          {
+            name: 'Probe Dead Port With Fallback',
+            action: 'probe_services',
+            target: 'http://127.0.0.1:9',
+            on_failure: 'parse_intent'
+          }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(fallbackMeta);
+  const res = await engine.executeWorkflow('semantic_fallback');
+
+  assert.equal(res.status, 'COMPLETED', 'Workflow must complete successfully when semantic failure triggers recovery fallback');
+  assert.equal(res.executionLogs[0].status, 'SUCCESS');
+  assert.equal(res.executionLogs[0].output.fallback_executed, 'parse_intent');
+  assert.ok(res.executionLogs[0].output.original_error);
+});
+
+test('PR-009 Regression: approval gate creates durable checkpoint and resumes without replaying', async () => {
+  let step1Executed = 0;
+  let step2Executed = 0;
+
+  const acmMeta = {
+    name: 'acm-approval-persona',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'acm_role',
+      permissions: {
+        filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] }
+      }
+    },
+    workflows: {
+      approval_pipeline: {
+        steps: [
+          { name: 'Step 1 Pre-Gated Analysis', action: 'parse_intent' },
+          { name: 'Step 2 Critical Containment', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'quarantine.json'), approval_required: true },
+          { name: 'Step 3 Post-Gated Escalation', action: 'escalate_to_soc' }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(acmMeta);
+
+  // Initial run without approval
+  const initialRes = await engine.executeWorkflow('approval_pipeline');
+  assert.equal(initialRes.status, 'SUSPENDED_APPROVAL_REQUIRED');
+  assert.ok(initialRes.instanceId, 'Must generate unique workflow instance ID');
+  assert.ok(initialRes.approvalToken, 'Must generate HMAC approval decision token');
+  assert.equal(initialRes.executionLogs.length, 2);
+  assert.equal(initialRes.executionLogs[1].status, 'GATED');
+
+  // Verify checkpoint was written to disk
+  const checkpointFile = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${initialRes.instanceId}.json`);
+  assert.ok(fs.existsSync(checkpointFile), 'Checkpoint file must be persisted to sessions/checkpoints');
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
+  assert.equal(checkpoint.instanceId, initialRes.instanceId);
+  assert.equal(checkpoint.stepIndex, 1);
+
+  // Resume the suspended workflow directly from Step 2
+  const resumeRes = await engine.resumeWorkflow(initialRes.instanceId, { approved: true });
+  assert.equal(resumeRes.status, 'COMPLETED');
+  assert.equal(resumeRes.resumedFrom, initialRes.instanceId);
+  assert.equal(resumeRes.executionLogs.length, 3);
+  assert.equal(resumeRes.executionLogs[1].status, 'SUCCESS');
+  assert.equal(resumeRes.executionLogs[2].status, 'SUCCESS');
+});
+
+test('PR-011 Regression: test execution leaves repository workspaces clean without mutation', () => {
+  // Assert that no pi-ai.patch was created in repository cwd
+  const repoCasesPatch = path.join(ROOT, 'workspaces', 'cases', 'pi-ai.patch');
+  assert.equal(
+    fs.existsSync(repoCasesPatch),
+    false,
+    'Orchestrator tests must not mutate git repository cwd workspaces/cases/pi-ai.patch'
+  );
 });
 
 test.after(() => {

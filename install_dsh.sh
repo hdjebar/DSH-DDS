@@ -98,7 +98,25 @@ EOF
   fi
 fi
 
-GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/${DSH_REF:-v1.10.0}"
+DSH_REF="${DSH_REF:-main}"
+GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/$DSH_REF"
+
+# Validate remote ref accessibility when downloading from remote (PR-004)
+validate_remote_ref() {
+  if [ -z "${DSH_SOURCE_DIR:-}" ]; then
+    if ! curl -fsSL -I "https://raw.githubusercontent.com/hdjebar/DSH-DDS/${DSH_REF}/Dockerfile" >/dev/null 2>&1; then
+      if [ "$DSH_REF" != "main" ] && curl -fsSL -I "https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/Dockerfile" >/dev/null 2>&1; then
+        echo "⚠️ Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main'..."
+        DSH_REF="main"
+        GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
+      else
+        echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository." >&2
+        exit 1
+      fi
+    fi
+  fi
+}
+validate_remote_ref
 
 fetch_or_copy_file() {
   local rel_path="$1"
@@ -501,7 +519,9 @@ services:
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
-      - ./config:/root/.dsh
+      - ./config:/root/.dsh:ro
+      - ./config/sessions:/root/.dsh/sessions:rw
+      - ./config/audit:/root/.dsh/audit:rw
       - ./workspaces:/workspaces
     environment:
       - PORT=3080

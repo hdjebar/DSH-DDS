@@ -6,7 +6,9 @@ services:
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
-      - ./config:/root/.dsh
+      - ./config:/root/.dsh:ro
+      - ./config/sessions:/root/.dsh/sessions:rw
+      - ./config/audit:/root/.dsh/audit:rw
       - ./workspaces:/workspaces
     environment:
       - PORT=3080

@@ -66,3 +66,33 @@ test('Clean-room Installer: provisions full topology in isolated directory', () 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('PR-004 Regression: Installer validates remote ref and falls back to main', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-ref-test-'));
+
+  try {
+    const runnerDir = path.join(tmpDir, 'runner');
+    const installTarget = path.join(tmpDir, 'installed');
+    fs.mkdirSync(runnerDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'install_dsh.sh'), path.join(runnerDir, 'install_dsh.sh'));
+
+    const output = execSync(`bash install_dsh.sh`, {
+      env: {
+        ...process.env,
+        DSH_INSTALL: installTarget,
+        DSH_REF: 'non-existent-tag-v9.99.99',
+        SKIP_DOCKER_CHECKS: 'true'
+      },
+      cwd: runnerDir,
+      stdio: 'pipe'
+    }).toString();
+
+    assert.ok(
+      output.includes("Falling back to 'main'") || output.includes('main'),
+      'Installer must detect invalid ref and fall back to main'
+    );
+    assert.ok(fs.existsSync(path.join(installTarget, 'docker-compose.yml')));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

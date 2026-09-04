@@ -118,4 +118,3 @@ All production implementation blueprints are written in **Node.js 24 / Cordis ES
 3. ⚡ **[8.3 In-Flight Model Failover Gateway (`config/failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs)**
 4. 🌲 **[8.4 Transactional Git Worktree Staging (`config/worktree-staging.mjs`)](SOTA-ResearchReport-ProductionArch.md#84-transactional-workspace-staging-configworktree-stagingmjs)**
 5. 🛡️ **[8.5 Hardened Compose Sandbox (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#85-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)**
-

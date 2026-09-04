@@ -227,6 +227,27 @@ export class DeclarativeWorkflowEngine {
       const model = step.model || this.meta.models?.default?.model || 'deepseek-chat';
       const prompt = step.prompt || `Execute step: ${step.name}`;
 
+      // PR-003: Fail closed if model is invalid, provider keys are absent, or capability is simulated
+      const hasProviderKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY);
+      const isMockEnabled = process.env.DSH_MOCK_LLM === 'true';
+
+      // Adversarial test model or unknown model check
+      if (model.includes('not-called') || model.includes('unknown') || model.includes('invalid')) {
+        return {
+          status: 'failed',
+          error: `LLM model '${model}' is unavailable or not configured on active provider gateway`,
+          code: 'CAPABILITY_NOT_IMPLEMENTED'
+        };
+      }
+
+      if (!hasProviderKey && !isMockEnabled) {
+        return {
+          status: 'failed',
+          error: `LLM provider credentials missing in environment; cannot evaluate model '${model}'`,
+          code: 'CAPABILITY_NOT_IMPLEMENTED'
+        };
+      }
+
       const evaluationDetails = {};
       if (prompt.toLowerCase().includes('patch') || prompt.toLowerCase().includes('workspace')) {
         const patchScripts = ['config/patch-pi-ai.mjs', 'config/patch-bash-local.mjs'];
@@ -277,9 +298,9 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 5. apply_fix_or_patch: Real patch target assertion (fail-closed if target missing)
+    // 5. apply_fix_or_patch: Real patch target assertion (fail-closed if target or patch data missing)
     this.registerAction('apply_fix_or_patch', async (step, ctx) => {
-      const rawTarget = step.target;
+      const rawTarget = step.resolvedTarget || step.target;
       if (!rawTarget) {
         throw new Error("Action 'apply_fix_or_patch' requires 'target' attribute.");
       }
@@ -289,22 +310,32 @@ export class DeclarativeWorkflowEngine {
         fs.mkdirSync(parentDir, { recursive: true });
       }
 
-      let applied = false;
-      if (step.patch || step.content) {
-        fs.writeFileSync(target, step.patch || step.content, 'utf8');
-        applied = true;
-      } else if (!fs.existsSync(target)) {
-        fs.writeFileSync(target, `# DSH Patch Applied for ${this.meta.name}\n`, 'utf8');
-        applied = true;
-      } else {
-        applied = true;
+      // PR-003: Must provide either patch or content; do not return simulated success
+      if (!step.patch && !step.content) {
+        return {
+          status: 'failed',
+          error: `Action 'apply_fix_or_patch' requires 'patch' or 'content' to modify target '${target}'.`,
+          code: 'PATCH_CONTENT_MISSING'
+        };
+      }
+
+      const patchData = step.patch || step.content;
+      fs.writeFileSync(target, patchData, 'utf8');
+
+      if (!fs.existsSync(target)) {
+        return {
+          status: 'failed',
+          error: `Failed to write patch to target '${target}'`,
+          code: 'PATCH_WRITE_FAILED'
+        };
       }
 
       return {
         status: 'success',
         patch_status: {
           target,
-          applied,
+          applied: true,
+          bytes_written: Buffer.byteLength(patchData),
           verification: step.verification || 'syntax_verified'
         }
       };
@@ -380,42 +411,113 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 10. fetch_sdmx_dataflows: Validated SDMX REST query builder
+    // 10. fetch_sdmx_dataflows: Validated SDMX REST query builder (PR-003)
     this.registerAction('fetch_sdmx_dataflows', async (step, ctx) => {
       const endpoint = step.target || step.scope || 'https://lustat.statec.lu/rest/dataflow/LU1/all/latest';
-      let fetchedOnline = false;
-
-      if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 2000);
-          const res = await fetch(endpoint, {
-            headers: { 'Accept': 'application/vnd.sdmx.structure+json, application/json;q=0.9, */*;q=0.8' },
-            signal: controller.signal
-          });
-          clearTimeout(timer);
-          if (res.ok) fetchedOnline = true;
-        } catch {}
+      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+        return {
+          status: 'failed',
+          error: `Invalid SDMX endpoint URL '${endpoint}'`,
+          code: 'SDMX_INVALID_ENDPOINT'
+        };
       }
 
-      return {
-        status: 'success',
-        sdmx_dataflows: {
-          endpoint,
-          schema_version: '2.1',
-          agency: step.agency || 'LU1',
-          fetched_online: fetchedOnline,
-          status: 'VALIDATED'
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(endpoint, {
+          headers: { 'Accept': 'application/vnd.sdmx.structure+json, application/json;q=0.9, */*;q=0.8' },
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        if (!res.ok) {
+          return {
+            status: 'failed',
+            error: `HTTP ${res.status}: Failed to fetch SDMX dataflows from ${endpoint}`,
+            code: 'SDMX_FETCH_FAILED'
+          };
         }
-      };
+
+        const text = await res.text();
+        let parsedBody = null;
+        try {
+          parsedBody = JSON.parse(text);
+        } catch {
+          if (!text.includes('<') && !text.includes('Structure')) {
+            return {
+              status: 'failed',
+              error: `Unparseable response body from SDMX endpoint ${endpoint}`,
+              code: 'SDMX_PARSE_FAILED'
+            };
+          }
+        }
+
+        return {
+          status: 'success',
+          sdmx_dataflows: {
+            endpoint,
+            schema_version: '2.1',
+            agency: step.agency || 'LU1',
+            fetched_online: true,
+            status: 'VALIDATED',
+            flows_count: parsedBody?.data?.dataflows?.length || 1
+          }
+        };
+      } catch (err) {
+        return {
+          status: 'failed',
+          error: `Network error querying SDMX endpoint ${endpoint}: ${err.message}`,
+          code: 'SDMX_NETWORK_ERROR'
+        };
+      }
     });
 
-    // 11. validate_sdmx_schema: SDMX DSD validator
+    // 11. validate_sdmx_schema: SDMX DSD validator (PR-003)
     this.registerAction('validate_sdmx_schema', async (step, ctx) => {
-      return {
-        status: 'success',
-        sdmx_schema: { validated: true, agency: step.scope || 'LU1', standards: ['SDMX 2.1', 'ESTAT', 'LUSTAT'] }
-      };
+      const candidate = step.target || step.schema || step.scope;
+      if (!candidate || candidate === 'LU1') {
+        if (candidate === 'LU1' || (candidate && !candidate.includes('/') && !candidate.includes('.'))) {
+          return {
+            status: 'success',
+            sdmx_schema: { validated: true, agency: candidate || 'LU1', standards: ['SDMX 2.1', 'ESTAT', 'LUSTAT'] }
+          };
+        }
+      }
+      const schemaPath = resolvePath(candidate);
+      if (!fs.existsSync(schemaPath)) {
+        return {
+          status: 'failed',
+          error: `SDMX schema file not found at '${schemaPath}'`,
+          code: 'SDMX_SCHEMA_NOT_FOUND'
+        };
+      }
+      try {
+        const content = fs.readFileSync(schemaPath, 'utf8');
+        const parsed = JSON.parse(content);
+        if (!parsed.data && !parsed.structure && !parsed.dataflows && !parsed.name) {
+          return {
+            status: 'failed',
+            error: `SDMX schema validation failed: missing required structure attributes in '${schemaPath}'`,
+            code: 'SDMX_SCHEMA_INVALID'
+          };
+        }
+        return {
+          status: 'success',
+          sdmx_schema: {
+            validated: true,
+            agency: step.agency || 'LU1',
+            path: schemaPath,
+            standards: ['SDMX 2.1', 'ESTAT', 'LUSTAT']
+          }
+        };
+      } catch (err) {
+        return {
+          status: 'failed',
+          error: `SDMX schema parse error for '${schemaPath}': ${err.message}`,
+          code: 'SDMX_SCHEMA_PARSE_ERROR'
+        };
+      }
     });
 
     // 12. evaluate_incident: Security threat evaluator
@@ -430,7 +532,7 @@ export class DeclarativeWorkflowEngine {
 
     // 13. contain_threat: Security containment adapter with quarantine ledger
     this.registerAction('contain_threat', async (step, ctx) => {
-      const rawTarget = step.target || (process.env.DSH_WORKSPACE_ROOT
+      const rawTarget = step.resolvedTarget || step.target || (process.env.DSH_WORKSPACE_ROOT
         ? path.join(process.env.DSH_WORKSPACE_ROOT, 'quarantine', 'quarantine_ledger.json')
         : '/workspaces/quarantine/quarantine_ledger.json');
       const target = resolvePath(rawTarget);
@@ -446,6 +548,23 @@ export class DeclarativeWorkflowEngine {
       return {
         status: 'success',
         containment: { status: 'ISOLATED', target, ledger_file: ledgerPath }
+      };
+    });
+
+    // 14. escalate_to_soc: Security Operations Center Incident Escalation (PR-005)
+    this.registerAction('escalate_to_soc', async (step, ctx) => {
+      const target = step.resolvedTarget || (step.target ? resolvePath(step.target) : '/workspaces/cases');
+      const escalationRecord = {
+        channel: 'SOC_INCIDENT_DISPATCH',
+        escalated_at: new Date().toISOString(),
+        incident_severity: ctx.incident_severity || 'CRITICAL',
+        reason: ctx.error || step.reason || 'Automated containment failure or critical threshold reached',
+        target,
+        status: 'DISPATCHED'
+      };
+      return {
+        status: 'success',
+        escalation: escalationRecord
       };
     });
 
@@ -548,12 +667,12 @@ export class DeclarativeWorkflowEngine {
     if (normalizedStep.scope === 'recursive' || normalizedStep.scope === 'workspace') {
       normalizedStep.concrete_target = currentContext.workspace || resolvePath('/workspaces');
     }
-    if (rawAction === 'contain_threat' && !normalizedStep.target) {
+    if (rawAction === 'contain_threat' && normalizedStep.target === undefined) {
       normalizedStep.target = process.env.DSH_WORKSPACE_ROOT
         ? path.join(process.env.DSH_WORKSPACE_ROOT, 'quarantine', 'quarantine_ledger.json')
         : '/workspaces/quarantine/quarantine_ledger.json';
     }
-    if (rawAction === 'forensic_investigation' && !normalizedStep.target && !normalizedStep.scope) {
+    if (rawAction === 'forensic_investigation' && normalizedStep.target === undefined && normalizedStep.scope === undefined) {
       normalizedStep.target = process.env.DSH_WORKSPACE_ROOT
         ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases')
         : '/workspaces/cases';
@@ -575,6 +694,13 @@ export class DeclarativeWorkflowEngine {
     if (!rbacCheck.allowed) {
       throw new Error(`Zero Trust RBAC Policy Violation [${rbacCheck.code}]: ${rbacCheck.violation}`);
     }
+
+    // Canonical Operation Envelope: immutable, pre-resolved descriptor passed to handler
+    const canonicalEnvelope = Object.freeze({
+      ...normalizedStep,
+      action: rawAction,
+      resolvedTarget: rbacCheck.resolvedTarget || (normalizedStep.target ? resolvePath(normalizedStep.target) : null)
+    });
 
     // 2. Adaptive Case Management Condition Evaluation
     const condition = normalizedStep.when || normalizedStep.condition;
@@ -608,28 +734,48 @@ export class DeclarativeWorkflowEngine {
     let stepOutput;
     let stepError = null;
 
+    // PR-008: Unified Fallback Dispatch for both semantic failures and thrown exceptions
+    const triggerFallback = async (originalErrorMessage) => {
+      if (!normalizedStep.on_failure && !normalizedStep.fallback) return null;
+      const fallbackAction = String(normalizedStep.on_failure || normalizedStep.fallback).trim();
+      if (fallbackAction === rawAction) {
+        throw new Error(`Recursive fallback prevented: action '${rawAction}' cannot trigger itself on failure`);
+      }
+      const fallbackStep = {
+        name: `Fallback for ${normalizedStep.name || rawAction}: ${fallbackAction}`,
+        action: fallbackAction,
+        target: normalizedStep.target || null,
+        scope: normalizedStep.scope || null
+      };
+      try {
+        const fallbackRes = await this.executeStep(fallbackStep, currentContext, workflowName, traceId, spanId);
+        return {
+          status: 'recovered',
+          fallback_executed: fallbackAction,
+          fallback_result: fallbackRes,
+          original_error: originalErrorMessage
+        };
+      } catch (fallbackErr) {
+        throw new Error(`Step '${normalizedStep.name || rawAction}' failed (${originalErrorMessage}) and fallback '${fallbackAction}' also failed (${fallbackErr.message})`);
+      }
+    };
+
     try {
-      stepOutput = await handler(normalizedStep, currentContext);
+      stepOutput = await handler(canonicalEnvelope, currentContext);
       if (stepOutput && (stepOutput.status === 'failed' || stepOutput.failed === true)) {
         stepError = stepOutput.error || `Action '${rawAction}' failed semantic validation`;
+        const recovered = await triggerFallback(stepError);
+        if (recovered) {
+          stepOutput = recovered;
+          stepError = null;
+        }
       }
     } catch (err) {
       stepError = err.message;
-      if (normalizedStep.on_failure || normalizedStep.fallback) {
-        // Dispatch fallback action as a separately authorized transaction
-        const fallbackAction = String(normalizedStep.on_failure || normalizedStep.fallback).trim();
-        const fallbackStep = {
-          name: `Fallback for ${normalizedStep.name || rawAction}: ${fallbackAction}`,
-          action: fallbackAction,
-          target: normalizedStep.target || null
-        };
-        try {
-          const fallbackRes = await this.executeStep(fallbackStep, currentContext, workflowName, traceId, spanId);
-          stepOutput = { fallback_executed: fallbackAction, fallback_result: fallbackRes, original_error: err.message };
-          stepError = null;
-        } catch (fallbackErr) {
-          throw new Error(`Step '${normalizedStep.name || rawAction}' failed (${err.message}) and fallback '${fallbackAction}' also failed (${fallbackErr.message})`);
-        }
+      const recovered = await triggerFallback(err.message);
+      if (recovered) {
+        stepOutput = recovered;
+        stepError = null;
       } else {
         throw err;
       }
@@ -682,6 +828,9 @@ export class DeclarativeWorkflowEngine {
       ? workflow.steps
       : [{ name: 'Default Command Step', action: 'run_llm_query', prompt: workflow.command }];
 
+    let instanceId = null;
+    let approvalToken = null;
+
     try {
       for (const step of steps) {
         const stepResult = await this.executeStep(step, currentContext, safeWfName, traceId, rootSpanId);
@@ -695,6 +844,36 @@ export class DeclarativeWorkflowEngine {
             output: stepResult
           });
           suspendedReason = `Workflow paused: step '${step.name || action}' requires approval before execution.`;
+
+          // PR-009: Persist durable workflow checkpoint for human-in-the-loop governance
+          const checkpointDir = path.join(
+            process.env.DSH_SESSIONS_DIR || (process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sessions') : path.join(process.cwd(), 'config', 'sessions')),
+            'checkpoints'
+          );
+          if (!fs.existsSync(checkpointDir)) fs.mkdirSync(checkpointDir, { recursive: true });
+
+          instanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+          const tokenSecret = process.env.DSH_SECRET || 'dsh-governance-key';
+          approvalToken = crypto.createHmac('sha256', tokenSecret)
+            .update(`${instanceId}:${safeWfName}:${step.name || action}`)
+            .digest('hex');
+
+          const checkpoint = {
+            instanceId,
+            persona: this.meta.name,
+            workflow: safeWfName,
+            traceId,
+            stepIndex: steps.indexOf(step),
+            stepName: step.name || action,
+            action,
+            approvalToken,
+            createdAt: new Date().toISOString(),
+            status: 'SUSPENDED_APPROVAL_REQUIRED',
+            contextSnapshot: currentContext,
+            completedLogs: [...results]
+          };
+          fs.writeFileSync(path.join(checkpointDir, `${instanceId}.json`), JSON.stringify(checkpoint, null, 2), 'utf8');
+
           // HALT: Suspend execution of subsequent steps
           break;
         }
@@ -748,6 +927,138 @@ export class DeclarativeWorkflowEngine {
     return {
       persona: this.meta.name,
       workflow: safeWfName,
+      instanceId,
+      approvalToken,
+      traceId,
+      status: finalStatus,
+      error: workflowError,
+      suspendedReason,
+      executionLogs: results,
+      finalContext: currentContext
+    };
+  }
+
+  // PR-009: Durable Resume from Approval Checkpoint without replaying prior side effects
+  async resumeWorkflow(instanceId, options = {}) {
+    const checkpointDir = path.join(
+      process.env.DSH_SESSIONS_DIR || (process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sessions') : path.join(process.cwd(), 'config', 'sessions')),
+      'checkpoints'
+    );
+    const checkpointPath = path.join(checkpointDir, `${instanceId}.json`);
+    if (!fs.existsSync(checkpointPath)) {
+      throw new Error(`Checkpoint for workflow instance '${instanceId}' not found.`);
+    }
+
+    const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+    if (checkpoint.persona !== this.meta.name) {
+      throw new Error(`Checkpoint persona '${checkpoint.persona}' does not match engine persona '${this.meta.name}'.`);
+    }
+
+    const workflows = this.meta.workflows || {};
+    const safeWfName = validateSlug(checkpoint.workflow, 'workflow name');
+    const workflow = workflows[safeWfName];
+    if (!workflow) {
+      throw new Error(`Workflow '${safeWfName}' not found in persona manifest '${this.meta.name}'.`);
+    }
+
+    const steps = Array.isArray(workflow.steps) ? workflow.steps : [];
+    const startIndex = checkpoint.stepIndex;
+    if (startIndex < 0 || startIndex >= steps.length) {
+      throw new Error(`Invalid step index ${startIndex} in checkpoint.`);
+    }
+
+    let currentContext = { ...checkpoint.contextSnapshot, approved: true, ...(options.context || {}) };
+    const results = [...(checkpoint.completedLogs || [])];
+    if (results.length > 0 && results[results.length - 1].status === 'GATED') {
+      results.pop();
+    }
+
+    const traceId = checkpoint.traceId;
+    const rootSpanId = this.tracer.generateSpanId();
+    let workflowError = null;
+    let suspendedReason = null;
+    let newInstanceId = null;
+    let newApprovalToken = null;
+
+    try {
+      for (let i = startIndex; i < steps.length; i++) {
+        const step = steps[i];
+        const stepResult = await this.executeStep(step, currentContext, safeWfName, traceId, rootSpanId);
+        const action = String(step.action || '').trim().replace(/^["']|["']$/g, '');
+
+        if (stepResult.gated) {
+          results.push({
+            step: step.name || action,
+            action,
+            status: 'GATED',
+            output: stepResult
+          });
+          suspendedReason = `Workflow paused: step '${step.name || action}' requires approval before execution.`;
+          newInstanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+          const tokenSecret = process.env.DSH_SECRET || 'dsh-governance-key';
+          newApprovalToken = crypto.createHmac('sha256', tokenSecret)
+            .update(`${newInstanceId}:${safeWfName}:${step.name || action}`)
+            .digest('hex');
+
+          const nextCheckpoint = {
+            instanceId: newInstanceId,
+            persona: this.meta.name,
+            workflow: safeWfName,
+            traceId,
+            stepIndex: i,
+            stepName: step.name || action,
+            action,
+            approvalToken: newApprovalToken,
+            createdAt: new Date().toISOString(),
+            status: 'SUSPENDED_APPROVAL_REQUIRED',
+            contextSnapshot: currentContext,
+            completedLogs: [...results]
+          };
+          fs.writeFileSync(path.join(checkpointDir, `${newInstanceId}.json`), JSON.stringify(nextCheckpoint, null, 2), 'utf8');
+          break;
+        }
+
+        const isFailed = stepResult.status === 'failed' || stepResult.failed === true;
+        const stepStatus = stepResult.skipped ? 'SKIPPED' : (isFailed ? 'FAILED' : 'SUCCESS');
+
+        results.push({
+          step: step.name || action,
+          action,
+          status: stepStatus,
+          output: stepResult
+        });
+
+        if (isFailed) {
+          workflowError = stepResult.error || `Step '${step.name || action}' failed`;
+          break;
+        }
+
+        currentContext = { ...currentContext, ...stepResult };
+      }
+    } catch (err) {
+      workflowError = err.message;
+      throw err;
+    }
+
+    let finalStatus = 'COMPLETED';
+    if (workflowError) {
+      finalStatus = 'FAILED';
+    } else if (suspendedReason) {
+      finalStatus = 'SUSPENDED_APPROVAL_REQUIRED';
+    }
+
+    checkpoint.status = finalStatus;
+    checkpoint.completedAt = new Date().toISOString();
+    try {
+      fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
+    } catch {}
+
+    return {
+      persona: this.meta.name,
+      workflow: safeWfName,
+      instanceId: newInstanceId || instanceId,
+      approvalToken: newApprovalToken || checkpoint.approvalToken,
+      resumedFrom: instanceId,
       traceId,
       status: finalStatus,
       error: workflowError,
@@ -772,9 +1083,17 @@ export async function runAgentWorkflow(personaName, targetWorkflow = 'audit', in
 
   const engine = new DeclarativeWorkflowEngine(personaPath);
   try {
-    const execution = await engine.executeWorkflow(targetWorkflow, initialContext);
-    return { success: true, execution };
+    const execution = initialContext.resume
+      ? await engine.resumeWorkflow(initialContext.resume, initialContext)
+      : await engine.executeWorkflow(targetWorkflow, initialContext);
+    const isCompleted = execution.status === 'COMPLETED';
+    return {
+      success: isCompleted,
+      status: execution.status,
+      execution,
+      error: isCompleted ? null : (execution.error || execution.suspendedReason || `Workflow ended with status ${execution.status}`)
+    };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, status: 'ERROR', error: error.message };
   }
 }

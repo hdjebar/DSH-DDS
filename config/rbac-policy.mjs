@@ -99,8 +99,24 @@ export function parsePersonaYaml(filePath) {
  * preventing path divergence, confused deputies, or silent redirection to /tmp.
  */
 export function resolvePath(candidatePath) {
-  if (!candidatePath || typeof candidatePath !== 'string') return process.cwd();
+  if (!candidatePath || typeof candidatePath !== 'string') {
+    throw new Error(`resolvePath: expected non-empty scalar string path, received ${Array.isArray(candidatePath) ? 'array' : typeof candidatePath}`);
+  }
   const clean = candidatePath.trim().replace(/^["']|["']$/g, '');
+  if (!clean) {
+    throw new Error('resolvePath: received empty string path');
+  }
+
+  // If a test/isolated workspace root is provided, always map /workspaces into it
+  if (process.env.DSH_WORKSPACE_ROOT && (clean === '/workspaces' || clean.startsWith('/workspaces/'))) {
+    const rel = clean === '/workspaces' ? '' : clean.slice('/workspaces/'.length);
+    return path.resolve(process.env.DSH_WORKSPACE_ROOT, rel);
+  }
+
+  if (process.env.DSH_RUNTIME_DIR && (clean === '/root/.dsh' || clean.startsWith('/root/.dsh/'))) {
+    const rel = clean === '/root/.dsh' ? '' : clean.slice('/root/.dsh/'.length);
+    return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
+  }
 
   if (fs.existsSync('/workspaces') || fs.existsSync('/root/.dsh')) {
     return path.resolve(clean);
@@ -113,9 +129,6 @@ export function resolvePath(candidatePath) {
 
   if (clean === '/root/.dsh' || clean.startsWith('/root/.dsh/')) {
     const rel = clean === '/root/.dsh' ? '' : clean.slice('/root/.dsh/'.length);
-    if (process.env.DSH_RUNTIME_DIR) {
-      return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
-    }
     return path.resolve(process.cwd(), 'config', rel);
   }
 
@@ -228,10 +241,52 @@ export function enforceRbacPolicy(personaMeta, step) {
   const { filesystem, mcp } = personaMeta.rbac.permissions;
   const role = personaMeta.rbac.role || personaMeta.name;
 
-  const rawAction = String(step.action || '').trim().replace(/^["']|["']$/g, '');
+  if (!step || typeof step !== 'object') {
+    return {
+      allowed: false,
+      role,
+      violation: 'Invalid step descriptor: expected object',
+      code: 'RBAC_TARGET_INVALID'
+    };
+  }
+
+  // PR-002: Strict validation of resource scalar types
+  const resourceFields = ['target', 'destination', 'scope', 'source', 'concrete_target'];
+  for (const field of resourceFields) {
+    if (field in step && step[field] !== undefined && step[field] !== null) {
+      const val = step[field];
+      if (typeof val !== 'string') {
+        return {
+          allowed: false,
+          role,
+          violation: `Invalid resource type for '${field}': expected non-empty scalar string, received ${Array.isArray(val) ? 'array' : typeof val}`,
+          code: 'RBAC_TARGET_INVALID'
+        };
+      }
+      if (val.trim().length === 0) {
+        return {
+          allowed: false,
+          role,
+          violation: `Invalid resource value for '${field}': cannot be empty or whitespace only`,
+          code: 'RBAC_TARGET_INVALID'
+        };
+      }
+    }
+  }
+
+  if (typeof step.action !== 'string' || step.action.trim().length === 0) {
+    return {
+      allowed: false,
+      role,
+      violation: 'Workflow step missing valid string action',
+      code: 'RBAC_ACTION_INVALID'
+    };
+  }
+
+  const rawAction = step.action.trim().replace(/^["']|["']$/g, '');
   const rawTargets = [step.target, step.destination, step.scope]
     .filter(Boolean)
-    .map(t => String(t).trim().replace(/^["']|["']$/g, ''));
+    .map(t => t.trim().replace(/^["']|["']$/g, ''));
 
   // AUD-001: Pre-resolve default targets if omitted by manifest step
   if (rawTargets.length === 0) {
@@ -410,7 +465,13 @@ export function enforceRbacPolicy(personaMeta, step) {
     }
   }
 
-  return { allowed: true, role, reason: 'RBAC policy validated' };
+  return {
+    allowed: true,
+    role,
+    reason: 'RBAC policy validated',
+    targets: targetsToCheck,
+    resolvedTarget: targetsToCheck[0] ? resolvePath(targetsToCheck[0]) : null
+  };
 }
 
 export function getGrcAuditLogPath() {

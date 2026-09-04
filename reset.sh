@@ -6,6 +6,7 @@ set -euo pipefail
 
 FORCE=false
 HARD_RESET=false
+FORCE_OFFLINE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,14 +18,19 @@ while [[ $# -gt 0 ]]; do
       FORCE=true
       shift
       ;;
+    --force-offline)
+      FORCE_OFFLINE=true
+      shift
+      ;;
     --help|-h)
       echo "Usage: ./reset.sh [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  (default)     Soft reset: clears session histories, cache locks, and temp files"
-      echo "  --hard, -H    Hard reset: stops containers, wipes session/storage databases and rebuilds"
-      echo "  --force, -f   Bypass confirmation prompt"
-      echo "  --help, -h    Show this help message"
+      echo "  (default)          Soft reset: clears session histories, cache locks, and temp files"
+      echo "  --hard, -H         Hard reset: stops containers, wipes session/storage databases and rebuilds"
+      echo "  --force, -f        Bypass confirmation prompt"
+      echo "  --force-offline    Bypass container shutdown check when Docker daemon is offline"
+      echo "  --help, -h         Show this help message"
       exit 0
       ;;
     *)
@@ -61,9 +67,27 @@ fi
 # 1. Stop Docker containers
 echo "🛑 Stopping containers..."
 if [ "$HARD_RESET" = true ]; then
-  docker compose down -v --remove-orphans || true
+  if ! docker compose down -v --remove-orphans; then
+    if [ "$FORCE_OFFLINE" = true ]; then
+      echo "⚠️ Warning: 'docker compose down' failed, but continuing due to --force-offline."
+    else
+      echo "❌ Error: Failed to stop Docker containers via 'docker compose down'." >&2
+      echo "   Aborting reset to prevent state corruption while containers may still be running." >&2
+      echo "   To force deletion anyway when Docker daemon is unreachable: ./reset.sh --hard --force-offline" >&2
+      exit 1
+    fi
+  fi
 else
-  docker compose down || true
+  if ! docker compose down; then
+    if [ "$FORCE_OFFLINE" = true ]; then
+      echo "⚠️ Warning: 'docker compose down' failed, but continuing due to --force-offline."
+    else
+      echo "❌ Error: Failed to stop Docker containers via 'docker compose down'." >&2
+      echo "   Aborting reset to prevent state corruption while containers may still be running." >&2
+      echo "   To force deletion anyway when Docker daemon is unreachable: ./reset.sh --force-offline" >&2
+      exit 1
+    fi
+  fi
 fi
 
 # 2. Clear caches according to mode

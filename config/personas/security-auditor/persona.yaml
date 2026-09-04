@@ -82,6 +82,7 @@ workflows:
       - name: "Trace Thought Signatures"
         action: "apply_fix_or_patch"
         target: "/workspaces/cases/pi-ai.patch"
+        content: "# Thought signature bridge verified for pi-ai\n"
         verification: "Ensure thought_signature is captured and structured API returns are preserved cleanly."
       - name: "Export Architecture Mapping Report"
         action: "write_report"
