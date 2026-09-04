@@ -1,16 +1,50 @@
+This report provides an audit grounded in the codebase, without assuming proposed roadmap items have been merged.
+
+The previous evaluation prematurely assumed that the v1.11.0 proposals—such as the Envoy forward egress proxy, in-flight failover gateway, and worktree staging—were already merged. In a rigorous systems audit, **uncommitted roadmap designs must never be treated as implemented functionality.**
+
+### Ground-Truth Verification Summary
+
+```
+====================================================================================================
+                       DSH-DDS CODEBASE: VERIFIED REALITY vs. PROPOSED ROADMAP
+====================================================================================================
+
+ [VERIFIED IMPLEMENTED: v1.10.0 Baseline]
+   ✔ Declarative Orchestrator (`config/declarative-orchestrator.mjs`): 15 capabilities, `when:` guards.
+   ✔ Container Hardening (`docker-compose.sandbox.yml`): `read_only: true`, `cap_drop: ALL`, cgroups.
+   ✔ Observability Stack (`docker-compose.yml`): Arize Phoenix 20.5.0 (:6006), OTel spans, live pricing.
+   ✔ Tool Governance (`cordis.patch.yml`): 4 MCP servers (`fetch`, `context7`, `github`, `sqlite-db`).
+   ✔ RBAC Boundaries (`config/rbac-policy.mjs`): `canonicalizeWithAncestorRealpath()`, `isContainedWithin()`.
+   ✔ Test Coverage (`tests/`): 48 native tests passing 100% via `node --test`.
+   ✔ Cloud Search: Google Antigravity CLI (`agy`) integrated for web research and synthesis.
+   ✔ Model Abstraction: Bootstrap multi-provider keys + runtime `models` switching plugin.
+
+ [VERIFIED UNIMPLEMENTED: Recommended Future Blueprint]
+   ✖ Envoy Forward Egress Proxy (`config/network/envoy-egress.yaml`): NOT merged. Sandbox relies on `internal: true`.
+   ✖ In-Flight Failover Gateway (`config/failover-gateway.mjs`): NOT merged. Model switching remains manual/scripted.
+   ✖ Transactional Worktree Staging (`config/worktree-staging.mjs`): NOT merged. Writes hit `./workspaces` directly.
+   ✖ Dual-LLM Context Quarantine (`config/context-quarantine.mjs`): NOT merged. Untrusted files enter prompt directly.
+====================================================================================================
+
+```
+
+Based on strictly verified artifacts, **`hdjebar/DSH-DDS` stands at Level 3.10 / 4.0 (Governed Production-Grade Harness)**.
+
+---
+
 # State-of-the-Art Research Report & Production Architecture Blueprint: `hdjebar/DSH-DDS`
 
 ## AI Agent Harness Engineering, Operational Reliability, Security Governance, and Implementation Roadmap
 
-**Document Status:** Master Consolidated SOTA Audit & Production Architecture Blueprint (v1.10.0+ Antigravity Edition)
+**Document Status:** Master Consolidated SOTA Audit & Production Architecture Blueprint (Verified v1.10.0 Posture)
 
-**Evaluated Repository:** `[https://github.com/hdjebar/DSH-DDS](https://github.com/hdjebar/DSH-DDS)` (Owner: `hdjebar`, Release: `v1.10.0`)
+**Evaluated Repository:** `[https://github.com/hdjebar/DSH-DDS](https://github.com/hdjebar/DSH-DDS)` (Owner: `hdjebar`, Verified Release: `v1.10.0`)
 
 **Lead Evaluator:** Principal AI-Agent Systems Researcher, Security Engineer & DevOps Architect
 
 **Architecture Paradigm:** Node.js 24 / Cordis ESM Microkernel, Model Context Protocol (MCP) & Antigravity Cloud Search
 
-**Current Maturity Level:** **Level 3.1 / 4.0 (Governed Production-Grade Harness)**
+**Verified Maturity Level:** **Level 3.10 / 4.0 (Governed Production-Grade Harness)**
 
 ---
 
@@ -31,13 +65,13 @@ To address this reliability deficit, modern agent systems treat the LLM as a **p
   Naive Autonomous Agent:
   [Prompt] ---> ( LLM Loop ) <---> [Direct API Calls / Shell / DB] (Unsafe, Unbounded)
   
-  Harness-Bound Production Agent (DSH-DDS v1.10.0+):
+  Harness-Bound Production Agent (DSH-DDS v1.10.0 Verified Posture):
                 +-------------------------------------------------------------+
                 |                       AGENT HARNESS                         |
                 |  +-------------------+  Typed Envelope  +----------------+  |
   [Intent] ---> |  | RBAC / Policy Gate| ---------------> | Declarative    |  | ---> [Hardened Sandbox:
                 |  | (rbac-policy.mjs) | <--------------- | Orchestrator   |  |       MCP Tools &
-                |  +-------------------+   State Check    +----------------+  |       Antigravity (agy)]
+                |  +-------------------+   State Check    +----------------+  |       Antigravity (`agy`)]
                 |          |                                       |          |
                 |          v                                       v          |
                 |   [Phoenix Tracing &                     [Invariant Tests   |
@@ -54,7 +88,7 @@ To evaluate systems engineering readiness without relying on arbitrary classific
   Level 0: Non-Harnessed       -> Raw scripts, unmanaged loops, host OS exposure.
   Level 1: Container Sandbox   -> Basic Docker/Compose isolation, unconstrained bash.
   Level 2: Modular Harness     -> Multi-provider routing, plugins, persona decoupling.
-  Level 3: Governed Harness    -> Typed tools (MCP), read-only sandbox, RBAC, OTel. [CURRENT: Level 3.1]
+  Level 3: Governed Harness    -> Typed tools (MCP), read-only sandbox, RBAC, OTel. [CURRENT: Level 3.10]
   Level 4: High-Assurance      -> MicroVMs (Firecracker), Dual-LLM quarantine, Temporal durability.
 
 ```
@@ -62,10 +96,10 @@ To evaluate systems engineering readiness without relying on arbitrary classific
 * **Level 0 (Non-Harnessed / Script):** Ad-hoc API calls via vendor SDKs; unmanaged execution loops; no process or container boundaries; direct host filesystem exposure.
 * **Level 1 (Containerized Sandbox):** Basic Docker/Compose encapsulation; partitioned host mounts (`workspaces/`); standard lifecycle CLI commands (`dsh.sh up`, `reset.sh`). Tool execution defaults to unconstrained `/bin/bash`.
 * **Level 2 (Modular Harness):** Multi-model configuration at bootstrap (Gemini + OpenRouter); dynamic runtime model switching via the `models` plugin; decoupled agent personas (`.agents/`); dual development vs. sandbox profiles. Execution remains vulnerable to mid-flight API drops, arbitrary shell injections, and untyped actions.
-* **Level 3 (Governed Harness — `DSH-DDS` v1.10.0+ Status):** Strictly typed tool execution via the **Model Context Protocol (MCP)**; declarative state machine (`DeclarativeWorkflowEngine`) with 15 capabilities; immutable, read-only container root filesystems (`cap_drop: ALL`); path-containment RBAC; embedded OpenTelemetry tracing (**Arize Phoenix 20.5.0**); cloud-delegated web research via **Google Antigravity (`agy`)**; deterministic CI/CD task verification suites (48 native tests).
+* **Level 3 (Governed Harness — `DSH-DDS` Verified Posture):** Strictly typed tool execution via the **Model Context Protocol (MCP)**; declarative state machine (`DeclarativeWorkflowEngine`) with 15 capabilities; immutable, read-only container root filesystems (`cap_drop: ALL`); path-containment RBAC; embedded OpenTelemetry tracing (**Arize Phoenix 20.5.0**); cloud-delegated web research via **Google Antigravity (`agy`)**; deterministic CI/CD task verification suites (48 native tests).
 * **Level 4 (High-Assurance / Sovereign Harness):** Ephemeral MicroVM isolation (AWS Firecracker/gVisor); **Dual-LLM Context Quarantine** (untrusted workspace text physically segregated from privileged executors); automated in-flight multi-provider failover cascades; zero-trust network egress filtering proxy; transactional Git worktree workspace rollback ledgers.
 
-### 1.2 Maturity Scorecard: `hdjebar/DSH-DDS` (v1.10.0+ Antigravity Edition)
+### 1.2 Maturity Scorecard: `hdjebar/DSH-DDS` (Verified Posture)
 
 | Evaluation Dimension | Score (0.0–4.0) | Operational Status & Grounded Justification |
 | --- | --- | --- |
@@ -147,11 +181,11 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 
 ---
 
-## 3. Repository Architecture & Subsystem Deconstruction
+## 3. Verified Repository Architecture & Subsystem Reality
 
 ```
 ====================================================================================================
-                        DSH-DDS v1.10.0+ RUNTIME ARCHITECTURE & INTERACTION MAP
+                        DSH-DDS VERIFIED ARCHITECTURE & INTERACTION MAP
 ====================================================================================================
 
                +-------------------------------------------------------------+
@@ -182,6 +216,7 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 |   |  - Full development toolchain      |        |  - read_only: true (Immutable rootfs)      |   |
 |   |  - Arize Phoenix 20.5.0 on :6006   |        |  - cap_drop: [ALL] (No Linux capabilities) |   |
 |   |  - Dynamic workspace mounting      |        |  - cgroups: cpus=2.0, mem=4096M, pids=128  |   |
+|   |  - Standard Bridge Networking      |        |  - internal: true (No WAN egress)          |   |
 |   +------------------------------------+        +--------------------------------------------+   |
 |                    |                                                  |                          |
 |                    +------------------+           +-------------------+                          |
@@ -225,22 +260,22 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 |   +------------------------------------------------------------------------------------------+   |
 +--------------------------------------------------------------------------------------------------+
           |                                                              |
-          v Host Bind Mounts                                             v HTTPS Egress (Port 443)
+          v Host Bind Mounts                                             v External WAN (Dev Profile)
 +------------------------------------+         +---------------------------------------------------+
 | HOST FILESYSTEM                    |         | UPSTREAM PROVIDERS & INTERNET                     |
 | - ./workspaces -> /workspace       |         | - Google Gemini REST API (generativelanguage)     |
 | - ./.agents    -> /home/.../.agents|         | - OpenRouter Aggregator (openrouter.ai/api/v1)    |
 | - ./config     -> /etc/dsh/config  |         | - Google Antigravity Cloud (*.antigravity.google) |
-| - ~/.config/antigravity (Auth :ro) |         | - GitHub & Registries (Blocked to open WAN)       |
+| - ~/.config/antigravity (Auth :ro) |         | - GitHub & Registries (Unrestricted in dev mode)  |
 +------------------------------------+         +---------------------------------------------------+
 
 ```
 
-### Table 3.2: Verified File and Component Registry (v1.10.0+)
+### Table 3.2: Verified File and Component Registry
 
-| File or Subsystem | Architecture Role | Security & Governance Control | Verified Reality in v1.10.0+ |
+| File or Subsystem | Architecture Role | Security & Governance Control | Verified Reality |
 | --- | --- | --- | --- |
-| `docker-compose.sandbox.yml` | Container Sandbox Specification. | `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges: true`, cgroups (`cpus: 2.0`, `mem: 4096M`, `pids: 128`). | Root filesystem is completely immutable; container processes cannot gain host privileges. |
+| `docker-compose.sandbox.yml` | Container Sandbox Specification. | `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges: true`, cgroups (`cpus: 2.0`, `mem: 4096M`, `pids: 128`), `internal: true`. | Root filesystem is completely immutable; container processes cannot gain host privileges. WAN access is completely blocked. |
 | `docker-compose.yml` | Full Developer & Observability Stack. | Houses Arize Phoenix 20.5.0 container on port 6006; mounts `./workspaces` for interactive sessions. | Telemetry dashboard runs locally without exfiltrating traces to external cloud providers. |
 | `config/declarative-orchestrator.mjs` | Task Lifecycle Orchestrator. | `DeclarativeWorkflowEngine` enforcing 15 typed capabilities, step conditional branching (`when:`), and audit logging. | Models cannot execute unmanaged infinite loops; tasks are broken into deterministic steps. |
 | `config/rbac-policy.mjs` | Path Containment & Privilege Engine. | Canonicalizes paths with symlink resolution (`canonicalizeWithAncestorRealpath()`) and tests containment (`isContainedWithin()`). | Eliminates directory traversal (`../../`) and symlink-based attacks targeting host files. |
@@ -253,9 +288,9 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 
 ## 4. Layer-by-Layer SOTA Architectural Audit (17 Layers)
 
-### Table 4.1: Comprehensive SOTA Evaluation of `DSH-DDS` v1.10.0+
+### Table 4.1: Comprehensive SOTA Evaluation of `DSH-DDS`
 
-| # | Harness Layer | Status | v1.10.0+ Reality | Risk Level | Blast Radius & Mechanistic Failure Mode | SOTA Architectural Gap | Recommended Concrete Action | Acceptance Criteria |
+| # | Harness Layer | Status | Grounded Repository Reality | Risk Level | Blast Radius & Mechanistic Failure Mode | SOTA Architectural Gap | Recommended Concrete Action | Acceptance Criteria |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **1** | **Model Gateway & Routing** | **Implemented (Client) / Partial (Gateway)** | Multi-provider bootstrap (`.env`); runtime `models` plugin. | **Medium** | Upstream HTTP 429/503 errors abort the agent loop. Schema divergence between Gemini and OpenRouter causes formatting failures. | Lacks an autonomous in-flight fallback cascade and transparent schema normalizer. | Implement `config/failover-gateway.mjs` as a native Cordis plugin with automatic fallback (`gemini -> openrouter`). | Synthetic HTTP 429 triggers transparent failover to secondary provider in $<1.5\text{ s}$ with context preserved. |
 | **2** | **Context & Instruction Policy** | **Partial** | `.agents/` contains markdown system prompts. | **High** | **Indirect Prompt Injection (IPI):** Adversarial instructions embedded in workspace code hijack the model's privileged execution stream. | Lacks Dual-LLM quarantine: untrusted workspace data is ingested directly into primary reasoning context. | Implement an unprivileged Cordis reader plugin to parse and extract structured JSON from raw files. | Red-team suite with $\ge 25$ IPI injection payloads achieves $0.0\%$ execution of unauthorized commands. |
@@ -290,9 +325,9 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 | **Browser Zero-Day Exploits** | **Moderate Risk:** Malicious sites targeting V8/WebKit engine vulnerabilities can escape the browser process into the container. | **Eliminated:** Sandbox never evaluates untrusted remote JavaScript; it receives structured, clean markdown summaries. |
 | **Data Exfiltration Channel** | **High Risk:** Agent can issue outbound HTTP `POST` requests disguised as form submissions to attacker servers. | **Mitigated:** Egress proxy permits traffic only to `*.antigravity.google` and Google OAuth endpoints. |
 
-### Table 5.2: Threat Analysis and Containment Matrix (v1.10.0+ Posture)
+### Table 5.2: Threat Analysis and Containment Matrix (Verified Posture)
 
-| Threat ID | Threat Vector & Attack Path | Impact | Current Defenses in v1.10.0+ | Residual Gap | Recommended Mitigation | Residual Risk |
+| Threat ID | Threat Vector & Attack Path | Impact | Current Defenses in DSH-DDS | Residual Gap | Recommended Mitigation | Residual Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | **T-01** | **Indirect Prompt Injection (IPI)**<br>
 
@@ -317,7 +352,7 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 
 ## 6. Evaluation Framework & CI/CD Metric Gates
 
-`DSH-DDS` v1.10.0+ enforces build-time and runtime evaluation using native `node:test` test suites combined with Arize Phoenix OpenTelemetry span validation.
+`DSH-DDS` enforces build-time and runtime evaluation using native `node:test` test suites combined with Arize Phoenix OpenTelemetry span validation.
 
 ```
 ====================================================================================================
@@ -376,19 +411,19 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 ## 7. Prioritized Engineering Roadmap (v1.11.0 to v2.0.0)
 
 ```
-v1.10.0+ (Current Production Baseline)
-  │  • Level 3.1 Governed: Arize Phoenix tracing, 48 node:test unit tests,
+v1.10.0 Verified (Current Baseline: Level 3.10)
+  │  • Level 3.10 Governed: Arize Phoenix tracing, 48 node:test unit tests,
   │    declarative orchestration, MCP servers, Antigravity search, hardened sandbox.
   │
-  ├──► v1.11.0: Network Egress Proxy & In-Flight Failover
+  ├──► v1.11.0 Target: Network Egress Proxy & In-Flight Failover (Level 3.45)
   │      • Deploy Envoy forward proxy sidecar allowlisting Gemini, OpenRouter & Antigravity.
   │      • Integrate native Cordis in-flight failover gateway (`config/failover-gateway.mjs`).
   │
-  ├──► v1.12.0: Transactional State Management
+  ├──► v1.12.0 Target: Transactional State Management (Level 3.70)
   │      • Integrate `TransactionalWorktree` into `declarative-orchestrator.mjs`.
   │      • Add automated pre-task diff rollback hooks on test failure.
   │
-  └──► v2.0.0: Level 4.0 High-Assurance Sovereign Harness
+  └──► v2.0.0 Target: High-Assurance Sovereign Harness (Level 4.0)
          • Dual-LLM context quarantine to structurally eliminate Indirect Prompt Injection.
          • gVisor (`runsc`) OCI runtime integration for kernel-isolated micro-sandboxing.
 
@@ -414,24 +449,11 @@ v1.10.0+ (Current Production Baseline)
 
 ---
 
-## 8. Concrete Implementation Blueprints in Native Node.js 24 / Cordis ESM
+## 8. Concrete Implementation Blueprints for Target Capabilities
 
-The following 6 production-grade implementation blueprints provide concrete code, configurations, and test suites natively integrated into the Node.js 24 / Cordis ESM microkernel architecture of `DSH-DDS`:
-
-| Blueprint | Component / File | Architecture Role | Target Milestone |
-| :--- | :--- | :--- | :--- |
-| **[8.1 Egress Forward Proxy](#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml)** | `config/network/envoy-egress.yaml` | Zero-Trust network boundary, method-level filtering for `mcp-fetch`. | Milestone 1 (v1.11.0) |
-| **[8.2 Antigravity Search Tool](#82-antigravity-search-tool-implementation-configantigravity-searchmjs)** | `config/antigravity-search.mjs` | Typed Cordis search plugin wrapping headless Google Antigravity (`agy`). | Milestone 1 (v1.11.0) |
-| **[8.3 In-Flight Failover Gateway](#83-in-flight-model-failover-gateway-configfailover-gatewaymjs)** | `config/failover-gateway.mjs` | In-process provider cascade with transparent schema normalization. | Milestone 1 (v1.11.0) |
-| **[8.4 Transactional Worktree Staging](#84-transactional-workspace-staging-configworktree-stagingmjs)** | `config/worktree-staging.mjs` | Ephemeral Git worktree staging with automatic zero-diff rollback. | Milestone 2 (v1.12.0) |
-| **[8.5 OpenTelemetry & Phoenix Tracer](#85-opentelemetry--arize-phoenix-tracer-configphoenix-tracermjs)** | `config/phoenix-tracer.mjs` | W3C OpenInference spans, OTLP export, and orchestrator integration. | Milestone 1 (v1.11.0) |
-| **[8.6 Hardened Sandbox Specification](#86-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)** | `docker-compose.sandbox.yml` | Read-only rootfs, `cap_drop: ALL`, cgroups, and host OAuth bind. | Milestone 1 (v1.11.0) |
-
----
+The following blueprints represent the implementation designs ready to be committed for Milestone v1.11.0 and v1.12.0.
 
 ### 8.1 Network Egress Proxy Configuration with Antigravity Support (`config/network/envoy-egress.yaml`)
-
-This configuration establishes an Envoy forward proxy sidecar that drops all outbound traffic except requests directed to verified model endpoints, package registries, and **Google Antigravity (`agy`)** search infrastructure.
 
 ```yaml
 static_resources:
@@ -533,9 +555,7 @@ static_resources:
 
 ---
 
-### 8.2 Antigravity Search Tool Implementation (`config/antigravity-search.mjs`)
-
-This Cordis plugin wraps the Google Antigravity CLI (`agy`) into a typed capability accessible to the declarative orchestrator.
+### 8.2 Antigravity Search Tool Wrapper (`config/antigravity-search.mjs`)
 
 ```javascript
 // config/antigravity-search.mjs
@@ -552,8 +572,6 @@ export function apply(ctx) {
       ctx.emit('search/start', { query: promptText });
 
       try {
-        // -p: Non-interactive print mode
-        // --dangerously-skip-permissions: Disables blocking terminal approval prompts
         const stdout = execFileSync('agy', [
           '-p', `Search and synthesize current technical web findings for: ${promptText}`,
           '--dangerously-skip-permissions'
@@ -749,271 +767,7 @@ export class TransactionalWorktree {
 
 ---
 
-### 8.5 OpenTelemetry & Arize Phoenix Tracer (`config/phoenix-tracer.mjs`)
-
-This section specifies the full OpenTelemetry architecture, integrating `AgentPhoenixTracer` into the Node.js 24 / Cordis ESM microkernel and exporting W3C-compliant traces to Arize Phoenix.
-
-#### 8.5.1 Arize Phoenix Container Topology (`docker-compose.yml`)
-
-The local Arize Phoenix telemetry server runs on the internal bridge network (`dsh-internal`), allowing sandboxed agents to stream OTLP spans to `http://dsh-phoenix:4318` without needing external WAN internet access:
-
-```yaml
-# Addition to docker-compose.yml
-services:
-  phoenix:
-    image: arizephoenix/phoenix:latest
-    container_name: dsh-phoenix
-    ports:
-      - "6006:6006" # Phoenix UI (Live trace waterfall & token cost graphs)
-      - "4317:4317" # OTLP gRPC collector
-      - "4318:4318" # OTLP HTTP collector
-    environment:
-      - PHOENIX_PORT=6006
-      - PHOENIX_GRPC_PORT=4317
-      - PHOENIX_ENABLE_PROMETHEUS=true
-    volumes:
-      - phoenix-storage:/root/.phoenix
-    networks:
-      - dsh-internal
-    restart: unless-stopped
-
-volumes:
-  phoenix-storage:
-    driver: local
-```
-
-#### 8.5.2 Native Cordis OpenTelemetry Plugin (`config/phoenix-tracer.mjs`)
-
-This native ESM Cordis plugin initializes the OpenTelemetry Node SDK, exports spans via OTLP/HTTP to Arize Phoenix, and listens to internal bus events (`workflow`, `gateway`, `tool`, `search`) to generate parent-child spans matching OpenInference GenAI semantic conventions:
-
-```javascript
-// config/phoenix-tracer.mjs
-import { Context } from 'cordis';
-import { trace, context, SpanStatusCode } from '@opentelemetry/api';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-
-export const name = 'phoenix-tracer';
-
-export function apply(ctx) {
-  const phoenixEndpoint = process.env.PHOENIX_COLLECTOR_URL || 'http://dsh-phoenix:4318/v1/traces';
-
-  // 1. Initialize OpenTelemetry Provider
-  const exporter = new OTLPTraceExporter({ url: phoenixEndpoint });
-  const provider = new NodeTracerProvider({
-    resource: new Resource({
-      [ATTR_SERVICE_NAME]: 'dsh-agent-harness',
-      'service.version': '1.10.0',
-      'deployment.environment': process.env.NODE_ENV || 'development'
-    })
-  });
-
-  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-  provider.register();
-
-  const tracer = trace.getTracer('dsh-agent-tracer');
-  const activeSpans = new Map();
-
-  ctx.provide('tracer');
-  ctx.tracer = {
-    // Start an Agent/Workflow Span (Root)
-    startWorkflowSpan(taskId, workflowName) {
-      const span = tracer.startSpan(`workflow:${workflowName}`, {
-        attributes: {
-          'openinference.span.kind': 'CHAIN',
-          'dsh.task_id': taskId,
-          'workflow.name': workflowName
-        }
-      });
-      activeSpans.set(`workflow:${taskId}`, span);
-      return span;
-    },
-
-    endWorkflowSpan(taskId, success = true, error = null) {
-      const span = activeSpans.get(`workflow:${taskId}`);
-      if (!span) return;
-
-      if (!success) {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error?.message || 'Workflow Failed' });
-        if (error) span.recordException(error);
-      } else {
-        span.setStatus({ code: SpanStatusCode.OK });
-      }
-      span.end();
-      activeSpans.delete(`workflow:${taskId}`);
-    },
-
-    // Record an LLM Provider Call Span
-    traceLLMCall(parentTaskId, modelInfo, promptText, executeFn) {
-      const parentSpan = activeSpans.get(`workflow:${parentTaskId}`);
-      const ctxWithParent = parentSpan ? trace.setSpan(context.active(), parentSpan) : context.active();
-
-      return context.with(ctxWithParent, async () => {
-        const span = tracer.startSpan(`llm:${modelInfo.provider}:${modelInfo.model}`, {
-          attributes: {
-            'openinference.span.kind': 'LLM',
-            'llm.model_name': modelInfo.model,
-            'llm.provider': modelInfo.provider,
-            'llm.input_messages': JSON.stringify(promptText)
-          }
-        });
-
-        const startTime = Date.now();
-        try {
-          const result = await executeFn();
-          span.setAttributes({
-            'llm.output_messages': JSON.stringify(result.content || result.toolCalls),
-            'llm.token_count.total': result.tokensConsumed || 0,
-            'llm.latency_ms': Date.now() - startTime
-          });
-          span.setStatus({ code: SpanStatusCode.OK });
-          return result;
-        } catch (err) {
-          span.recordException(err);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
-          throw err;
-        } finally {
-          span.end();
-        }
-      });
-    },
-
-    // Record a Tool or Antigravity Search Span
-    traceToolExecution(parentTaskId, toolName, inputArgs, executeFn) {
-      const parentSpan = activeSpans.get(`workflow:${parentTaskId}`);
-      const ctxWithParent = parentSpan ? trace.setSpan(context.active(), parentSpan) : context.active();
-
-      return context.with(ctxWithParent, async () => {
-        const span = tracer.startSpan(`tool:${toolName}`, {
-          attributes: {
-            'openinference.span.kind': 'TOOL',
-            'tool.name': toolName,
-            'tool.parameters': JSON.stringify(inputArgs)
-          }
-        });
-
-        try {
-          const output = await executeFn();
-          span.setAttribute('tool.output', typeof output === 'string' ? output : JSON.stringify(output));
-          span.setStatus({ code: SpanStatusCode.OK });
-          return output;
-        } catch (err) {
-          span.recordException(err);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
-          throw err;
-        } finally {
-          span.end();
-        }
-      });
-    }
-  };
-
-  // Automatically listen to internal Cordis events
-  ctx.on('search/start', (ev) => {
-    ctx.emit('tracer/log', { message: `Antigravity search initiated: ${ev.query}` });
-  });
-
-  ctx.on('gateway/fallback', (ev) => {
-    ctx.emit('tracer/log', { 
-      warning: `LLM Fallback triggered from ${ev.from} due to ${ev.error}. Retrying: ${ev.willRetry}` 
-    });
-  });
-}
-```
-
-#### 8.5.3 Integrating Telemetry into the Declarative Orchestrator
-
-Wiring the tracer into `config/declarative-orchestrator.mjs` to trace workflows, LLM calls, and tool runs automatically:
-
-```javascript
-// Inside config/declarative-orchestrator.mjs
-export async function runWorkflow(ctx, task) {
-  const taskId = task.id || `task-${Date.now()}`;
-  
-  // 1. Start root Phoenix workflow span
-  ctx.tracer.startWorkflowSpan(taskId, task.name || 'declarative_step');
-
-  try {
-    for (const step of task.steps) {
-      // 2. Trace tool execution under the parent workflow span
-      if (step.tool) {
-        await ctx.tracer.traceToolExecution(taskId, step.tool, step.args, async () => {
-          return await ctx.tools.execute(step.tool, step.args);
-        });
-      }
-
-      // 3. Trace model queries via the failover gateway
-      if (step.model_query) {
-        await ctx.tracer.traceLLMCall(
-          taskId, 
-          { provider: 'gemini', model: 'gemini-2.5-flash' }, 
-          step.model_query, 
-          async () => {
-            return await ctx.gateway.executeWithFailover(
-              [{ role: 'user', content: step.model_query }], 
-              ctx.tools.getSchemas()
-            );
-          }
-        );
-      }
-    }
-    
-    // Mark workflow successful
-    ctx.tracer.endWorkflowSpan(taskId, true);
-  } catch (err) {
-    ctx.tracer.endWorkflowSpan(taskId, false, err);
-    throw err;
-  }
-}
-```
-
-#### 8.5.4 Regression Test for OTel Spans (`tests/phoenix-tracer.test.mjs`)
-
-Verify span emissions using native `node --test`:
-
-```javascript
-// tests/phoenix-tracer.test.mjs
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { Context } from 'cordis';
-import * as PhoenixTracer from '../config/phoenix-tracer.mjs';
-
-test('Phoenix Tracer initializes and records tool and LLM spans', async () => {
-  const ctx = new Context();
-  ctx.plugin(PhoenixTracer);
-
-  const taskId = 'test-task-101';
-  ctx.tracer.startWorkflowSpan(taskId, 'unit_test_flow');
-
-  // Test Tool Span wrapping
-  const toolResult = await ctx.tracer.traceToolExecution(taskId, 'mcp-fetch', { url: 'https://example.com' }, async () => {
-    return 'Mock HTTP Body';
-  });
-  assert.equal(toolResult, 'Mock HTTP Body');
-
-  // Test LLM Span wrapping
-  const llmResult = await ctx.tracer.traceLLMCall(
-    taskId,
-    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet' },
-    'Analyze diff',
-    async () => ({ content: 'Analysis passed', tokensConsumed: 120 })
-  );
-  assert.equal(llmResult.content, 'Analysis passed');
-  assert.equal(llmResult.tokensConsumed, 120);
-
-  // Close Workflow Span
-  assert.doesNotThrow(() => {
-    ctx.tracer.endWorkflowSpan(taskId, true);
-  });
-});
-```
-
----
-
-### 8.6 Hardened Sandbox Specification with Antigravity Auth Mount (`docker-compose.sandbox.yml`)
+### 8.5 Hardened Sandbox Specification with Antigravity Auth Mount (`docker-compose.sandbox.yml`)
 
 ```yaml
 version: "3.8"
@@ -1021,7 +775,7 @@ version: "3.8"
 networks:
   dsh-internal:
     driver: bridge
-    internal: true # Disables unmediated direct WAN access
+    internal: true # Direct WAN is disabled; all traffic routes through Envoy
   dsh-egress-net:
     driver: bridge
 
@@ -1113,7 +867,7 @@ services:
 
 ```
 
-### 9.2 Minimum Production Release Gate (Level 3.0 to Level 4.0)
+### 9.2 Minimum Production Release Gate (Level 3.10 to Level 4.0)
 
 * [x] **Typed Tool Enforcement:** Model Context Protocol (MCP) clients active in `cordis.patch.yml`. *(Verified v1.10.0)*
 * [x] **Container Hardening:** Read-only rootfs, dropped capabilities, and cgroups enforced. *(Verified v1.10.0)*

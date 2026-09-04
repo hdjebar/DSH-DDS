@@ -108,11 +108,11 @@ Every feature, pull request, and upgrade in the roadmap must adhere to these 10 
 
 ## 🛠️ Production Blueprints Directory
 
-All production implementation blueprints are written in **Node.js 24 / Cordis ESM** and can be viewed directly in [Section 8 of `SOTA-ResearchReport-ProductionArch.md`](SOTA-ResearchReport-ProductionArch.md#8-concrete-implementation-blueprints-in-native-nodejs-24--cordis-esm):
+All production implementation blueprints are written in **Node.js 24 / Cordis ESM** and can be viewed directly in [Section 8 of `SOTA-ResearchReport-ProductionArch.md`](SOTA-ResearchReport-ProductionArch.md#8-concrete-implementation-blueprints-for-target-capabilities):
 
 1. 🔒 **[8.1 Envoy Network Egress Proxy (`config/network/envoy-egress.yaml`)](SOTA-ResearchReport-ProductionArch.md#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml)**
-2. 🔍 **[8.2 Google Antigravity Search Tool (`config/antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-implementation-configantigravity-searchmjs)**
+2. 🔍 **[8.2 Google Antigravity Search Tool (`config/antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-wrapper-configantigravity-searchmjs)**
 3. ⚡ **[8.3 In-Flight Model Failover Gateway (`config/failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs)**
 4. 🌲 **[8.4 Transactional Git Worktree Staging (`config/worktree-staging.mjs`)](SOTA-ResearchReport-ProductionArch.md#84-transactional-workspace-staging-configworktree-stagingmjs)**
-5. 📊 **[8.5 OpenTelemetry & Arize Phoenix Tracer (`config/phoenix-tracer.mjs`)](SOTA-ResearchReport-ProductionArch.md#85-opentelemetry--arize-phoenix-tracer-configphoenix-tracermjs)**
-6. 🛡️ **[8.6 Hardened Compose Sandbox (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#86-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)**
+5. 🛡️ **[8.5 Hardened Compose Sandbox (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#85-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)**
+
