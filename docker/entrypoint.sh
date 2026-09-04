@@ -20,7 +20,6 @@ prepare_sandbox_home() {
       --exclude='./sessions' \
       --exclude='./storages' \
       --exclude='./phoenix' \
-      --exclude='./profiles/web/cordis.patch.yml' \
       -cf - . | tar --no-same-owner -C "$DSH_HOME" -xf -
   fi
 
@@ -96,4 +95,8 @@ if [ "$#" -gt 0 ]; then
 fi
 
 echo "[dsh] Launching DeepSeek Harness native service (0.0.0.0:${PORT:-3080})..."
-exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --patch "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
+if [ "${DSH_SANDBOX:-0}" = "1" ]; then
+  exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web
+else
+  exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --patch "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
+fi
