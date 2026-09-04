@@ -115,9 +115,9 @@ Run the automated diagnostic suite to verify container health, API credentials, 
 
 ## 💡 Why This Exists
 
-1. **Your prompts stay yours**: Cloud-hosted tracing tools send sensitive prompts, codebases, and credentials to external SaaS vendors. Phoenix runs locally on an internal Docker bridge (`127.0.0.1:6006`); no telemetry leaves your machine. Essential for EU AI Act, DORA, and NIS 2 data sovereignty.
-2. **One frontier model for every task is expensive**: Running every trivial tool execution through Claude 3.5 Sonnet or GPT-4o inflates costs. Personas decouple work into calibrated model tiers — flash models handle drafting while reasoning tiers are invoked selectively.
-3. **Prompt engineering in chat isn't reproducible**: Ad-hoc conversational prompt tweaks are easily lost. Personas encapsulate domain skills, model tiers, and MCP tools into **version-controlled declarative packages (`persona.yaml` + `SKILL.md`)** tracked directly in Git.
+1. **Keep telemetry under your control**: Cloud tracing services can receive prompts, code, and tool data. Phoenix runs locally on the Docker network and is exposed at `127.0.0.1:6006`, so traces stay on the host unless you explicitly export them. This supports data-governance controls relevant to EU AI Act, DORA, and NIS2 programs; it is not compliance by itself.
+2. **Match model cost to task complexity**: Sending every step to a premium frontier model is expensive. Personas route routine drafting and tool work to fast/flash tiers and reserve reasoning tiers for complex analysis, with the active provider and model defined in configuration.
+3. **Make agent behavior reproducible**: Chat-only prompt changes are easy to lose. Personas package domain rules, model tiers, MCP tools, and workflows as **version-controlled declarative assets (`persona.yaml` + `SKILL.md`)** tracked in Git.
 
 ---
 
