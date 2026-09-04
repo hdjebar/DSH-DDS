@@ -46,6 +46,9 @@ chmod +x install_dsh.sh
 
 # 2. Run the turnkey installer (scaffolds environment & prompts for keys)
 ./install_dsh.sh
+
+# 3. Launch the container stack
+./dsh.sh up
 ```
 
 #### Path B: Clone the Repository

@@ -154,7 +154,7 @@ function listPersonas() {
   console.log('========================================================================');
 }
 
-function createPersona(name, templateName = 'data-analyst') {
+export function createPersona(name, templateName = 'data-analyst') {
   ensureDirs();
   const safeName = validateSlug(name, 'persona name');
   const safeTemplate = validateSlug(templateName, 'template name');
@@ -168,15 +168,15 @@ function createPersona(name, templateName = 'data-analyst') {
     return;
   }
 
-  fs.mkdirSync(targetDir, { recursive: true });
-  fs.mkdirSync(targetSkillDir, { recursive: true });
-
   const templateDir = path.join(TEMPLATES_DIR, safeTemplate);
   if (!fs.existsSync(templateDir)) {
     console.error(`❌ Error: Template '${safeTemplate}' not found in config/templates/personas/`);
     process.exitCode = 1;
     return;
   }
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.mkdirSync(targetSkillDir, { recursive: true });
 
   for (const file of fs.readdirSync(templateDir)) {
     let content = fs.readFileSync(path.join(templateDir, file), 'utf8');
@@ -348,13 +348,27 @@ export async function runWorkflow(name, workflowKey, options = {}) {
   console.log(`🚀 Executing authoritative declarative workflow '\x1b[36m${safeWfKey}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m' (Model Tier: \x1b[33m${tier}\x1b[0m)...`);
 
   const engine = new DeclarativeWorkflowEngine(meta);
-  const result = await engine.executeWorkflow(safeWfKey, options.context || {});
+  const workflowContext = { ...(options.context || {}) };
+  if (options.approved) {
+    workflowContext.approved = true;
+  }
+  const result = await engine.executeWorkflow(safeWfKey, workflowContext);
 
-  console.log(`\n✅ Workflow '\x1b[36m${safeWfKey}\x1b[0m' completed with status: \x1b[32m${result.status}\x1b[0m (Trace: ${result.traceId})`);
+  if (result.status === 'SUSPENDED_APPROVAL_REQUIRED') {
+    console.log(`\n⏸️  Workflow '\x1b[36m${safeWfKey}\x1b[0m' suspended: \x1b[33mApproval required\x1b[0m`);
+    console.log(`   ${result.suspendedReason}`);
+    console.log(`   To approve and resume this workflow, run with: --approve`);
+  } else if (result.status === 'FAILED') {
+    console.error(`\n❌ Workflow '\x1b[36m${safeWfKey}\x1b[0m' failed: ${result.error || 'Step failure'}`);
+  } else {
+    console.log(`\n✅ Workflow '\x1b[36m${safeWfKey}\x1b[0m' completed with status: \x1b[32m${result.status}\x1b[0m (Trace: ${result.traceId})`);
+  }
+
   if (Array.isArray(result.executionLogs)) {
     for (const [idx, log] of result.executionLogs.entries()) {
       const outSummary = log.output ? (typeof log.output === 'object' ? JSON.stringify(log.output).slice(0, 80) : String(log.output).slice(0, 80)) : '';
-      console.log(`   [${idx + 1}/${result.executionLogs.length}] ✔ ${log.step} (${log.action}) ➔ \x1b[32m${log.status}\x1b[0m ${outSummary}`);
+      const color = log.status === 'SUCCESS' ? '\x1b[32m' : (log.status === 'GATED' ? '\x1b[33m' : '\x1b[31m');
+      console.log(`   [${idx + 1}/${result.executionLogs.length}] ✔ ${log.step} (${log.action}) ➔ ${color}${log.status}\x1b[0m ${outSummary}`);
     }
   }
 
@@ -381,6 +395,9 @@ export function parsePersonaArgs(argv) {
   let template = 'data-analyst';
   let sessionId = null;
   let title = null;
+  let approved = false;
+  let context = {};
+  let forceHostUnsafe = false;
   const positionalArgs = [];
 
   for (let i = 1; i < argv.length; i++) {
@@ -425,6 +442,25 @@ export function parsePersonaArgs(argv) {
     } else if (arg.startsWith('--title=')) {
       title = arg.slice(8);
       if (!title) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg === '--approve' || arg === '--approved') {
+      approved = true;
+    } else if (arg === '--force-host-unsafe') {
+      forceHostUnsafe = true;
+    } else if (arg === '--context') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      try {
+        context = JSON.parse(argv[++i]);
+      } catch (err) {
+        throw new Error(`Invalid JSON for option '--context': ${err.message}`);
+      }
+    } else if (arg.startsWith('--context=')) {
+      try {
+        context = JSON.parse(arg.slice(10));
+      } catch (err) {
+        throw new Error(`Invalid JSON for option '--context': ${err.message}`);
+      }
     } else if (arg.startsWith('-')) {
       throw new Error(`Unknown option '${arg}'`);
     } else {
@@ -432,13 +468,13 @@ export function parsePersonaArgs(argv) {
     }
   }
 
-  return { command, tier, profile, template, sessionId, title, positionalArgs };
+  return { command, tier, profile, template, sessionId, title, approved, context, forceHostUnsafe, positionalArgs };
 }
 
 // Direct CLI Execution
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename || '')) {
   try {
-    const { command, tier, profile, template, sessionId, title, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
+    const { command, tier, profile, template, sessionId, title, approved, context, forceHostUnsafe, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
 
     switch (command) {
       case 'list':
@@ -472,7 +508,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
 
       case 'workflow':
       case 'wf':
-        await runWorkflow(positionalArgs[0], positionalArgs[1]);
+        const wfResult = await runWorkflow(positionalArgs[0], positionalArgs[1], { approved, context });
+        if (wfResult && (wfResult.status === 'FAILED' || wfResult.status === 'ERROR')) {
+          process.exit(1);
+        }
         break;
 
       case 'show':

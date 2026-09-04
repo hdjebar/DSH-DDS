@@ -56,26 +56,17 @@ function safeErrorSnippet(rawText) {
 
 async function checkDshEngine() {
   console.log('\n🔍 [1/9] DeepSeek Harness Engine:');
+  const dshPort = process.env.PORT || process.env.DSH_PORT || '3080';
+  const dshUrl = `http://127.0.0.1:${dshPort}/`;
   try {
-    const res = await fetch('http://127.0.0.1:3079/');
+    const res = await fetch(dshUrl);
     if (res.ok) {
-      pass('DSH Internal Engine', 'Listening on 127.0.0.1:3079 (HTTP 200)');
+      pass('DSH Service', `Listening on 0.0.0.0:${dshPort} (HTTP 200)`);
     } else {
-      warn('DSH Internal Engine', `Responded with status ${res.status}`);
+      warn('DSH Service', `Responded with status ${res.status}`);
     }
   } catch (err) {
-    fail('DSH Internal Engine', `Cannot connect to 127.0.0.1:3079 (${err.message})`);
-  }
-
-  try {
-    const res = await fetch('http://127.0.0.1:3080/');
-    if (res.ok) {
-      pass('DSH Proxy Gateway', 'Listening on 0.0.0.0:3080 (HTTP 200)');
-    } else {
-      warn('DSH Proxy Gateway', `Responded with status ${res.status}`);
-    }
-  } catch (err) {
-    fail('DSH Proxy Gateway', `Cannot connect to 127.0.0.1:3080 (${err.message})`);
+    fail('DSH Service', `Cannot connect to 127.0.0.1:${dshPort} (${err.message})`);
   }
 }
 

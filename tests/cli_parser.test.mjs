@@ -195,3 +195,45 @@ test('Secret Scrubber: redacts Google AI Studio keys and GitHub fine-grained PAT
   assert.ok(scrubbed.includes('[REDACTED_GITHUB_PAT]'));
   assert.ok(scrubbed.includes('[REDACTED_API_KEY]'));
 });
+
+test('CLI Parser: workflow approval options (--approve, --approved)', () => {
+  const parsed1 = parsePersonaArgs(['workflow', 'security-auditor', 'incident_triage', '--approve']);
+  assert.equal(parsed1.command, 'workflow');
+  assert.equal(parsed1.approved, true);
+
+  const parsed2 = parsePersonaArgs(['wf', 'security-auditor', 'incident_triage', '--approved']);
+  assert.equal(parsed2.command, 'wf');
+  assert.equal(parsed2.approved, true);
+});
+
+test('CLI Parser: context options (--context and --context=)', () => {
+  const parsed1 = parsePersonaArgs(['workflow', 'sec', 'wf', '--context', '{"case_id":"123"}']);
+  assert.deepEqual(parsed1.context, { case_id: '123' });
+
+  const parsed2 = parsePersonaArgs(['workflow', 'sec', 'wf', '--context={"case_id":"456"}']);
+  assert.deepEqual(parsed2.context, { case_id: '456' });
+
+  assert.throws(() => parsePersonaArgs(['workflow', 'sec', 'wf', '--context', '{invalid']), /Invalid JSON/);
+});
+
+test('CLI Parser: accepts --force-host-unsafe flag', () => {
+  const parsed = parsePersonaArgs(['workflow', 'sec', 'wf', '--force-host-unsafe']);
+  assert.equal(parsed.forceHostUnsafe, true);
+});
+
+test('Persona Creation: transactional creation does not leave partial dir on invalid template (AUD-013)', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { createPersona } = await import('../config/persona.mjs');
+
+  const testPersonaName = 'tmp-test-invalid-tmpl-' + Date.now();
+  const targetDir = path.join(process.cwd(), 'config', 'personas', testPersonaName);
+
+  const prevExitCode = process.exitCode;
+  try {
+    createPersona(testPersonaName, 'non-existent-template-xyz');
+    assert.equal(fs.existsSync(targetDir), false, 'target directory must not exist after invalid template creation');
+  } finally {
+    process.exitCode = prevExitCode || 0;
+  }
+});

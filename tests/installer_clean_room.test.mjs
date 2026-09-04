@@ -14,19 +14,21 @@ test('Clean-room Installer: provisions full topology in isolated directory', () 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-clean-room-'));
 
   try {
-    // Copy only install_dsh.sh and Dockerfile into a completely separate runner dir
+    // Copy only install_dsh.sh into a completely separate runner dir
     const runnerDir = path.join(tmpDir, 'runner');
     const installTarget = path.join(tmpDir, 'installed');
     fs.mkdirSync(runnerDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'install_dsh.sh'), path.join(runnerDir, 'install_dsh.sh'));
 
-    // Execute install_dsh.sh pointing DSH_INSTALL to installTarget from repository ROOT
-    execSync(`bash ${path.join(ROOT, 'install_dsh.sh')}`, {
+    // Execute install_dsh.sh pointing DSH_INSTALL to installTarget from isolated runnerDir
+    execSync(`bash install_dsh.sh`, {
       env: {
         ...process.env,
         DSH_INSTALL: installTarget,
+        DSH_SOURCE_DIR: ROOT,
         SKIP_DOCKER_CHECKS: 'true'
       },
-      cwd: ROOT,
+      cwd: runnerDir,
       stdio: 'pipe'
     });
 
@@ -37,6 +39,29 @@ test('Clean-room Installer: provisions full topology in isolated directory', () 
     assert.ok(fs.existsSync(path.join(installTarget, 'config', 'personas', 'security-auditor', 'persona.yaml')));
     assert.ok(fs.existsSync(path.join(installTarget, 'dsh.sh')));
     assert.ok(fs.existsSync(path.join(installTarget, 'docker-compose.yml')));
+
+    // AUD-014: Test idempotency and file preservation on rerun
+    const customMarker = '# Custom user modification';
+    const patchFile = path.join(installTarget, 'config', 'cordis.patch.yml');
+    fs.appendFileSync(patchFile, `\n${customMarker}\n`, 'utf8');
+
+    // Re-run installer without --force
+    execSync(`bash install_dsh.sh`, {
+      env: {
+        ...process.env,
+        DSH_INSTALL: installTarget,
+        DSH_SOURCE_DIR: ROOT,
+        SKIP_DOCKER_CHECKS: 'true'
+      },
+      cwd: runnerDir,
+      stdio: 'pipe'
+    });
+
+    // Customization must be preserved
+    assert.ok(
+      fs.readFileSync(patchFile, 'utf8').includes(customMarker),
+      'Installer rerun must preserve existing user customizations without --force'
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

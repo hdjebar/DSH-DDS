@@ -60,13 +60,16 @@ fi
 
 # 1. Stop Docker containers
 echo "🛑 Stopping containers..."
-docker compose down || true
+if [ "$HARD_RESET" = true ]; then
+  docker compose down -v --remove-orphans || true
+else
+  docker compose down || true
+fi
 
 # 2. Clear caches according to mode
 if [ "$HARD_RESET" = true ]; then
   echo "💥 Performing hard reset on containers, persistent databases and session histories..."
-  rm -rf config/sessions/* config/storages/* config/phoenix/*.db-wal config/phoenix/*.db-shm config/*.tmp.yaml config/patch*.tmp.yaml config/models.cache.json config/sync_status.json
-  docker compose down -v --remove-orphans || true
+  rm -rf config/sessions/* config/storages/* config/phoenix/*.db* config/phoenix/data* config/*.tmp.yaml config/patch*.tmp.yaml config/models.cache.json config/sync_status.json
 else
   echo "🧹 Clearing temporary caches and lock files (preserving chat sessions and storage)..."
   rm -rf config/*.tmp.yaml config/patch*.tmp.yaml config/models.cache.json config/sync_status.json config/phoenix/*.db-wal config/phoenix/*.db-shm

@@ -46,8 +46,8 @@ case "$COMMAND" in
     ;;
 
   restart)
-    echo "🔄 Restarting containers..."
-    docker compose restart
+    echo "🔄 Recreating and restarting containers with updated configuration..."
+    docker compose up -d --force-recreate
     ;;
 
   build)
@@ -116,13 +116,26 @@ case "$COMMAND" in
 
   persona)
     shift || true
-    if [ "$1" = "workflow" ] || [ "$1" = "wf" ]; then
+    if [ "${1:-}" = "workflow" ] || [ "${1:-}" = "wf" ]; then
       if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+        # Check whether container is running with sandbox override
+        if docker compose exec -T dsh sh -c '[ "${DSH_SANDBOX:-0}" = "1" ]' 2>/dev/null; then
+          echo "🛡️  Executing workflow inside hardened container sandbox (DSH_SANDBOX=1)..."
+        else
+          echo "ℹ️  Notice: Container running in standard mode (without compose sandbox override)."
+          echo "   For strict cap_drop and read-only host configs: docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d"
+        fi
         docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
       elif echo "$*" | grep -q -- "--force-host-unsafe"; then
         echo "⚠️ WARNING: Executing declarative workflow on host due to --force-host-unsafe."
         echo "   Container Landlock, dropped capabilities, and volume isolation are bypassed!"
-        node config/persona.mjs "$@"
+        CLEANED_ARGS=()
+        for arg in "$@"; do
+          if [ "$arg" != "--force-host-unsafe" ]; then
+            CLEANED_ARGS+=("$arg")
+          fi
+        done
+        node config/persona.mjs "${CLEANED_ARGS[@]}"
       else
         echo "❌ Error: DSH container is offline. Declarative workflows must run inside"
         echo "   the container sandbox to enforce kernel Landlock, dropped capabilities, and filesystem boundaries."
@@ -131,13 +144,21 @@ case "$COMMAND" in
         exit 1
       fi
     else
-      node config/persona.mjs "$@"
+      if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+        docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
+      else
+        node config/persona.mjs "$@"
+      fi
     fi
     ;;
 
   sessions|session)
     shift || true
-    node config/persona.mjs sessions "$@"
+    if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+      docker compose exec -T dsh node /root/.dsh/persona.mjs sessions "$@"
+    else
+      node config/persona.mjs sessions "$@"
+    fi
     ;;
 
   status)

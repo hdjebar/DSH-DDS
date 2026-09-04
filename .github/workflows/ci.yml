@@ -157,7 +157,7 @@ jobs:
 
       - name: Entrypoint Script Syntax Assertion
         run: |
-          docker run --rm --entrypoint /bin/sh dsh-local:latest -c "sh -n /usr/local/bin/dsh-entrypoint && sh -n /app/entrypoint.upstream.sh"
+          docker run --rm --entrypoint /bin/sh dsh-local:latest -c "sh -n /usr/local/bin/dsh-entrypoint"
 
       - name: Prebuilt Hidden Dependencies Assertion (.pnpm & .bin)
         run: |

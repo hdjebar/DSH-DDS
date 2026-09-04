@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { enforceRbacPolicy, logGrcAuditEvent } from '../config/persona.mjs';
 
@@ -88,21 +89,35 @@ test('Zero Trust RBAC Enforcement: blocks unauthorized filesystem access and esc
 });
 
 test('GRC Audit Logging: records immutable decision trace', () => {
-  const event = logGrcAuditEvent({
-    persona: 'security-auditor',
-    workflow: 'incident_triage',
-    step_index: 1,
-    step_name: 'Assess Threat',
-    action: 'evaluate_incident',
-    target: 'workspace',
-    decision: 'GRANTED',
-    role: 'security_auditor',
-    reason: 'Policy validated'
-  });
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-grc-test-'));
+  const testAuditFile = path.join(tmpDir, 'audit.jsonl');
+  const prevEnv = process.env.DSH_AUDIT_LOG_FILE;
+  process.env.DSH_AUDIT_LOG_FILE = testAuditFile;
+  try {
+    const event = logGrcAuditEvent({
+      persona: 'security-auditor',
+      workflow: 'incident_triage',
+      step_index: 1,
+      step_name: 'Assess Threat',
+      action: 'evaluate_incident',
+      target: 'workspace',
+      decision: 'GRANTED',
+      role: 'security_auditor',
+      reason: 'Policy validated'
+    });
 
-  assert.equal(event.event_type, 'GRC_AUTHORIZATION_DECISION');
-  assert.equal(event.decision, 'GRANTED');
-  assert.ok(event.timestamp, 'Audit event must have ISO timestamp');
+    assert.equal(event.event_type, 'GRC_AUTHORIZATION_DECISION');
+    assert.equal(event.decision, 'GRANTED');
+    assert.ok(event.timestamp, 'Audit event must have ISO timestamp');
+    assert.ok(fs.existsSync(testAuditFile));
+  } finally {
+    if (prevEnv !== undefined) {
+      process.env.DSH_AUDIT_LOG_FILE = prevEnv;
+    } else {
+      delete process.env.DSH_AUDIT_LOG_FILE;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test('Build-Time Immutability Invariant: entrypoint.sh contains zero dynamic runtime patching', () => {

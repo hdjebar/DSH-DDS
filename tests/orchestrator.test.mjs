@@ -11,6 +11,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
+// AUD-019: Isolate runtime state and audit logs to temporary test directory
+const testIsolatedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-test-isolation-'));
+process.env.DSH_RUNTIME_DIR = testIsolatedDir;
+process.env.DSH_AUDIT_LOG_FILE = path.join(testIsolatedDir, 'audit_grc.jsonl');
+process.env.DSH_SESSIONS_DIR = path.join(testIsolatedDir, 'sessions');
+
 test('RBAC Policy: strict directory boundary containment', () => {
   assert.equal(isContainedWithin('/tmp/allowed/sub/file.txt', '/tmp/allowed'), true);
   assert.equal(isContainedWithin('/tmp/allowed', '/tmp/allowed'), true);
@@ -396,4 +402,88 @@ test('Declarative Orchestrator: runAgentWorkflow bridge executes real persona wo
   assert.equal(res.success, true);
   assert.equal(res.execution.status, 'COMPLETED');
   assert.ok(res.execution.executionLogs.length >= 4);
+});
+
+test('AUD-001 Regression: targetless write action fails closed unless default target is allowlisted', async () => {
+  const restrictedMeta = {
+    name: 'restricted-persona',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'restricted_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces'],
+          write: ['/tmp/allowed-only-dir'],
+          deny: []
+        }
+      }
+    },
+    workflows: {
+      targetless_containment: {
+        steps: [
+          { name: 'Targetless Containment', action: 'contain_threat' }
+        ]
+      },
+      targetless_create: {
+        steps: [
+          { name: 'Targetless Create', action: 'create_file' }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(restrictedMeta);
+
+  // 1. contain_threat without target resolves to quarantine default, which is NOT in write allowlist
+  await assert.rejects(
+    async () => engine.executeWorkflow('targetless_containment'),
+    /RBAC_WRITE_UNAUTHORIZED/
+  );
+
+  // 2. create_file without target has no default and fails closed with RBAC_TARGET_REQUIRED
+  await assert.rejects(
+    async () => engine.executeWorkflow('targetless_create'),
+    /RBAC_TARGET_REQUIRED/
+  );
+});
+
+test('AUD-005 Regression: semantic adapter failures result in FAILED workflow status', async () => {
+  const probeMeta = {
+    name: 'probe-tester',
+    models: { default: { model: 'test' } },
+    rbac: {
+      role: 'probe_role',
+      permissions: {
+        filesystem: { read: ['/workspaces'], write: ['/workspaces'] }
+      }
+    },
+    workflows: {
+      unreachable_service: {
+        steps: [
+          { name: 'Probe Dead Port', action: 'probe_services', target: 'http://127.0.0.1:9' }
+        ]
+      },
+      missing_sqlite: {
+        steps: [
+          { name: 'Inspect Missing DB', action: 'inspect_sqlite', target: '/workspaces/does_not_exist.db' }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(probeMeta);
+
+  // Unreachable port returns status: 'failed' and fails the workflow
+  const serviceRes = await engine.executeWorkflow('unreachable_service');
+  assert.equal(serviceRes.status, 'FAILED');
+  assert.equal(serviceRes.executionLogs[0].status, 'FAILED');
+
+  // Missing SQLite database returns status: 'failed' and fails the workflow
+  const sqliteRes = await engine.executeWorkflow('missing_sqlite');
+  assert.equal(sqliteRes.status, 'FAILED');
+  assert.equal(sqliteRes.executionLogs[0].status, 'FAILED');
+});
+
+test.after(() => {
+  fs.rmSync(testIsolatedDir, { recursive: true, force: true });
 });

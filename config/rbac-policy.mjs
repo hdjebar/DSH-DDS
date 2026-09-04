@@ -113,6 +113,9 @@ export function resolvePath(candidatePath) {
 
   if (clean === '/root/.dsh' || clean.startsWith('/root/.dsh/')) {
     const rel = clean === '/root/.dsh' ? '' : clean.slice('/root/.dsh/'.length);
+    if (process.env.DSH_RUNTIME_DIR) {
+      return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
+    }
     return path.resolve(process.cwd(), 'config', rel);
   }
 
@@ -230,6 +233,19 @@ export function enforceRbacPolicy(personaMeta, step) {
     .filter(Boolean)
     .map(t => String(t).trim().replace(/^["']|["']$/g, ''));
 
+  // AUD-001: Pre-resolve default targets if omitted by manifest step
+  if (rawTargets.length === 0) {
+    if (rawAction === 'contain_threat') {
+      rawTargets.push(step.target || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'quarantine', 'quarantine_ledger.json') : '/workspaces/quarantine/quarantine_ledger.json'));
+    } else if (rawAction === 'forensic_investigation') {
+      rawTargets.push(step.scope || step.target || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases'));
+    } else if (rawAction === 'read_catalog') {
+      rawTargets.push(step.scope || step.target || 'config/personas');
+    } else if (rawAction === 'fetch_sources') {
+      rawTargets.push(step.target || step.source || step.scope || (process.env.DSH_WORKSPACE_ROOT || '/workspaces'));
+    }
+  }
+
   // F-07: Resolve logical scopes ('recursive', 'workspace') into concrete targets before policy evaluation
   const targetsToCheck = rawTargets.map(t => {
     if (t === 'recursive' || t === 'workspace') {
@@ -247,6 +263,25 @@ export function enforceRbacPolicy(personaMeta, step) {
     'fetch_sources', 'inspect_sqlite', 'read_catalog',
     'forensic_investigation', 'inspect_tabular', 'read_file'
   ].includes(rawAction);
+
+  // AUD-001: Fail-closed if a filesystem write or read action lacks a concrete target
+  if (isWriteAction && targetsToCheck.length === 0) {
+    return {
+      allowed: false,
+      role,
+      violation: `Write action '${rawAction}' requires a concrete target, but none was provided or resolvable`,
+      code: 'RBAC_TARGET_REQUIRED'
+    };
+  }
+
+  if (isReadAction && targetsToCheck.length === 0) {
+    return {
+      allowed: false,
+      role,
+      violation: `Read action '${rawAction}' requires a concrete target, but none was provided or resolvable`,
+      code: 'RBAC_TARGET_REQUIRED'
+    };
+  }
 
   for (const target of targetsToCheck) {
     let resolvedTarget = resolvePath(target);

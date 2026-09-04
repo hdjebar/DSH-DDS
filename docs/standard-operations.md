@@ -34,12 +34,16 @@ The headless runner executes a single task autonomously and prints the result to
 
 ### Passing File Inputs & Overriding Models
 ```bash
-# Override model to DeepSeek V3 (OpenRouter) on the fly
-docker compose exec dsh dsh --profile headless \
-  --patch <(echo "- id: agent-default-model
+# Override model to DeepSeek V3 (OpenRouter) on the fly via mounted patch
+cat << 'EOF' > config/custom-model.patch.yml
+- id: agent-default-model
   config:
     provider: openrouter
-    model: deepseek/deepseek-chat") \
+    model: deepseek/deepseek-chat
+EOF
+
+docker compose exec dsh dsh --profile headless \
+  --patch /root/.dsh/custom-model.patch.yml \
   "analyze /workspaces/package.json"
 ```
 

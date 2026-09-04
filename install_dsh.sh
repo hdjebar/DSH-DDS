@@ -2,6 +2,23 @@
 # Ultimate Single-File DeepSeek Harness Deployment Script (Automated .env Reader)
 set -e
 
+FORCE=false
+for arg in "$@"; do
+  if [ "$arg" = "--force" ] || [ "$arg" = "-f" ]; then
+    FORCE=true
+  fi
+done
+
+write_file_safe() {
+  local target="$1"
+  if [ -f "$target" ] && [ "$FORCE" != true ]; then
+    echo "ℹ️  Preserving existing $target (use --force to overwrite)"
+    return 1
+  fi
+  mkdir -p "$(dirname "$target")"
+  return 0
+}
+
 # 1. Target Directory & Path Setup
 export DSH_INSTALL="${DSH_INSTALL:-$(pwd)}"
 echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
@@ -81,17 +98,18 @@ EOF
   fi
 fi
 
-GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
+GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/${DSH_REF:-v1.10.0}"
 
 fetch_or_copy_file() {
   local rel_path="$1"
   local dest="$DSH_INSTALL/$rel_path"
-  if [ -f "$dest" ]; then
+  if [ -f "$dest" ] && [ "$FORCE" != true ]; then
     return 0
   fi
   mkdir -p "$(dirname "$dest")"
-  if [ -f "$rel_path" ]; then
-    cp "$rel_path" "$dest"
+  local local_source="${DSH_SOURCE_DIR:-.}/$rel_path"
+  if [ -f "$local_source" ]; then
+    cp "$local_source" "$dest"
   else
     echo "⬇️  Downloading $rel_path from repository..."
     if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest"; then
@@ -177,6 +195,7 @@ chmod +x "$DSH_INSTALL/reset.sh" 2>/dev/null || true
 chmod +x "$DSH_INSTALL/docker/entrypoint.sh" 2>/dev/null || true
 
 # 3. Write Active Cordis Patch Configuration (Dual Gemini + OpenRouter Native Architecture)
+if write_file_safe "$DSH_INSTALL/config/cordis.patch.yml"; then
 cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
 - id: llm-deepseek
   disabled: true
@@ -249,8 +268,10 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
     provider: gemini
     model: gemini-3.7-flash
 EOF
+fi
 
 # 3. Write Web Profile Plugin Manifest (10 Pre-Packaged Plugins)
+if write_file_safe "$DSH_INSTALL/config/profiles/web/package.json"; then
 cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
 {
   "name": "dsh-profile-web",
@@ -336,11 +357,13 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
           - /workspaces/data.db
 # --- end dsh-mcp-market managed ---
 EOF
+fi
 
 # 5. Write Multi-Stage Dockerfile (pnpm builder + minimal runtime)
+if write_file_safe "$DSH_INSTALL/Dockerfile"; then
 cat << 'EOF' > "$DSH_INSTALL/Dockerfile"
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM node:24-bookworm-slim AS builder
+FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -360,7 +383,7 @@ RUN pnpm config set minimum-release-age 0 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Hardened Minimal Production Runtime ───────────────────
-FROM node:24-bookworm-slim AS runner
+FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS runner
 
 # Copy static Astral uv and uvx binaries for lightweight Python MCP execution
 COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da394ee735de36b5815f8f1d22cb49be15 /uv /uvx /bin/
@@ -461,12 +484,14 @@ RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3080/').then(()=>process.exit(0)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/usr/local/bin/dsh-entrypoint"]
 EOF
+fi
 
 # 6. Write Production Docker Compose Layout with localhost port bindings and sanitized telemetry
+if write_file_safe "$DSH_INSTALL/docker-compose.yml"; then
 cat << 'EOF' > "$DSH_INSTALL/docker-compose.yml"
 services:
   dsh:
@@ -527,6 +552,7 @@ services:
         max-size: "10m"
         max-file: "3"
 EOF
+fi
 
 echo "=========================================================="
 echo "✅ Architecture built cleanly at: $DSH_INSTALL"
