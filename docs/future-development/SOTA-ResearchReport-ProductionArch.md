@@ -15,7 +15,8 @@ The previous evaluation prematurely assumed that the v1.11.0 proposals—such as
    ✔ Observability Stack (`docker-compose.yml`): Arize Phoenix 20.5.0 (:6006), OTel spans, live pricing.
    ✔ Tool Governance (`cordis.patch.yml`): 4 MCP servers (`fetch`, `context7`, `github`, `sqlite-db`).
    ✔ RBAC Boundaries (`config/rbac-policy.mjs`): `canonicalizeWithAncestorRealpath()`, `isContainedWithin()`.
-   ✔ Test Coverage (`tests/`): 48 native tests passing 100% via `node --test`.
+   ✔ Test Coverage (`tests/`): 54 native tests passing 100% via `node --test` across 9 suites.
+   ✔ Audit Remediation: 100% of 21 findings (AUD-001 through AUD-021) remediated & verified.
    ✔ Cloud Search: Google Antigravity CLI (`agy`) integrated for web research and synthesis.
    ✔ Model Abstraction: Bootstrap multi-provider keys + runtime `models` switching plugin.
 
@@ -96,7 +97,7 @@ To evaluate systems engineering readiness without relying on arbitrary classific
 * **Level 0 (Non-Harnessed / Script):** Ad-hoc API calls via vendor SDKs; unmanaged execution loops; no process or container boundaries; direct host filesystem exposure.
 * **Level 1 (Containerized Sandbox):** Basic Docker/Compose encapsulation; partitioned host mounts (`workspaces/`); standard lifecycle CLI commands (`dsh.sh up`, `reset.sh`). Tool execution defaults to unconstrained `/bin/bash`.
 * **Level 2 (Modular Harness):** Multi-model configuration at bootstrap (Gemini + OpenRouter); dynamic runtime model switching via the `models` plugin; decoupled agent personas (`.agents/`); dual development vs. sandbox profiles. Execution remains vulnerable to mid-flight API drops, arbitrary shell injections, and untyped actions.
-* **Level 3 (Governed Harness — `DSH-DDS` Verified Posture):** Strictly typed tool execution via the **Model Context Protocol (MCP)**; declarative state machine (`DeclarativeWorkflowEngine`) with 15 capabilities; immutable, read-only container root filesystems (`cap_drop: ALL`); path-containment RBAC; embedded OpenTelemetry tracing (**Arize Phoenix 20.5.0**); cloud-delegated web research via **Google Antigravity (`agy`)**; deterministic CI/CD task verification suites (48 native tests).
+* **Level 3 (Governed Harness — `DSH-DDS` Verified Posture):** Strictly typed tool execution via the **Model Context Protocol (MCP)**; declarative state machine (`DeclarativeWorkflowEngine`) with 15 capabilities; immutable, read-only container root filesystems (`cap_drop: ALL`); path-containment RBAC; embedded OpenTelemetry tracing (**Arize Phoenix 20.5.0**); cloud-delegated web research via **Google Antigravity (`agy`)**; deterministic CI/CD task verification suites (54 native tests across 9 suites).
 * **Level 4 (High-Assurance / Sovereign Harness):** Ephemeral MicroVM isolation (AWS Firecracker/gVisor); **Dual-LLM Context Quarantine** (untrusted workspace text physically segregated from privileged executors); automated in-flight multi-provider failover cascades; zero-trust network egress filtering proxy; transactional Git worktree workspace rollback ledgers.
 
 ### 1.2 Maturity Scorecard: `hdjebar/DSH-DDS` (Verified Posture)
@@ -109,7 +110,7 @@ To evaluate systems engineering readiness without relying on arbitrary classific
 | **4. State & Memory** | **2.2 / 4.0** | Robust host-bind segmentation and GRC audit logs, but lacks transactional Copy-on-Write (CoW) Git worktree staging per task. |
 | **5. Reliability & Resilience** | **2.7 / 4.0** | Model switching via `models` plugin and multi-provider keys; Antigravity offloads heavy web browsing; lacks autonomous in-flight HTTP 429/503 retry and fallback cascades. |
 | **6. Observability & Tracing** | **3.5 / 4.0** | Embedded Arize Phoenix 20.5.0 (`:6006`), `AgentPhoenixTracer` emitting W3C OpenInference/OTel parent-child spans, token metrics, and real-time cost tracking across 420+ models. |
-| **7. Testing & Evaluation** | **3.0 / 4.0** | Deterministic 48-test automated suite executed via native `node --test` in `tests/`, asserting security invariants, symlink resolution, and path validation on every build. |
+| **7. Testing & Evaluation** | **3.2 / 4.0** | Deterministic 54-test automated suite executed via native `node --test` in `tests/` across 9 suites, asserting zero-trust RBAC pre-resolution, symlink resolution, capability adapter integrity, and path containment on every build. |
 | **8. Deployment Operations** | **3.1 / 4.0** | Pinned base images (`node:24-bookworm-slim`), immutable tool digests, stable lifecycle CLI scripts (`dsh.sh`, `install_dsh.sh`, `reset.sh`), and host-authenticated OAuth mounts. |
 | **9. Documentation** | **3.3 / 4.0** | Architectural Decision Records (ADRs 0001–0005) rigorously document orchestrator design, RBAC models, Phoenix integration, MCP configurations, and search features. |
 | **Overall Weighted Rating** | **3.10 / 4.0** | **Level 3: Governed Production-Grade Harness** |
@@ -281,7 +282,7 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 | `config/rbac-policy.mjs` | Path Containment & Privilege Engine. | Canonicalizes paths with symlink resolution (`canonicalizeWithAncestorRealpath()`) and tests containment (`isContainedWithin()`). | Eliminates directory traversal (`../../`) and symlink-based attacks targeting host files. |
 | `cordis.patch.yml` | Cordis Microkernel Configuration. | Loads `@deepseek-ai/dsh-mcp-client` with 4 pre-compiled MCP servers (`fetch`, `context7`, `github`, `sqlite-db`). | Tool execution runs through typed JSON Schema interfaces rather than raw bash strings. |
 | **Google Antigravity (`agy`)** | Research & Web Synthesis Engine. | Headless execution (`-p`, `--dangerously-skip-permissions`); mounted read-only OAuth cache from host. | Replaces in-container browser scraping with remote Google infrastructure, eliminating SSRF and OOMs. |
-| `tests/` | Automated Regression Suite. | 48 automated tests executed via native `node --test` covering RBAC, path resolution, and orchestrator invariants. | CI build gate halts on any regression in path containment or workflow execution logic. |
+| `tests/` | Automated Regression Suite. | 54 automated tests executed via native `node --test` across 9 suites covering zero-trust RBAC pre-resolution, path containment, capability adapters, and installer parity. | CI build gate halts on any regression in path containment or workflow execution logic. |
 | `dsh.sh` & `reset.sh` | Host CLI Lifecycle Scripts. | `dsh.sh` manages profile startup; `reset.sh` cleans Docker containers, volumes, and temporary caches. | Provides clean environment teardown; requires careful handling to avoid wiping uncommitted work. |
 
 ---
@@ -307,7 +308,7 @@ Enterprise agent harnesses avoid unconstrained choreography for core tasks becau
 | **13** | **Final Outcome Verification** | **Implemented** | Declarative workflows execute assertions and tests post-step. | **Low** | Tasks failing assertions are marked `FAILED` regardless of model claims. | Lacks automated AST syntax tree comparison between pre- and post-states. | Add semantic AST diff verifier capability to `declarative-orchestrator.mjs`. | Tasks are marked `COMPLETED` if and only if deterministic test suites exit with status `0`. |
 | **14** | **Structured Logs & Observability** | **Implemented** | Embedded Arize Phoenix 20.5.0 (`:6006`) with `AgentPhoenixTracer`. | **Low** | Telemetry is collected locally with zero cloud dependencies. | Phoenix data is ephemeral unless backed by persistent Docker volume storage. | Attach dedicated named volume to Phoenix container in `docker-compose.yml`. | Phoenix dashboard displays complete span hierarchies, latency waterfalls, and token costs per model. |
 | **15** | **Cost & Resource Budgets** | **Implemented** | Container cgroups (`cpus: 2.0`, `mem: 4096M`, `pids: 128`); Phoenix cost metrics. | **Low** | Runaway processes are killed by Linux cgroup limits without host impact. | Lacks an automated spend ceiling that terminates tasks exceeding monetary budgets. | Implement a budget interceptor in `AgentPhoenixTracer` capping spend at $\$1.00$ per task. | Container fork bomb is contained by `pids: 128`; tasks exceeding token budgets halt cleanly. |
-| **16** | **Offline Evaluations & Regression CI** | **Implemented** | 48 native tests in `tests/` executed via `node --test` on every build. | **Low** | Regressions in path containment or orchestration fail the build pipeline. | Tests focus on units/integration; lacks SWE-bench style full agent problem-solving suite. | Build a golden repository task benchmark suite in `tests/eval/`. | Pull requests failing any of the 48 unit tests or security invariants are blocked in CI. |
+| **16** | **Offline Evaluations & Regression CI** | **Implemented** | 54 native tests in `tests/` executed via `node --test` across 9 suites on every build. | **Low** | Regressions in path containment or orchestration fail the build pipeline. | Tests focus on units/integration; lacks SWE-bench style full agent problem-solving suite. | Build a golden repository task benchmark suite in `tests/eval/`. | Pull requests failing any of the 54 unit tests or security invariants are blocked in CI. |
 | **17** | **Versioning & Reproducibility** | **Implemented** | Pinned `node:24-bookworm-slim`, fixed npm packages, immutable tool digests. | **Low** | Environments build consistently across disparate developer machines. | Upstream model versions accessed via OpenRouter may change if model aliases drift. | Pin explicit snapshot model IDs (e.g., `gemini-1.5-pro-002`, `claude-3-5-sonnet-20241022`). | Container builds yield identical SHA256 manifests across separate host environments. |
 
 ---
@@ -340,7 +341,7 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 <br>Attacker executes HTTP requests to exfiltrate source code or tokens. | IP theft, credential leakage to attacker-controlled C2 servers. | Sandbox profile sets `internal: true`, cutting off all external network access. | `internal: true` completely disables outbound calls, breaking legitimate model APIs and `agy`. | Deploy an Envoy forward proxy sidecar allowlisting only LLMs, Antigravity, and GitHub. | **Low** |
 | **T-04** | **Host Filesystem Traversal**<br>
 
-<br>Attacker uses symlinks (`../../`) to read `/etc/shadow` or host files. | Unauthorized read/write access to host operating system files. | Fully mitigated by `canonicalizeWithAncestorRealpath()` and `isContainedWithin()`. | Zero residual risk within application layer; path traversal is mathematically blocked. | Maintain regression test coverage in `tests/rbac-policy.test.mjs`. | **Zero** |
+<br>Attacker uses symlinks (`../../`) to read `/etc/shadow` or host files. | Unauthorized read/write access to host operating system files. | Fully mitigated by `canonicalizeWithAncestorRealpath()` and `isContainedWithin()`. | Zero residual risk within application layer; path traversal is mathematically blocked. | Maintain regression test coverage in `tests/rbac_confinement.test.mjs` and `tests/orchestrator.test.mjs`. | **Zero** |
 | **T-05** | **Container Escape & Kernel Exploits**<br>
 
 <br>Attacker exploits Linux kernel vulnerabilities to break out to host OS. | Complete compromise of developer host machine. | `cap_drop: [ALL]`, `no-new-privileges: true`, `read_only: true`. | Container shares the host Linux kernel via standard Docker `runc`. | Integrate gVisor (`runsc`) virtualization runtime for sandboxed execution profiles. | **Low** |
@@ -380,10 +381,13 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
                  v
   +-------------------------------------------------------------+
   | STAGE 3: NATIVE REGRESSION TEST SUITE (`node --test`)       |
-  | - 48 unit & integration tests covering:                     |
-  |   * `rbac-policy.test.mjs` (Path containment, symlinks)     |
-  |   * `declarative-orchestrator.test.mjs` (Capability checks) |
-  |   * `phoenix-tracer.test.mjs` (Span generation, OTel)       |
+  | - 54 unit & integration tests across 9 test suites:         |
+  |   * `rbac_confinement.test.mjs` (Path boundaries & escapes) |
+  |   * `orchestrator.test.mjs` (Adapters, Phoenix OTel, AUD)   |
+  |   * `cli_parser.test.mjs` (Flags, approval gates, AUD-013)  |
+  |   * `e2e_sandbox_confinement.test.mjs` (Kernel confinement) |
+  |   * `installer_clean_room.test.mjs` & `installer_parity`    |
+  |   * `patches.test.mjs`, `personas.test.mjs`, `skills.test`  |
   +-------------------------------------------------------------+
                  | PASS
                  v
@@ -412,7 +416,7 @@ Using Google Antigravity (`agy`) for search and research fundamentally transform
 
 ```
 v1.10.0 Verified (Current Baseline: Level 3.10)
-  │  • Level 3.10 Governed: Arize Phoenix tracing, 48 node:test unit tests,
+  │  • Level 3.10 Governed: Arize Phoenix tracing, 54 node:test unit tests across 9 suites,
   │    declarative orchestration, MCP servers, Antigravity search, hardened sandbox.
   │
   ├──► v1.11.0 Target: Network Egress Proxy & In-Flight Failover (Level 3.45)
@@ -873,7 +877,7 @@ services:
 * [x] **Container Hardening:** Read-only rootfs, dropped capabilities, and cgroups enforced. *(Verified v1.10.0)*
 * [x] **Local Observability:** Arize Phoenix 20.5.0 tracking traces, spans, and costs on `:6006`. *(Verified v1.10.0)*
 * [x] **Cloud Search Delegation:** Google Antigravity (`agy`) active for headless web research. *(Verified v1.10.0)*
-* [x] **Automated Regression Suite:** 48 unit tests passing via `node --test` on all commits. *(Verified v1.10.0)*
+* [x] **Automated Regression Suite:** 54 unit tests passing via `node --test` across 9 suites on all commits. *(Verified v1.10.0)*
 * [ ] **Zero-Trust Egress Filtering:** Envoy proxy sidecar deployed to allowlist outbound traffic. *(Target: v1.11.0)*
 * [ ] **In-Flight Multi-Provider Failover:** Autonomous fallback gateway active in Cordis pipeline. *(Target: v1.11.0)*
 * [ ] **Transactional Worktree Staging:** Ephemeral Git worktree isolation active in orchestrator. *(Target: v1.12.0)*

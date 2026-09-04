@@ -8,7 +8,7 @@ This document defines the actionable, milestone-by-milestone engineering roadmap
 
 ```
 v1.10.0+ (Current Production Baseline)
-  │  • Level 3.1 Governed Harness: Arize Phoenix tracing, 48 node:test unit tests,
+  │  • Level 3.10 Governed Harness: Arize Phoenix tracing, 54 node:test unit tests across 9 suites,
   │    DeclarativeWorkflowEngine, 4 MCP servers, Antigravity search, hardened sandbox.
   │
   ├──► Milestone 1 (v1.11.0): Zero-Trust Egress, Failover & Telemetry Container Hardening
@@ -203,7 +203,7 @@ v1.10.0+ (Current Production Baseline)
 
 Prior to tagging and releasing each milestone, the following gates must pass:
 
-* [ ] **Unit & Integration Suite**: All 48 native tests (`npm test`) pass with $0$ failures.
+* [ ] **Unit & Integration Suite**: All 54 native tests across 9 suites (`npm test`) pass with $0$ failures.
 * [ ] **Sandbox Invariant Audit**: `cap_drop: ALL`, `read_only: true`, and cgroup limits verified via `docker inspect`.
 * [ ] **Telemetry Assertion**: Arize Phoenix successfully records trace spans for model calls and tool executions.
 * [ ] **Clean-Room Installation**: `install_dsh.sh` executes in an isolated environment with zero missing assets.

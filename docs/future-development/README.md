@@ -39,7 +39,7 @@ Level 4: High-Assurance      -> MicroVMs (Firecracker/gVisor), Dual-LLM quaranti
   4. State & Memory              2.2 / 4.0   Clean host-bind mounts; GRC audit log; needs Git CoW.
   5. Reliability & Resilience    2.7 / 4.0   Dynamic model switching; needs in-flight 429 failover.
   6. Observability & Tracing     3.5 / 4.0   Arize Phoenix 20.5.0 on :6006; 128-bit OTel span trees.
-  7. Testing & Evaluation        3.0 / 4.0   48 automated tests in tests/ via native node:test.
+  7. Testing & Evaluation        3.2 / 4.0   54 automated tests in tests/ via native node:test.
   8. Deployment Operations       3.1 / 4.0   Pinned node:24-bookworm-slim, SHA256 digests, clean CLI.
   9. Documentation               3.3 / 4.0   5 ADRs (0001–0005), comprehensive architectural guides.
 +--------------------------------------------------------------------------------------------------+
