@@ -1,0 +1,5 @@
+[allowlist]
+description = "Approval key path identifiers are not secret material"
+paths = [
+  '''(^|/)(dsh\.sh|config/declarative-orchestrator\.mjs)$'''
+]
