@@ -222,33 +222,61 @@ case "$COMMAND" in
     ;;
 
   approve)
-    INSTANCE_ID="$2"
+    INSTANCE_ID="${2:-}"
     if [ -z "$INSTANCE_ID" ]; then
-      echo "❌ Error: Missing instance ID. Usage: ./dsh.sh approve <instanceId> [--actor=<name>]"
+      echo "❌ Error: Missing instance ID. Usage: ./dsh.sh approve <instanceId> [--actor=<name>]" >&2
       exit 1
     fi
-    node -e "
-      import('./config/declarative-orchestrator.mjs').then(({ DeclarativeWorkflowEngine }) => {
-        import('fs').then(fs => {
-          import('path').then(path => {
-            const id = '$INSTANCE_ID';
-            const checkpointPath = path.join(process.cwd(), 'config', 'sessions', 'checkpoints', id + '.json');
+    # Strict slug validation in shell BEFORE invoking Node (FR-010)
+    if [[ ! "$INSTANCE_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+      echo "❌ Error: Invalid instance ID '$INSTANCE_ID'. Only alphanumeric characters, dashes, and underscores are allowed." >&2
+      exit 1
+    fi
+
+    # Resolve approval secret from environment or host .env (FR-009)
+    APPROVAL_SECRET="${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}"
+    if [ -z "$APPROVAL_SECRET" ] && [ -f "$SCRIPT_DIR/.env" ]; then
+      APPROVAL_SECRET="$(grep -E '^DSH_APPROVAL_SECRET=' "$SCRIPT_DIR/.env" | cut -d= -f2- | tr -d ' "' || true)"
+      if [ -z "$APPROVAL_SECRET" ]; then
+        APPROVAL_SECRET="$(grep -E '^DSH_SECRET=' "$SCRIPT_DIR/.env" | cut -d= -f2- | tr -d ' "' || true)"
+      fi
+    fi
+
+    if [ -z "$APPROVAL_SECRET" ] || [ "${#APPROVAL_SECRET}" -lt 16 ]; then
+      echo "❌ Error: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET (minimum 16 characters) must be set in your environment or .env." >&2
+      exit 1
+    fi
+
+    ACTOR="${USER:-host-operator}"
+    TTL="3600"
+    # Execute parameterized script via stdin with arguments passed via process.argv to prevent JS injection
+    DSH_APPROVAL_SECRET="$APPROVAL_SECRET" node - "$INSTANCE_ID" "$ACTOR" "$TTL" << 'EOF'
+      import('fs').then(fs => {
+        import('path').then(path => {
+          import('./config/declarative-orchestrator.mjs').then(({ DeclarativeWorkflowEngine }) => {
+            const id = process.argv[2];
+            const actor = process.argv[3] || 'host-operator';
+            const ttl = Number(process.argv[4]) || 3600;
+
+            const checkpointPath = path.join(process.cwd(), 'config', 'sessions', 'checkpoints', `${id}.json`);
             if (!fs.existsSync(checkpointPath)) {
-              console.error('❌ Error: Checkpoint not found at ' + checkpointPath);
+              console.error(`❌ Error: Checkpoint not found at ${checkpointPath}`);
               process.exit(1);
             }
             const cp = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
-            const actor = process.env.USER || 'host-operator';
-            const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, actor, 3600);
-            console.log('✅ Approved instance: ' + id);
-            console.log('   Actor: ' + actor);
-            console.log('   Approval Token: ' + token);
+            const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, actor, ttl);
+            console.log(`✅ Approved instance: ${id}`);
+            console.log(`   Actor: ${actor}`);
+            console.log(`   Approval Token: ${token}`);
             console.log('\nResume execution with:');
-            console.log('   ./dsh.sh persona run ' + cp.persona + ' --resume=' + id + ' --token=' + token);
+            console.log(`   ./dsh.sh persona workflow ${cp.persona} --resume=${id} --token=${token}`);
+          }).catch(err => {
+            console.error(`❌ Error generating approval token: ${err.message}`);
+            process.exit(1);
           });
         });
       });
-    "
+EOF
     ;;
 
   status)

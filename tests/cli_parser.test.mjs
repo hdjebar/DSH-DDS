@@ -237,3 +237,60 @@ test('Persona Creation: transactional creation does not leave partial dir on inv
     process.exitCode = prevExitCode || 0;
   }
 });
+
+test('FR-010 Regression: dsh.sh approve rejects command injection payloads and validates slug format', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const path = await import('node:path');
+  const dshScript = path.resolve(process.cwd(), 'dsh.sh');
+
+  const injectionPayloads = [
+    "'; console.log('PWNED'); process.exit(0); '",
+    'test;rm -rf /',
+    'id`touch pwned`',
+    'instance with spaces',
+    '../../etc/passwd',
+    'id$(whoami)',
+    'id&echo pwned'
+  ];
+
+  const testEnv = { ...process.env, DSH_APPROVAL_SECRET: 'test-approval-secret-32-chars-long' };
+
+  for (const payload of injectionPayloads) {
+    let thrown = false;
+    try {
+      execFileSync(dshScript, ['approve', payload], { stdio: 'pipe', env: testEnv });
+    } catch (err) {
+      thrown = true;
+      assert.equal(err.status, 1);
+      const stderr = err.stderr ? err.stderr.toString() : '';
+      assert.ok(
+        stderr.includes('Invalid instance ID') || stderr.includes('Only alphanumeric'),
+        `Payload '${payload}' must be rejected with slug validation error, got: ${stderr}`
+      );
+    }
+    assert.equal(thrown, true, `Injection payload '${payload}' must exit with non-zero code`);
+  }
+});
+
+test('FR-009 Regression: dsh.sh approve fails closed when DSH_APPROVAL_SECRET is absent', async () => {
+  const { execSync } = await import('node:child_process');
+  const path = await import('node:path');
+  const dshScript = path.resolve(process.cwd(), 'dsh.sh');
+
+  let thrown = false;
+  try {
+    execSync(`"${dshScript}" approve "valid-instance-id"`, {
+      stdio: 'pipe',
+      env: { ...process.env, DSH_APPROVAL_SECRET: '', DSH_SECRET: '' }
+    });
+  } catch (err) {
+    thrown = true;
+    assert.equal(err.status, 1);
+    const stderr = err.stderr ? err.stderr.toString() : '';
+    assert.ok(
+      stderr.includes('APPROVAL_SECRET_MISSING') || stderr.includes('DSH_APPROVAL_SECRET'),
+      `Missing secret must fail closed with APPROVAL_SECRET_MISSING error, got: ${stderr}`
+    );
+  }
+  assert.equal(thrown, true, 'dsh.sh approve must exit with non-zero when secret is missing');
+});

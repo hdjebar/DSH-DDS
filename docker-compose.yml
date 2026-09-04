@@ -29,6 +29,7 @@ services:
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - DSH_APPROVAL_SECRET=${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}
     depends_on:
       phoenix:
         condition: service_healthy

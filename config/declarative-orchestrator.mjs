@@ -198,7 +198,10 @@ export function applyUnifiedDiff(originalContent, diffText) {
  */
 export class DeclarativeWorkflowEngine {
   static generateApprovalToken(checkpoint, actor = 'admin', ttlSeconds = 3600, secret = null) {
-    const tokenSecret = secret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET || 'dsh-governance-key';
+    const tokenSecret = secret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
+    if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length < 16) {
+      throw new Error("APPROVAL_SECRET_MISSING: Cannot generate approval token. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured in the host environment.");
+    }
     const expiresAt = Date.now() + (ttlSeconds * 1000);
     const digest = checkpoint.checkpointDigest;
     const signature = crypto.createHmac('sha256', tokenSecret)
@@ -1319,6 +1322,11 @@ export class DeclarativeWorkflowEngine {
     }
 
     // 4. Token Verification: Require out-of-process signed approval token (<actor>.<expiresAt>.<signature>)
+    const tokenSecret = options.approvalSecret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET;
+    if (!tokenSecret || typeof tokenSecret !== 'string' || tokenSecret.trim().length < 16) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: APPROVAL_SECRET_MISSING. A strong DSH_APPROVAL_SECRET or DSH_SECRET (minimum 16 characters) must be configured to verify approval tokens.`);
+    }
+
     const rawToken = options.approvalToken || options.token;
     if (!rawToken || typeof rawToken !== 'string') {
       throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<hmacSignature>). Standalone boolean approval is disallowed.`);
@@ -1333,8 +1341,6 @@ export class DeclarativeWorkflowEngine {
     if (isNaN(expiresAt) || Date.now() > expiresAt) {
       throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
     }
-
-    const tokenSecret = process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET || 'dsh-governance-key';
     const expectedSignature = crypto.createHmac('sha256', tokenSecret)
       .update(`${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`)
       .digest('hex');

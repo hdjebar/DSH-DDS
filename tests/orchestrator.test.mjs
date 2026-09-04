@@ -19,6 +19,7 @@ process.env.DSH_AUDIT_LOG_FILE = path.join(testIsolatedDir, 'audit_grc.jsonl');
 process.env.DSH_SESSIONS_DIR = path.join(testIsolatedDir, 'sessions');
 process.env.DSH_WORKSPACE_ROOT = path.join(testIsolatedDir, 'workspaces');
 process.env.DSH_MOCK_LLM = 'true';
+process.env.DSH_APPROVAL_SECRET = 'dsh-test-secure-approval-secret-key-32b';
 fs.mkdirSync(process.env.DSH_WORKSPACE_ROOT, { recursive: true });
 fs.mkdirSync(process.env.DSH_SESSIONS_DIR, { recursive: true });
 
@@ -1157,6 +1158,65 @@ test('Audit Verification: SDMX validation strictly enforces genuine dataflows an
   const step6 = await engine.executeStep({ action: 'validate_sdmx_schema', target: validSdmxXml }, {}, 'test', 'tr-sdmx6', 'sp-sdmx6');
   assert.equal(step6.status, 'success');
   assert.equal(step6.sdmx_schema.validated, true);
+});
+
+test('FR-009 Regression: approval HMAC fails closed without public fallback when secret is missing or too short', async () => {
+  const dummyCheckpoint = {
+    instanceId: 'wf-test-inst-1234',
+    persona: 'security-auditor',
+    workflow: 'audit_flow',
+    stepIndex: 1,
+    stepName: 'Gated Action',
+    action: 'contain_threat',
+    createdAt: new Date().toISOString(),
+    contextSnapshot: {},
+    checkpointDigest: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+  };
+
+  const origApprovalSecret = process.env.DSH_APPROVAL_SECRET;
+  const origSecret = process.env.DSH_SECRET;
+
+  try {
+    delete process.env.DSH_APPROVAL_SECRET;
+    delete process.env.DSH_SECRET;
+
+    // 1. generateApprovalToken throws when no secret is configured
+    assert.throws(
+      () => DeclarativeWorkflowEngine.generateApprovalToken(dummyCheckpoint, 'admin', 3600),
+      /APPROVAL_SECRET_MISSING/
+    );
+
+    // 2. generateApprovalToken throws when secret is shorter than 16 chars
+    assert.throws(
+      () => DeclarativeWorkflowEngine.generateApprovalToken(dummyCheckpoint, 'admin', 3600, 'short-key'),
+      /APPROVAL_SECRET_MISSING/
+    );
+
+    // 3. resumeWorkflow throws when no secret is configured
+    const meta = {
+      name: 'security-auditor',
+      rbac: { role: 'sec', permissions: { filesystem: { read: ['/workspaces', testIsolatedDir], write: ['/workspaces', testIsolatedDir] } } },
+      workflows: {
+        flow: {
+          steps: [
+            { name: 'Gated', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'sec_q.json'), approval_required: true }
+          ]
+        }
+      }
+    };
+    const engine = new DeclarativeWorkflowEngine(meta);
+    const suspended = await engine.executeWorkflow('flow');
+
+    // Attempt resume without secret configured
+    const futureExpires = Date.now() + 3600000;
+    await assert.rejects(
+      async () => engine.resumeWorkflow(suspended.instanceId, { token: `admin.${futureExpires}.deadbeef` }),
+      /APPROVAL_SECRET_MISSING/
+    );
+  } finally {
+    if (origApprovalSecret !== undefined) process.env.DSH_APPROVAL_SECRET = origApprovalSecret;
+    if (origSecret !== undefined) process.env.DSH_SECRET = origSecret;
+  }
 });
 
 test.after(() => {

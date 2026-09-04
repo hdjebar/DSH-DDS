@@ -373,9 +373,11 @@ export async function runWorkflow(name, workflowKey, options = {}) {
     console.log(`\n⏸️  Workflow suspended: \x1b[33mApproval required\x1b[0m`);
     console.log(`   ${result.suspendedReason}`);
     console.log(`   Instance ID: \x1b[36m${result.instanceId}\x1b[0m`);
-    console.log(`   Approval Token: \x1b[33m${result.approvalToken}\x1b[0m`);
-    console.log(`   To approve and resume this workflow, run with:`);
-    console.log(`     ./dsh.sh persona workflow ${safeName} --resume=${result.instanceId} --approve`);
+    console.log(`   To approve and resume this workflow:`);
+    console.log(`     1. Issue signed approval token on host:`);
+    console.log(`        ./dsh.sh approve ${result.instanceId}`);
+    console.log(`     2. Resume execution with the issued token:`);
+    console.log(`        ./dsh.sh persona workflow ${safeName} --resume=${result.instanceId} --token=<token>`);
     process.exitCode = 2;
   } else if (result.status === 'FAILED') {
     console.error(`\n❌ Workflow failed: ${result.error || 'Step failure'}`);

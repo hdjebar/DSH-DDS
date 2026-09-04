@@ -77,6 +77,7 @@ else
     echo ""
     read -rp "  • DSH Web Port [default 3080]: " input_port
     
+    AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
     cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=${input_port:-3080}
@@ -84,18 +85,21 @@ GEMINI_API_KEY=${input_gemini:-}
 OPENROUTER_API_KEY=${input_openrouter:-}
 GITHUB_PERSONAL_ACCESS_TOKEN=${input_github:-}
 PHOENIX_API_KEY=
+DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "✅ Generated $DSH_INSTALL/.env (mode 0600)"
     load_env_safely "$DSH_INSTALL/.env"
   else
-    cat << 'EOF' > "$DSH_INSTALL/.env"
+    AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
+    cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=3080
 GEMINI_API_KEY=
 OPENROUTER_API_KEY=
 GITHUB_PERSONAL_ACCESS_TOKEN=
 PHOENIX_API_KEY=
+DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "📝 Generated starter $DSH_INSTALL/.env template (mode 0600). You can populate keys anytime in .env."
@@ -589,6 +593,7 @@ services:
       - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - DSH_APPROVAL_SECRET=${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}
     depends_on:
       phoenix:
         condition: service_healthy
