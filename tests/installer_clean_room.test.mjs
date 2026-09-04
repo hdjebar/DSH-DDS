@@ -74,20 +74,45 @@ test('Clean-room Installer: provisions full topology in isolated directory', () 
 test('PR-004 & FR-006 Regression: Installer validates remote ref and falls back to main offline', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-ref-test-'));
 
-  // Spin up local deterministic HTTP server fixture to avoid external network dependency
-  const server = http.createServer((req, res) => {
-    if (req.url.includes('non-existent-tag')) {
-      res.writeHead(404, { 'Content-Length': '0' });
-      res.end();
-    } else {
-      res.writeHead(200, { 'Content-Length': '0' });
-      res.end();
-    }
-  });
+  let server = null;
+  let mockRepoUrl = 'http://127.0.0.1:0';
+  let mockBinDir = null;
 
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const port = server.address().port;
-  const mockRepoUrl = `http://127.0.0.1:${port}`;
+  try {
+    server = http.createServer((req, res) => {
+      if (req.url.includes('non-existent-tag')) {
+        res.writeHead(404, { 'Content-Length': '0' });
+        res.end();
+      } else {
+        res.writeHead(200, { 'Content-Length': '0' });
+        res.end();
+      }
+    });
+
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => {
+        const port = server.address().port;
+        mockRepoUrl = `http://127.0.0.1:${port}`;
+        resolve();
+      });
+    });
+  } catch (err) {
+    // If environment forbids socket listening (EPERM / EACCES), fall back to socket-less mock curl
+    if (server) {
+      try { server.close(); } catch {}
+      server = null;
+    }
+    mockBinDir = path.join(tmpDir, 'mock-bin');
+    fs.mkdirSync(mockBinDir, { recursive: true });
+    const mockCurlScript = path.join(mockBinDir, 'curl');
+    fs.writeFileSync(mockCurlScript, `#!/bin/bash
+if echo "$*" | grep -q "non-existent-tag"; then
+  exit 22 # HTTP 404 in curl
+fi
+exit 0
+`, { mode: 0o755 });
+  }
 
   try {
     const runnerDir = path.join(tmpDir, 'runner');
@@ -95,16 +120,21 @@ test('PR-004 & FR-006 Regression: Installer validates remote ref and falls back 
     fs.mkdirSync(runnerDir, { recursive: true });
     fs.copyFileSync(path.join(ROOT, 'install_dsh.sh'), path.join(runnerDir, 'install_dsh.sh'));
 
+    const testEnv = {
+      ...process.env,
+      DSH_INSTALL: installTarget,
+      DSH_REF: 'non-existent-tag-v9.99.99',
+      DSH_REPO_URL: mockRepoUrl,
+      DSH_CHECK_REMOTE_REF: '1',
+      DSH_SOURCE_DIR: ROOT,
+      SKIP_DOCKER_CHECKS: 'true'
+    };
+    if (mockBinDir) {
+      testEnv.PATH = `${mockBinDir}:${process.env.PATH || ''}`;
+    }
+
     const { stdout: output } = await execAsync(`bash install_dsh.sh`, {
-      env: {
-        ...process.env,
-        DSH_INSTALL: installTarget,
-        DSH_REF: 'non-existent-tag-v9.99.99',
-        DSH_REPO_URL: mockRepoUrl,
-        DSH_CHECK_REMOTE_REF: '1',
-        DSH_SOURCE_DIR: ROOT,
-        SKIP_DOCKER_CHECKS: 'true'
-      },
+      env: testEnv,
       cwd: runnerDir
     });
 
@@ -114,7 +144,9 @@ test('PR-004 & FR-006 Regression: Installer validates remote ref and falls back 
     );
     assert.ok(fs.existsSync(path.join(installTarget, 'docker-compose.yml')));
   } finally {
-    server.close();
+    if (server) {
+      try { server.close(); } catch {}
+    }
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });

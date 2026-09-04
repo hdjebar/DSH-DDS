@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer } from '../config/declarative-orchestrator.mjs';
 import { isContainedWithin, enforceRbacPolicy } from '../config/rbac-policy.mjs';
@@ -670,19 +671,23 @@ test('PR-009 Regression: approval gate creates durable checkpoint and resumes wi
   const initialRes = await engine.executeWorkflow('approval_pipeline');
   assert.equal(initialRes.status, 'SUSPENDED_APPROVAL_REQUIRED');
   assert.ok(initialRes.instanceId, 'Must generate unique workflow instance ID');
-  assert.ok(initialRes.approvalToken, 'Must generate HMAC approval decision token');
   assert.equal(initialRes.executionLogs.length, 2);
   assert.equal(initialRes.executionLogs[1].status, 'GATED');
 
-  // Verify checkpoint was written to disk
+  // Verify checkpoint was written to disk with SHA-256 digest and WITHOUT embedded approval tokens
   const checkpointFile = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${initialRes.instanceId}.json`);
   assert.ok(fs.existsSync(checkpointFile), 'Checkpoint file must be persisted to sessions/checkpoints');
   const checkpoint = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
   assert.equal(checkpoint.instanceId, initialRes.instanceId);
   assert.equal(checkpoint.stepIndex, 1);
+  assert.ok(checkpoint.checkpointDigest, 'Must calculate SHA-256 checkpointDigest');
+  assert.equal(checkpoint.approvalToken, undefined, 'Raw approval tokens must NOT be stored in agent checkpoints');
 
-  // Resume the suspended workflow directly from Step 2
-  const resumeRes = await engine.resumeWorkflow(initialRes.instanceId, { approved: true });
+  // Generate out-of-process HMAC approval token on host
+  const validToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'secops-lead');
+
+  // Resume the suspended workflow directly from Step 2 with valid HMAC token
+  const resumeRes = await engine.resumeWorkflow(initialRes.instanceId, { token: validToken });
   assert.equal(resumeRes.status, 'COMPLETED');
   assert.equal(resumeRes.resumedFrom, initialRes.instanceId);
   assert.equal(resumeRes.executionLogs.length, 3);
@@ -766,19 +771,28 @@ test('FR-005 Regression: checkpoint requires explicit approval, blocks unapprove
   const freshRes = await engine.executeWorkflow('approval_replay_test', { approved: true });
   assert.equal(freshRes.status, 'SUSPENDED_APPROVAL_REQUIRED');
 
-  // 2. Resume without explicit approval must be rejected
+  // 2. Resume without explicit approval / missing token must be rejected
   await assert.rejects(
     async () => engine.resumeWorkflow(freshRes.instanceId),
-    /explicit human approval required/
+    /signed approval token required/
   );
 
-  // 3. Resume with explicit approval succeeds and completes
-  const resumeRes = await engine.resumeWorkflow(freshRes.instanceId, { approved: true });
+  // Standalone boolean approval without signed token must be rejected
+  await assert.rejects(
+    async () => engine.resumeWorkflow(freshRes.instanceId, { approved: true }),
+    /signed approval token required/
+  );
+
+  // 3. Resume with valid HMAC token succeeds and completes
+  const checkpointPath = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${freshRes.instanceId}.json`);
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+  const validToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'human-operator');
+  const resumeRes = await engine.resumeWorkflow(freshRes.instanceId, { token: validToken });
   assert.equal(resumeRes.status, 'COMPLETED');
 
   // 4. Subsequent resume of already completed instance must be rejected as replay
   await assert.rejects(
-    async () => engine.resumeWorkflow(freshRes.instanceId, { approved: true }),
+    async () => engine.resumeWorkflow(freshRes.instanceId, { token: validToken }),
     /replays rejected/
   );
 });
@@ -832,6 +846,317 @@ test('FR-003 Regression: capability adapters validate syntax, schemas, and persi
   assert.equal(step3.status, 'success');
   assert.equal(step3.escalation.status, 'DISPATCHED');
   assert.ok(fs.existsSync(path.join(testIsolatedDir, 'cases', 'soc_esc.json')), 'SOC escalation file must be persisted');
+});
+
+test('Audit Verification: escalate_to_soc is a write action and fails closed on empty write allowlist', async () => {
+  const metaWithoutWrite = {
+    name: 'read-only-persona',
+    rbac: {
+      role: 'read_only_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: []
+        }
+      }
+    },
+    workflows: {
+      soc_test: {
+        steps: [
+          { name: 'Attempt SOC Escalation Without Write', action: 'escalate_to_soc' }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(metaWithoutWrite);
+  await assert.rejects(
+    async () => engine.executeWorkflow('soc_test'),
+    /Zero Trust RBAC Policy Violation \[RBAC_WRITE_(?:UNAUTHORIZED|DISALLOWED)\]/
+  );
+
+  const metaWithWrite = {
+    name: 'authorized-soc-persona',
+    rbac: {
+      role: 'soc_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces/cases', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      soc_test: {
+        steps: [
+          { name: 'Authorized SOC Escalation', action: 'escalate_to_soc', target: path.join(testIsolatedDir, 'cases', 'soc_granted.json') }
+        ]
+      }
+    }
+  };
+  const engineAllowed = new DeclarativeWorkflowEngine(metaWithWrite);
+  const res = await engineAllowed.executeWorkflow('soc_test');
+  assert.equal(res.status, 'COMPLETED');
+  assert.ok(fs.existsSync(path.join(testIsolatedDir, 'cases', 'soc_granted.json')));
+});
+
+test('Audit Verification: checkpoint resume rejects tampered digest, expired tokens, and invalid signatures', async () => {
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      gated_flow: {
+        steps: [
+          { name: 'Initial Scan', action: 'fetch_sources', scope: testIsolatedDir },
+          { name: 'Gated Action', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'tamper_q.json'), approval_required: true }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('gated_flow');
+  assert.equal(suspended.status, 'SUSPENDED_APPROVAL_REQUIRED');
+
+  const checkpointFile = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${suspended.instanceId}.json`);
+  const originalRaw = fs.readFileSync(checkpointFile, 'utf8');
+  const checkpoint = JSON.parse(originalRaw);
+
+  // 1. Invalid slug / path traversal in instanceId
+  await assert.rejects(
+    async () => engine.resumeWorkflow('../../../etc/passwd', { token: 'admin.12345.abc' }),
+    /Invalid instanceId/
+  );
+
+  // 2. Missing token
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId),
+    /signed approval token required/
+  );
+
+  // 3. Malformed token format
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token: 'invalid-single-token' }),
+    /malformed approval token format/
+  );
+
+  // 4. Expired token (ttl -10 seconds)
+  const expiredToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'admin', -10);
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token: expiredToken }),
+    /approval token has expired/
+  );
+
+  // 5. Invalid HMAC signature
+  const validToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'admin', 3600);
+  const parts = validToken.split('.');
+  const forgedToken = `${parts[0]}.${parts[1]}.0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`;
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token: forgedToken }),
+    /invalid approval token signature/
+  );
+
+  // 6. Tampered checkpoint payload on disk
+  const tampered = { ...checkpoint, stepName: 'Tampered Malicious Step' };
+  fs.writeFileSync(checkpointFile, JSON.stringify(tampered, null, 2), 'utf8');
+  await assert.rejects(
+    async () => engine.resumeWorkflow(suspended.instanceId, { token: validToken }),
+    /checkpoint content has been tampered with \(digest mismatch\)/
+  );
+
+  // Restore original checkpoint
+  fs.writeFileSync(checkpointFile, originalRaw, 'utf8');
+});
+
+test('Audit Verification: checkpoint execution failure transitions status to FAILED on disk', async () => {
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      failing_flow: {
+        steps: [
+          { name: 'Initial Scan', action: 'fetch_sources', scope: testIsolatedDir },
+          { name: 'Gated Action', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'fail_q.json'), approval_required: true },
+          { name: 'Exploding Step', action: 'validate_sdmx_schema', target: path.join(testIsolatedDir, 'non_existent_schema_xyz.json') }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const suspended = await engine.executeWorkflow('failing_flow');
+  assert.equal(suspended.status, 'SUSPENDED_APPROVAL_REQUIRED');
+
+  const checkpointFile = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${suspended.instanceId}.json`);
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
+  const validToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'admin', 3600);
+
+  // Resume workflow where post-gate step fails
+  const resumeRes = await engine.resumeWorkflow(suspended.instanceId, { token: validToken });
+  assert.equal(resumeRes.status, 'FAILED');
+
+  // Verify checkpoint file on disk was updated to FAILED and not stranded in IN_PROGRESS
+  const persistedCheckpoint = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
+  assert.equal(persistedCheckpoint.status, 'FAILED');
+  assert.ok(persistedCheckpoint.error);
+});
+
+test('Audit Verification: transactional patch leaves target unmodified on syntax error and unified diff mismatch', async () => {
+  const targetJs = path.join(testIsolatedDir, 'tx_target.js');
+  const originalCode = 'const initial = "valid code";\nconsole.log(initial);\n';
+  fs.writeFileSync(targetJs, originalCode, 'utf8');
+
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Unified diff with context mismatch
+  const mismatchDiff = `diff --git a/tx_target.js b/tx_target.js
+--- a/tx_target.js
++++ b/tx_target.js
+@@ -1,2 +1,2 @@
+-const wrongContext = "nope";
++const wrongContext = "patched";
+ console.log(initial);
+`;
+  const step1 = await engine.executeStep({
+    action: 'apply_fix_or_patch',
+    target: targetJs,
+    content: mismatchDiff
+  }, {}, 'test', 'tr-tx1', 'sp-tx1');
+  assert.equal(step1.status, 'failed');
+  assert.equal(step1.code, 'PATCH_CONTEXT_MISMATCH');
+  assert.equal(fs.readFileSync(targetJs, 'utf8'), originalCode, 'Target file must remain byte-for-byte unmodified on mismatch');
+
+  // 2. Syntax-invalid JavaScript replacement
+  const step2 = await engine.executeStep({
+    action: 'apply_fix_or_patch',
+    target: targetJs,
+    content: 'const broken = (function unclosed { '
+  }, {}, 'test', 'tr-tx2', 'sp-tx2');
+  assert.equal(step2.status, 'failed');
+  assert.equal(step2.code, 'SYNTAX_VERIFICATION_FAILED');
+  assert.equal(fs.readFileSync(targetJs, 'utf8'), originalCode, 'Target file must remain byte-for-byte unmodified on syntax error');
+
+  // 3. Syntax-invalid JSON replacement
+  const targetJson = path.join(testIsolatedDir, 'tx_target.json');
+  const originalJson = '{\n  "status": "ok"\n}\n';
+  fs.writeFileSync(targetJson, originalJson, 'utf8');
+
+  const step3 = await engine.executeStep({
+    action: 'apply_fix_or_patch',
+    target: targetJson,
+    content: '{\n  "status": invalid_json\n}'
+  }, {}, 'test', 'tr-tx3', 'sp-tx3');
+  assert.equal(step3.status, 'failed');
+  assert.equal(step3.code, 'SYNTAX_VERIFICATION_FAILED');
+  assert.equal(fs.readFileSync(targetJson, 'utf8'), originalJson, 'JSON target file must remain unmodified on syntax error');
+
+  // 4. Valid unified diff with matching context applies cleanly
+  const validDiff = `--- a/tx_target.js
++++ b/tx_target.js
+@@ -1,2 +1,2 @@
+ const initial = "valid code";
+-console.log(initial);
++console.log("patched: " + initial);
+`;
+  const step4 = await engine.executeStep({
+    action: 'apply_fix_or_patch',
+    target: targetJs,
+    content: validDiff
+  }, {}, 'test', 'tr-tx4', 'sp-tx4');
+  assert.equal(step4.status, 'success');
+  assert.equal(fs.readFileSync(targetJs, 'utf8'), 'const initial = "valid code";\nconsole.log("patched: " + initial);\n');
+});
+
+test('Audit Verification: SDMX validation strictly enforces genuine dataflows and metadata structures', async () => {
+  const meta = {
+    name: 'sdmx-expert',
+    rbac: {
+      role: 'sdmx_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    }
+  };
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Empty JSON object
+  const emptyJson = path.join(testIsolatedDir, 'empty.json');
+  fs.writeFileSync(emptyJson, '{}', 'utf8');
+  const step1 = await engine.executeStep({ action: 'validate_sdmx_schema', target: emptyJson }, {}, 'test', 'tr-sdmx1', 'sp-sdmx1');
+  assert.equal(step1.status, 'failed');
+  assert.equal(step1.code, 'SDMX_SCHEMA_INVALID');
+
+  // 2. Generic unrelated JSON
+  const genericJson = path.join(testIsolatedDir, 'generic.json');
+  fs.writeFileSync(genericJson, JSON.stringify({ name: 'ordinary object', items: [1, 2, 3] }), 'utf8');
+  const step2 = await engine.executeStep({ action: 'validate_sdmx_schema', target: genericJson }, {}, 'test', 'tr-sdmx2', 'sp-sdmx2');
+  assert.equal(step2.status, 'failed');
+  assert.equal(step2.code, 'SDMX_SCHEMA_INVALID');
+
+  // 3. JSON with empty data object
+  const emptyDataJson = path.join(testIsolatedDir, 'empty_data.json');
+  fs.writeFileSync(emptyDataJson, JSON.stringify({ data: {} }), 'utf8');
+  const step3 = await engine.executeStep({ action: 'validate_sdmx_schema', target: emptyDataJson }, {}, 'test', 'tr-sdmx3', 'sp-sdmx3');
+  assert.equal(step3.status, 'failed');
+  assert.equal(step3.code, 'SDMX_SCHEMA_INVALID');
+
+  // 4. Genuine SDMX-JSON 2.1 structure with dataflows
+  const validSdmxJson = path.join(testIsolatedDir, 'valid_sdmx.json');
+  fs.writeFileSync(validSdmxJson, JSON.stringify({
+    data: {
+      dataflows: [
+        { id: 'DF_MIGRATION', agencyID: 'LU1', version: '1.0' }
+      ]
+    }
+  }), 'utf8');
+  const step4 = await engine.executeStep({ action: 'validate_sdmx_schema', target: validSdmxJson }, {}, 'test', 'tr-sdmx4', 'sp-sdmx4');
+  assert.equal(step4.status, 'success');
+  assert.equal(step4.sdmx_schema.validated, true);
+
+  // 5. HTML error response
+  const htmlXml = path.join(testIsolatedDir, 'error.xml');
+  fs.writeFileSync(htmlXml, '<!DOCTYPE html><html><body>Error 404</body></html>', 'utf8');
+  const step5 = await engine.executeStep({ action: 'validate_sdmx_schema', target: htmlXml }, {}, 'test', 'tr-sdmx5', 'sp-sdmx5');
+  assert.equal(step5.status, 'failed');
+  assert.equal(step5.code, 'SDMX_SCHEMA_INVALID');
+
+  // 6. Genuine SDMX-ML XML structure with Dataflow
+  const validSdmxXml = path.join(testIsolatedDir, 'valid_sdmx.xml');
+  fs.writeFileSync(validSdmxXml, '<mes:Structure xmlns:mes="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message"><str:Dataflows><str:Dataflow id="DF_EMPLOYMENT"/></str:Dataflows></mes:Structure>', 'utf8');
+  const step6 = await engine.executeStep({ action: 'validate_sdmx_schema', target: validSdmxXml }, {}, 'test', 'tr-sdmx6', 'sp-sdmx6');
+  assert.equal(step6.status, 'success');
+  assert.equal(step6.sdmx_schema.validated, true);
 });
 
 test.after(() => {

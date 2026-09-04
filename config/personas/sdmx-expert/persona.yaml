@@ -52,7 +52,8 @@ rbac:
         - "/workspaces"
         - "/root/.dsh/personas/sdmx-expert"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"
@@ -78,7 +79,7 @@ workflows:
         scope: "LU1"
       - name: "Generate Statistical Dataset"
         action: "write_report"
-        destination: "/workspaces/sdmx_indicators.csv"
+        destination: "/artifacts/sdmx_indicators.csv"
   lustat:
     modelTier: default
     command: "Using the sdmx-expert skill, query available dataflows from LUSTAT (LU1) and list top economic indicators."

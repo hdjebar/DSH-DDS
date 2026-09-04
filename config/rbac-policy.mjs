@@ -292,6 +292,8 @@ export function enforceRbacPolicy(personaMeta, step) {
   if (rawTargets.length === 0) {
     if (rawAction === 'contain_threat') {
       rawTargets.push(step.target || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'quarantine', 'quarantine_ledger.json') : '/workspaces/quarantine/quarantine_ledger.json'));
+    } else if (rawAction === 'escalate_to_soc') {
+      rawTargets.push(step.target || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases', 'soc_escalation.json') : '/workspaces/cases/soc_escalation.json'));
     } else if (rawAction === 'forensic_investigation') {
       rawTargets.push(step.scope || step.target || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases'));
     } else if (rawAction === 'read_catalog') {
@@ -311,7 +313,7 @@ export function enforceRbacPolicy(personaMeta, step) {
 
   const isWriteAction = [
     'write_report', 'apply_fix_or_patch', 'save_artifact',
-    'create_file', 'contain_threat', 'modify_file'
+    'create_file', 'contain_threat', 'modify_file', 'escalate_to_soc'
   ].includes(rawAction);
 
   const isReadAction = [

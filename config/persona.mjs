@@ -345,15 +345,15 @@ export async function runWorkflow(name, workflowKey, options = {}) {
 
   let result;
   if (options.resume) {
-    if (!options.approved && !options.token) {
-      console.error(`❌ Error: Resuming workflow instance '${options.resume}' requires explicit human approval.`);
-      console.error(`   Provide '--approved' or '--token=<approvalToken>'.`);
-      console.error(`   Example: ./dsh.sh persona run ${safeName} --resume=${options.resume} --approved`);
+    if (!options.token) {
+      console.error(`❌ Error: Resuming workflow instance '${options.resume}' requires an out-of-process signed approval token.`);
+      console.error(`   Provide '--token=<actor>.<expiresAt>.<hmacSignature>'.`);
+      console.error(`   To generate a signed approval token, run:`);
+      console.error(`      ./dsh.sh approve ${options.resume}`);
       process.exit(2);
     }
     console.log(`🔄 Resuming suspended declarative workflow instance '\x1b[36m${options.resume}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m'...`);
     result = await engine.resumeWorkflow(options.resume, {
-      approved: Boolean(options.approved),
       approvalToken: options.token,
       context: workflowContext
     });

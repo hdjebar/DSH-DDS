@@ -54,6 +54,7 @@ rbac:
         - "/root/.dsh/sessions"
       write:
         - "/workspaces/cases"
+        - "/artifacts"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"

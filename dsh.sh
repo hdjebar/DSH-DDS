@@ -27,6 +27,7 @@ print_help() {
   echo "  cli               Launch interactive terminal matrix"
   echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
   echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
+  echo "  approve <id>      Issue signed approval token to resume suspended workflow"
   echo "  reset             Safely clear caches & restart stack"
   echo "  status            Show container health status"
   echo "========================================================"
@@ -37,7 +38,8 @@ ensure_runtime_dirs() {
            "$SCRIPT_DIR/config/audit" \
            "$SCRIPT_DIR/config/storages" \
            "$SCRIPT_DIR/config/patch" \
-           "$SCRIPT_DIR/workspaces/cases"
+           "$SCRIPT_DIR/workspaces/cases" \
+           "$SCRIPT_DIR/workspaces/artifacts"
 }
 
 case "$COMMAND" in
@@ -217,6 +219,36 @@ case "$COMMAND" in
       echo "   Or override explicitly: ./dsh.sh sessions $* --force-host-unsafe"
       exit 1
     fi
+    ;;
+
+  approve)
+    INSTANCE_ID="$2"
+    if [ -z "$INSTANCE_ID" ]; then
+      echo "❌ Error: Missing instance ID. Usage: ./dsh.sh approve <instanceId> [--actor=<name>]"
+      exit 1
+    fi
+    node -e "
+      import('./config/declarative-orchestrator.mjs').then(({ DeclarativeWorkflowEngine }) => {
+        import('fs').then(fs => {
+          import('path').then(path => {
+            const id = '$INSTANCE_ID';
+            const checkpointPath = path.join(process.cwd(), 'config', 'sessions', 'checkpoints', id + '.json');
+            if (!fs.existsSync(checkpointPath)) {
+              console.error('❌ Error: Checkpoint not found at ' + checkpointPath);
+              process.exit(1);
+            }
+            const cp = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
+            const actor = process.env.USER || 'host-operator';
+            const token = DeclarativeWorkflowEngine.generateApprovalToken(cp, actor, 3600);
+            console.log('✅ Approved instance: ' + id);
+            console.log('   Actor: ' + actor);
+            console.log('   Approval Token: ' + token);
+            console.log('\nResume execution with:');
+            console.log('   ./dsh.sh persona run ' + cp.persona + ' --resume=' + id + ' --token=' + token);
+          });
+        });
+      });
+    "
     ;;
 
   status)

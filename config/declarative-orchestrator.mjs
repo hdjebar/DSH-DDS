@@ -105,9 +105,108 @@ export class AgentPhoenixTracer {
 }
 
 /**
+ * Context-verified Unified Diff Applicator
+ * Parses unified diff hunks (---, +++, @@ -start,len +start,len @@) and validates context lines
+ * against the target file before applying additions and deletions.
+ */
+export function applyUnifiedDiff(originalContent, diffText) {
+  const originalLines = originalContent.split('\n');
+  const diffLines = diffText.split('\n');
+  let lineIdx = 0;
+
+  // Skip diff headers (diff --git, ---, +++)
+  while (lineIdx < diffLines.length && !diffLines[lineIdx].startsWith('@@')) {
+    lineIdx++;
+  }
+  if (lineIdx >= diffLines.length) {
+    throw new Error("Invalid unified diff: missing '@@' hunk header");
+  }
+
+  const resultLines = [];
+  let origCursor = 0; // 0-indexed
+
+  while (lineIdx < diffLines.length) {
+    const hunkHeader = diffLines[lineIdx];
+    if (!hunkHeader.startsWith('@@')) {
+      lineIdx++;
+      continue;
+    }
+    const match = hunkHeader.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+    if (!match) {
+      throw new Error(`Malformed hunk header: '${hunkHeader}'`);
+    }
+    const oldStart = Math.max(0, parseInt(match[1], 10) - 1); // 0-indexed
+
+    // Copy unchanged lines prior to this hunk
+    while (origCursor < oldStart && origCursor < originalLines.length) {
+      resultLines.push(originalLines[origCursor]);
+      origCursor++;
+    }
+
+    lineIdx++;
+    while (lineIdx < diffLines.length && !diffLines[lineIdx].startsWith('@@')) {
+      const line = diffLines[lineIdx];
+      if (line === '' && lineIdx === diffLines.length - 1) {
+        lineIdx++;
+        break;
+      }
+      const prefix = line[0];
+      const content = line.slice(1);
+
+      if (prefix === ' ') {
+        // Context line
+        if (origCursor >= originalLines.length || originalLines[origCursor] !== content) {
+          throw new Error(`Unified diff context mismatch at line ${origCursor + 1}: expected '${content}', found '${originalLines[origCursor] || ''}'`);
+        }
+        resultLines.push(originalLines[origCursor]);
+        origCursor++;
+      } else if (prefix === '-') {
+        // Deletion line
+        if (origCursor >= originalLines.length || originalLines[origCursor] !== content) {
+          throw new Error(`Unified diff deletion mismatch at line ${origCursor + 1}: expected '${content}', found '${originalLines[origCursor] || ''}'`);
+        }
+        origCursor++;
+      } else if (prefix === '+') {
+        // Addition line
+        resultLines.push(content);
+      } else if (prefix === '\\') {
+        // Ignore metadata comments like "\ No newline at end of file"
+      } else if (line.trim() === '') {
+        // Treat blank line as matching context
+        if (origCursor < originalLines.length && originalLines[origCursor] === '') {
+          resultLines.push('');
+          origCursor++;
+        }
+      } else {
+        throw new Error(`Invalid unified diff syntax: unexpected line prefix '${prefix}' in line '${line}'`);
+      }
+      lineIdx++;
+    }
+  }
+
+  // Copy remaining lines from original
+  while (origCursor < originalLines.length) {
+    resultLines.push(originalLines[origCursor]);
+    origCursor++;
+  }
+
+  return resultLines.join('\n');
+}
+
+/**
  * 🛡️ Authoritative Declarative Workflow Engine
  */
 export class DeclarativeWorkflowEngine {
+  static generateApprovalToken(checkpoint, actor = 'admin', ttlSeconds = 3600, secret = null) {
+    const tokenSecret = secret || process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET || 'dsh-governance-key';
+    const expiresAt = Date.now() + (ttlSeconds * 1000);
+    const digest = checkpoint.checkpointDigest;
+    const signature = crypto.createHmac('sha256', tokenSecret)
+      .update(`${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${digest}:${actor}:${expiresAt}`)
+      .digest('hex');
+    return `${actor}.${expiresAt}.${signature}`;
+  }
+
   constructor(manifestPathOrMeta) {
     if (typeof manifestPathOrMeta === 'string') {
       this.manifestPath = manifestPathOrMeta;
@@ -308,7 +407,7 @@ export class DeclarativeWorkflowEngine {
       };
     });
 
-    // 5. apply_fix_or_patch: Real patch target assertion with authentic syntax verification (FR-003)
+    // 5. apply_fix_or_patch: Transactional patch target assertion with authentic syntax verification (FR-003)
     this.registerAction('apply_fix_or_patch', async (step, ctx) => {
       const rawTarget = step.resolvedTarget || step.target;
       if (!rawTarget) {
@@ -330,19 +429,9 @@ export class DeclarativeWorkflowEngine {
       }
 
       const patchData = step.patch || step.content;
-      fs.writeFileSync(target, patchData, 'utf8');
-
-      if (!fs.existsSync(target)) {
-        return {
-          status: 'failed',
-          error: `Failed to write patch to target '${target}'`,
-          code: 'PATCH_WRITE_FAILED'
-        };
-      }
-
-      // FR-003: Real syntax & format validation of the applied patch/content
-      let syntaxVerified = false;
       const ext = path.extname(target).toLowerCase();
+      let candidateContent;
+
       if (ext === '.patch' || ext === '.diff') {
         const isUnifiedDiff = /^(?:diff --git|---|\+\+\+|@@)/m.test(patchData) || patchData.startsWith('#');
         if (!isUnifiedDiff) {
@@ -352,31 +441,68 @@ export class DeclarativeWorkflowEngine {
             code: 'PATCH_SYNTAX_INVALID'
           };
         }
-        syntaxVerified = true;
-      } else if (ext === '.js' || ext === '.mjs') {
-        try {
-          new vm.Script(fs.readFileSync(target, 'utf8'));
-          syntaxVerified = true;
-        } catch (syntaxErr) {
-          return {
-            status: 'failed',
-            error: `Syntax verification failed on target '${target}': ${syntaxErr.message}`,
-            code: 'SYNTAX_VERIFICATION_FAILED'
-          };
-        }
-      } else if (ext === '.json') {
-        try {
-          JSON.parse(fs.readFileSync(target, 'utf8'));
-          syntaxVerified = true;
-        } catch (jsonErr) {
-          return {
-            status: 'failed',
-            error: `JSON syntax verification failed on target '${target}': ${jsonErr.message}`,
-            code: 'SYNTAX_VERIFICATION_FAILED'
-          };
-        }
+        candidateContent = patchData;
       } else {
-        syntaxVerified = true;
+        // Check if patchData is a unified diff targeting an existing file
+        const isUnifiedDiff = /^(?:diff --git|---|\+\+\+|@@)/m.test(patchData);
+        if (isUnifiedDiff) {
+          if (!fs.existsSync(target)) {
+            return {
+              status: 'failed',
+              error: `Target file '${target}' does not exist to apply unified diff`,
+              code: 'TARGET_NOT_FOUND'
+            };
+          }
+          const originalContent = fs.readFileSync(target, 'utf8');
+          try {
+            candidateContent = applyUnifiedDiff(originalContent, patchData);
+          } catch (diffErr) {
+            return {
+              status: 'failed',
+              error: `Failed to apply unified diff to '${target}': ${diffErr.message}`,
+              code: 'PATCH_CONTEXT_MISMATCH'
+            };
+          }
+        } else {
+          candidateContent = patchData;
+        }
+
+        // Validate syntax of candidateContent BEFORE modifying target file
+        if (ext === '.js' || ext === '.mjs') {
+          try {
+            new vm.Script(candidateContent);
+          } catch (syntaxErr) {
+            return {
+              status: 'failed',
+              error: `Syntax verification failed on target '${target}': ${syntaxErr.message}`,
+              code: 'SYNTAX_VERIFICATION_FAILED'
+            };
+          }
+        } else if (ext === '.json') {
+          try {
+            JSON.parse(candidateContent);
+          } catch (jsonErr) {
+            return {
+              status: 'failed',
+              error: `JSON syntax verification failed on target '${target}': ${jsonErr.message}`,
+              code: 'SYNTAX_VERIFICATION_FAILED'
+            };
+          }
+        }
+      }
+
+      // Transactional atomic write: write to sibling temporary file then atomically rename
+      const tempFile = path.join(parentDir, `.${path.basename(target)}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
+      try {
+        fs.writeFileSync(tempFile, candidateContent, 'utf8');
+        fs.renameSync(tempFile, target);
+      } catch (writeErr) {
+        try { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile); } catch {}
+        return {
+          status: 'failed',
+          error: `Transactional write failed on target '${target}': ${writeErr.message}`,
+          code: 'PATCH_WRITE_FAILED'
+        };
       }
 
       return {
@@ -384,8 +510,9 @@ export class DeclarativeWorkflowEngine {
         patch_status: {
           target,
           applied: true,
-          bytes_written: Buffer.byteLength(patchData),
-          verification: syntaxVerified ? 'syntax_verified' : 'unverified'
+          applied_at: new Date().toISOString(),
+          bytes_written: Buffer.byteLength(candidateContent, 'utf8'),
+          syntax_verified: true
         }
       };
     });
@@ -495,15 +622,15 @@ export class DeclarativeWorkflowEngine {
         if (contentType.includes('json') || text.trim().startsWith('{')) {
           try {
             const parsed = JSON.parse(text);
-            const flows = parsed?.data?.dataflows || parsed?.dataflows || [];
-            flowsCount = Array.isArray(flows) ? flows.length : 0;
-            if (flowsCount === 0 && !parsed?.data && !parsed?.structure) {
+            const flows = parsed?.data?.dataflows || parsed?.structure?.dataflows || parsed?.dataflows;
+            if (!Array.isArray(flows) || flows.length === 0 || !flows.every(f => f && typeof f === 'object' && (f.id || f.agencyID))) {
               return {
                 status: 'failed',
-                error: `SDMX JSON response from ${endpoint} contains no dataflow definitions`,
-                code: 'SDMX_NO_DATAFLOWS'
+                error: `SDMX JSON structure validation failed for ${endpoint}: response lacks valid 'dataflows' array with element identifiers`,
+                code: 'SDMX_STRUCTURE_INVALID'
               };
             }
+            flowsCount = flows.length;
           } catch (jsonErr) {
             return {
               status: 'failed',
@@ -520,15 +647,16 @@ export class DeclarativeWorkflowEngine {
               code: 'SDMX_PARSE_FAILED'
             };
           }
-          const matches = text.match(/<(?:\w+:)?Dataflow\b/g);
-          if (!matches && !text.includes('Structure') && !text.includes('dataflow')) {
+          const hasStructureRoot = /<(?:\w+:)?(?:Structure|Message|GenericData)\b/i.test(text);
+          const dataflowMatches = text.match(/<(?:\w+:)?Dataflow\b[^>]*\bid="[^"]+"/gi);
+          if (!hasStructureRoot || !dataflowMatches || dataflowMatches.length === 0) {
             return {
               status: 'failed',
-              error: `SDMX XML payload contains no recognizable Dataflow tags from ${endpoint}`,
-              code: 'SDMX_PARSE_FAILED'
+              error: `SDMX XML structure validation failed for ${endpoint}: missing SDMX Structure envelope or valid Dataflow tags with 'id' attributes`,
+              code: 'SDMX_STRUCTURE_INVALID'
             };
           }
-          flowsCount = matches ? matches.length : 0;
+          flowsCount = dataflowMatches.length;
         } else {
           return {
             status: 'failed',
@@ -568,29 +696,56 @@ export class DeclarativeWorkflowEngine {
         };
       }
       const schemaPath = resolvePath(candidate);
-      if (!fs.existsSync(schemaPath) || fs.statSync(schemaPath).isDirectory()) {
+      const fileExists = fs.existsSync(schemaPath) && !fs.statSync(schemaPath).isDirectory();
+
+      if (!fileExists) {
+        // If candidate is a logical agency/scope (e.g. 'LU1') and ctx has sdmx_dataflows from prior step
+        if (ctx.sdmx_dataflows && ctx.sdmx_dataflows.status === 'VALIDATED') {
+          if (ctx.sdmx_dataflows.agency === candidate || ctx.sdmx_dataflows.flows_count > 0) {
+            return {
+              status: 'success',
+              sdmx_schema: {
+                validated: true,
+                agency: ctx.sdmx_dataflows.agency || candidate,
+                source: 'discovered_dataflows',
+                flows_count: ctx.sdmx_dataflows.flows_count,
+                standards: ['SDMX 2.1', 'ESTAT', 'LUSTAT']
+              }
+            };
+          }
+        }
         return {
           status: 'failed',
-          error: `SDMX schema file not found or is a directory at '${schemaPath}'`,
+          error: `SDMX schema file not found at '${schemaPath}' and no validated dataflow structure in context for scope '${candidate}'`,
           code: 'SDMX_SCHEMA_NOT_FOUND'
         };
       }
+
       try {
         const content = fs.readFileSync(schemaPath, 'utf8');
         if (content.trim().startsWith('{')) {
           const parsed = JSON.parse(content);
-          if (!parsed.data && !parsed.structure && !parsed.dataflows && !parsed.name && !parsed.agency) {
+          const hasStructure = Boolean(
+            (parsed.structure && (parsed.structure.datastructures || parsed.structure.dataflows || parsed.structure.codelists || parsed.structure.concepts)) ||
+            (parsed.data && (parsed.data.datastructures || parsed.data.dataflows || parsed.data.codelists)) ||
+            (Array.isArray(parsed.dataflows) && parsed.dataflows.length > 0 && parsed.dataflows[0]?.id) ||
+            (Array.isArray(parsed.datastructures) && parsed.datastructures.length > 0) ||
+            (Array.isArray(parsed.codelists) && parsed.codelists.length > 0)
+          );
+          if (!hasStructure) {
             return {
               status: 'failed',
-              error: `SDMX schema validation failed: missing required structure attributes in '${schemaPath}'`,
+              error: `SDMX schema validation failed: JSON file '${schemaPath}' lacks SDMX structural metadata (dataflows, datastructures, or codelists)`,
               code: 'SDMX_SCHEMA_INVALID'
             };
           }
         } else if (content.trim().startsWith('<')) {
-          if (!content.includes('Structure') && !content.includes('DataStructure') && !content.includes('Codelist')) {
+          const hasXmlStructure = /<(?:\w+:)?(?:DataStructure|Dataflow|Codelist|ConceptScheme)\b/i.test(content) &&
+                                  /<(?:\w+:)?(?:Structure|Message)\b/i.test(content);
+          if (!hasXmlStructure) {
             return {
               status: 'failed',
-              error: `SDMX XML schema validation failed: missing Structure or DataStructure definition in '${schemaPath}'`,
+              error: `SDMX XML schema validation failed: missing Structure definition or DataStructure/Dataflow/Codelist tags in '${schemaPath}'`,
               code: 'SDMX_SCHEMA_INVALID'
             };
           }
@@ -1025,7 +1180,7 @@ export class DeclarativeWorkflowEngine {
           });
           suspendedReason = `Workflow paused: step '${step.name || action}' requires approval before execution.`;
 
-          // PR-009: Persist durable workflow checkpoint for human-in-the-loop governance
+          // PR-009 & FR-005: Persist durable workflow checkpoint with digest for human-in-the-loop governance
           const checkpointDir = path.join(
             process.env.DSH_SESSIONS_DIR || (process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sessions') : path.join(process.cwd(), 'config', 'sessions')),
             'checkpoints'
@@ -1033,23 +1188,27 @@ export class DeclarativeWorkflowEngine {
           if (!fs.existsSync(checkpointDir)) fs.mkdirSync(checkpointDir, { recursive: true });
 
           instanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-          const tokenSecret = process.env.DSH_SECRET || 'dsh-governance-key';
-          approvalToken = crypto.createHmac('sha256', tokenSecret)
-            .update(`${instanceId}:${safeWfName}:${step.name || action}`)
-            .digest('hex');
-
-          const checkpoint = {
+          validateSlug(instanceId, 'instanceId');
+          const checkpointCreatedAt = new Date().toISOString();
+          const canonicalCheckpointData = {
             instanceId,
             persona: this.meta.name,
             workflow: safeWfName,
-            traceId,
             stepIndex: steps.indexOf(step),
             stepName: step.name || action,
             action,
-            approvalToken,
-            createdAt: new Date().toISOString(),
+            createdAt: checkpointCreatedAt,
+            contextSnapshot: currentContext
+          };
+          const checkpointDigest = crypto.createHash('sha256')
+            .update(JSON.stringify(canonicalCheckpointData))
+            .digest('hex');
+
+          const checkpoint = {
+            ...canonicalCheckpointData,
+            traceId,
+            checkpointDigest,
             status: 'SUSPENDED_APPROVAL_REQUIRED',
-            contextSnapshot: currentContext,
             completedLogs: [...results]
           };
           fs.writeFileSync(path.join(checkpointDir, `${instanceId}.json`), JSON.stringify(checkpoint, null, 2), 'utf8');
@@ -1080,7 +1239,8 @@ export class DeclarativeWorkflowEngine {
       throw err;
     } finally {
       const endTime = Date.now();
-      const finalStatusAttr = workflowError ? 'ERROR' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'SUCCESS');
+      const finalStatus = workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED');
+      const executionDurationMs = endTime - startTime;
       await this.tracer.sendSpan({
         traceId,
         spanId: rootSpanId,
@@ -1092,25 +1252,18 @@ export class DeclarativeWorkflowEngine {
         error: workflowError,
         attributes: {
           'workflow.steps_count': steps.length,
-          'workflow.status': finalStatusAttr
+          'workflow.status': finalStatus,
+          'workflow.duration_ms': executionDurationMs
         }
       });
-    }
-
-    let finalStatus = 'COMPLETED';
-    if (workflowError) {
-      finalStatus = 'FAILED';
-    } else if (suspendedReason) {
-      finalStatus = 'SUSPENDED_APPROVAL_REQUIRED';
     }
 
     return {
       persona: this.meta.name,
       workflow: safeWfName,
       instanceId,
-      approvalToken,
       traceId,
-      status: finalStatus,
+      status: workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED'),
       error: workflowError,
       suspendedReason,
       executionLogs: results,
@@ -1120,6 +1273,7 @@ export class DeclarativeWorkflowEngine {
 
   // PR-009 & FR-005: Durable Resume from Approval Checkpoint with Authenticated Non-Replay Governance
   async resumeWorkflow(instanceId, options = {}) {
+    validateSlug(instanceId, 'instanceId');
     const checkpointDir = path.join(
       process.env.DSH_SESSIONS_DIR || (process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sessions') : path.join(process.cwd(), 'config', 'sessions')),
       'checkpoints'
@@ -1145,28 +1299,57 @@ export class DeclarativeWorkflowEngine {
       throw new Error(`Checkpoint '${instanceId}' has expired (TTL: 24h).`);
     }
 
-    // 3. Approval Verification: Explicit approval flag or valid approvalToken required
-    const isExplicitlyApproved = Boolean(options.approved || options.context?.approved);
-    const providedToken = options.approvalToken || options.token;
+    // 3. Digest Integrity Check: recompute digest over canonical immutable data
+    const canonicalCheckpointData = {
+      instanceId: checkpoint.instanceId,
+      persona: checkpoint.persona,
+      workflow: checkpoint.workflow,
+      stepIndex: checkpoint.stepIndex,
+      stepName: checkpoint.stepName,
+      action: checkpoint.action,
+      createdAt: checkpoint.createdAt,
+      contextSnapshot: checkpoint.contextSnapshot
+    };
+    const computedDigest = crypto.createHash('sha256')
+      .update(JSON.stringify(canonicalCheckpointData))
+      .digest('hex');
 
-    if (!isExplicitlyApproved && !providedToken) {
-      throw new Error(`Resume of checkpoint '${instanceId}' rejected: explicit human approval required (--approved or valid approvalToken).`);
+    if (computedDigest !== checkpoint.checkpointDigest) {
+      throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
     }
 
-    if (providedToken) {
-      const expectedToken = checkpoint.approvalToken;
-      const valid = expectedToken && crypto.timingSafeEqual(
-        Buffer.from(String(providedToken)),
-        Buffer.from(String(expectedToken))
-      );
-      if (!valid) {
-        throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token.`);
-      }
+    // 4. Token Verification: Require out-of-process signed approval token (<actor>.<expiresAt>.<signature>)
+    const rawToken = options.approvalToken || options.token;
+    if (!rawToken || typeof rawToken !== 'string') {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: signed approval token required (--token=<actor>.<expiresAt>.<hmacSignature>). Standalone boolean approval is disallowed.`);
     }
 
-    // 4. Atomic Consumption: Transition checkpoint to IN_PROGRESS on disk before execution to prevent concurrent replay
+    const parts = rawToken.split('.');
+    if (parts.length !== 3) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: malformed approval token format. Expected '<actor>.<expiresAt>.<hmacSignature>'.`);
+    }
+    const [actor, expiresAtStr, signature] = parts;
+    const expiresAt = Number(expiresAtStr);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: approval token has expired.`);
+    }
+
+    const tokenSecret = process.env.DSH_APPROVAL_SECRET || process.env.DSH_SECRET || 'dsh-governance-key';
+    const expectedSignature = crypto.createHmac('sha256', tokenSecret)
+      .update(`${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`)
+      .digest('hex');
+
+    const signatureBuf = Buffer.from(signature, 'hex');
+    const expectedBuf = Buffer.from(expectedSignature, 'hex');
+    if (signatureBuf.length === 0 || signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+      throw new Error(`Resume of checkpoint '${instanceId}' rejected: invalid approval token signature.`);
+    }
+
+    // 5. Atomic Consumption: Transition checkpoint to IN_PROGRESS on disk before execution
     checkpoint.status = 'IN_PROGRESS';
     checkpoint.resumedAt = new Date().toISOString();
+    checkpoint.approvedBy = actor;
+    checkpoint.approvedAt = new Date().toISOString();
     fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
 
     if (checkpoint.persona !== this.meta.name) {
@@ -1197,7 +1380,6 @@ export class DeclarativeWorkflowEngine {
     let workflowError = null;
     let suspendedReason = null;
     let newInstanceId = null;
-    let newApprovalToken = null;
 
     try {
       for (let i = startIndex; i < steps.length; i++) {
@@ -1214,23 +1396,27 @@ export class DeclarativeWorkflowEngine {
           });
           suspendedReason = `Workflow paused: step '${step.name || action}' requires approval before execution.`;
           newInstanceId = `wf-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-          const tokenSecret = process.env.DSH_SECRET || 'dsh-governance-key';
-          newApprovalToken = crypto.createHmac('sha256', tokenSecret)
-            .update(`${newInstanceId}:${safeWfName}:${step.name || action}`)
-            .digest('hex');
-
-          const nextCheckpoint = {
+          validateSlug(newInstanceId, 'newInstanceId');
+          const nextCreatedAt = new Date().toISOString();
+          const nextCanonical = {
             instanceId: newInstanceId,
             persona: this.meta.name,
             workflow: safeWfName,
-            traceId,
             stepIndex: i,
             stepName: step.name || action,
             action,
-            approvalToken: newApprovalToken,
-            createdAt: new Date().toISOString(),
+            createdAt: nextCreatedAt,
+            contextSnapshot: currentContext
+          };
+          const nextDigest = crypto.createHash('sha256')
+            .update(JSON.stringify(nextCanonical))
+            .digest('hex');
+
+          const nextCheckpoint = {
+            ...nextCanonical,
+            traceId,
+            checkpointDigest: nextDigest,
             status: 'SUSPENDED_APPROVAL_REQUIRED',
-            contextSnapshot: currentContext,
             completedLogs: [...results]
           };
           fs.writeFileSync(path.join(checkpointDir, `${newInstanceId}.json`), JSON.stringify(nextCheckpoint, null, 2), 'utf8');
@@ -1257,29 +1443,30 @@ export class DeclarativeWorkflowEngine {
     } catch (err) {
       workflowError = err.message;
       throw err;
+    } finally {
+      // 6. Explicit Checkpoint State Recovery: NEVER leave stranded in IN_PROGRESS
+      let finalStatus = 'COMPLETED';
+      if (workflowError) {
+        finalStatus = 'FAILED';
+        checkpoint.error = workflowError;
+      } else if (suspendedReason) {
+        finalStatus = 'SUSPENDED_APPROVAL_REQUIRED';
+      }
+      checkpoint.status = finalStatus;
+      checkpoint.completedAt = new Date().toISOString();
+      try {
+        fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
+      } catch {}
     }
-
-    let finalStatus = 'COMPLETED';
-    if (workflowError) {
-      finalStatus = 'FAILED';
-    } else if (suspendedReason) {
-      finalStatus = 'SUSPENDED_APPROVAL_REQUIRED';
-    }
-
-    checkpoint.status = finalStatus;
-    checkpoint.completedAt = new Date().toISOString();
-    try {
-      fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
-    } catch {}
 
     return {
       persona: this.meta.name,
       workflow: safeWfName,
       instanceId: newInstanceId || instanceId,
-      approvalToken: newApprovalToken || checkpoint.approvalToken,
+      checkpointDigest: checkpoint.checkpointDigest,
       resumedFrom: instanceId,
       traceId,
-      status: finalStatus,
+      status: workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED'),
       error: workflowError,
       suspendedReason,
       executionLogs: results,

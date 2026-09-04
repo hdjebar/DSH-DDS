@@ -53,7 +53,8 @@ rbac:
         - "/workspaces"
         - "/root/.dsh/personas/data-analyst"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"

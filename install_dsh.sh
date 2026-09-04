@@ -28,7 +28,8 @@ mkdir -p "$DSH_INSTALL/config/profiles/web" \
          "$DSH_INSTALL/config/audit" \
          "$DSH_INSTALL/config/storages" \
          "$DSH_INSTALL/config/patch" \
-         "$DSH_INSTALL/workspaces/cases"
+         "$DSH_INSTALL/workspaces/cases" \
+         "$DSH_INSTALL/workspaces/artifacts"
 
 # 2. Strict & Safe Environment Variable Loader
 load_env_safely() {
@@ -123,19 +124,29 @@ validate_remote_ref() {
 }
 validate_remote_ref
 
+# Initialize isolated atomic staging workspace
+STAGE_DIR="$(mktemp -d "${DSH_INSTALL}/.dsh-staging.XXXXXX" 2>/dev/null || mktemp -d "/tmp/dsh-staging.XXXXXX")"
+cleanup_staging() {
+  if [ -n "${STAGE_DIR:-}" ] && [ -d "$STAGE_DIR" ]; then
+    rm -rf "$STAGE_DIR"
+  fi
+}
+trap cleanup_staging EXIT INT TERM
+
 fetch_or_copy_file() {
   local rel_path="$1"
-  local dest="$DSH_INSTALL/$rel_path"
-  if [ -f "$dest" ] && [ "$FORCE" != true ]; then
+  local final_dest="$DSH_INSTALL/$rel_path"
+  if [ -f "$final_dest" ] && [ "$FORCE" != true ]; then
     return 0
   fi
-  mkdir -p "$(dirname "$dest")"
+  local stage_dest="$STAGE_DIR/$rel_path"
+  mkdir -p "$(dirname "$stage_dest")"
   local local_source="${DSH_SOURCE_DIR:-.}/$rel_path"
   if [ -f "$local_source" ]; then
-    cp "$local_source" "$dest"
+    cp "$local_source" "$stage_dest"
   else
     echo "⬇️  Downloading $rel_path from repository..."
-    if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$dest"; then
+    if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$stage_dest"; then
       echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
       exit 1
     fi
@@ -211,6 +222,37 @@ fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
 fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
+
+# Verify staged assets before promoting atomically
+verify_and_promote_staged() {
+  echo "🔍 Verifying staged installation integrity..."
+  local required_staged=(
+    "config/sync_models.mjs"
+    "config/doctor.mjs"
+    "config/persona.mjs"
+    "config/declarative-orchestrator.mjs"
+    "config/rbac-policy.mjs"
+    "dsh.sh"
+    "reset.sh"
+    "docker-compose.sandbox.yml"
+    "docker/entrypoint.sh"
+  )
+  for f in "${required_staged[@]}"; do
+    if [ ! -f "$DSH_INSTALL/$f" ] && [ ! -s "$STAGE_DIR/$f" ]; then
+      echo "❌ Error: Staged file '$f' is missing or empty. Aborting installation." >&2
+      exit 1
+    fi
+  done
+
+  # Atomically promote staged files into DSH_INSTALL
+  if [ -d "$STAGE_DIR" ]; then
+    echo "🚚 Promoting verified assets into $DSH_INSTALL..."
+    (cd "$STAGE_DIR" && tar -cf - .) | (cd "$DSH_INSTALL" && tar -xf -)
+    rm -rf "$STAGE_DIR"
+    STAGE_DIR=""
+  fi
+}
+verify_and_promote_staged
 
 # Permissions
 chmod +x "$DSH_INSTALL/dsh.sh" 2>/dev/null || true
@@ -531,6 +573,7 @@ services:
       - ./config/patch:/root/.dsh/patch:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/artifacts:/artifacts:rw
     tmpfs:
       - /run/dsh:rw,size=32m
       - /tmp:rw,size=64m

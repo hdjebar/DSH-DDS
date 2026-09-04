@@ -50,7 +50,8 @@ rbac:
         - "/workspaces"
         - "/root/.dsh/personas/stats-engineer"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"

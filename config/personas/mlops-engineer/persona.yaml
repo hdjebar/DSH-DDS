@@ -51,7 +51,8 @@ rbac:
         - "/root/.dsh/models.cache.json"
         - "/root/.dsh/personas/mlops-engineer"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"

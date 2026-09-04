@@ -10,7 +10,7 @@ This document defines the actionable, milestone-by-milestone engineering roadmap
 flowchart LR
     subgraph V110["v1.10.0+ (Current Production Baseline)"]
         direction TB
-        B1["Level 3.10 Governed Harness:<br/>• Arize Phoenix tracing (:6006)<br/>• 64 node:test unit tests (9 suites)<br/>• DeclarativeWorkflowEngine<br/>• 4 pre-compiled MCP servers<br/>• Google Antigravity ('agy') search<br/>• Hardened read-only sandbox"]
+        B1["Level 3.10 Governed Harness:<br/>• Arize Phoenix tracing (:6006)<br/>• 69 node:test unit tests (9 suites)<br/>• DeclarativeWorkflowEngine<br/>• 4 pre-compiled MCP servers<br/>• Google Antigravity ('agy') search<br/>• Hardened read-only sandbox"]
     end
 
     subgraph V111["Milestone 1 (v1.11.0 Target: Level 3.45)"]
@@ -210,7 +210,7 @@ flowchart LR
 
 Prior to tagging and releasing each milestone, the following gates must pass:
 
-* [ ] **Unit & Integration Suite**: All 64 native tests across 9 suites (`npm test`) pass with $0$ failures.
+* [ ] **Unit & Integration Suite**: All 69 native tests across 9 suites (`npm test`) pass with $0$ failures.
 * [ ] **Sandbox Invariant Audit**: `cap_drop: ALL`, `read_only: true`, and cgroup limits verified via `docker inspect`.
 * [ ] **Telemetry Assertion**: Arize Phoenix successfully records trace spans for model calls and tool executions.
 * [ ] **Clean-Room Installation**: `install_dsh.sh` executes in an isolated environment with zero missing assets.

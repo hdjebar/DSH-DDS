@@ -13,6 +13,7 @@ services:
       - ./config/patch:/root/.dsh/patch:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/artifacts:/artifacts:rw
     tmpfs:
       - /run/dsh:rw,size=32m
       - /tmp:rw,size=64m

@@ -58,7 +58,8 @@ rbac:
         - "/root/.dsh/personas/persona-creator"
         - "/root/.dsh/templates"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/personas"
         - "/root/.dsh/sessions"
       deny:
@@ -85,7 +86,7 @@ workflows:
         prompt: "Synthesize WORKFLOW.md control graph and step-by-step STEP.md workspaces."
       - name: "Validate Flow Schema"
         action: "write_report"
-        destination: "/workspaces/flow.json"
+        destination: "/artifacts/flow.json"
   design-workflow:
     modelTier: reasoning
     command: "Design an interactive visual workflow canvas (WORKFLOW.md and STEP.md) with deepseek-flow."

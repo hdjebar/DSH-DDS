@@ -52,7 +52,8 @@ rbac:
         - "/workspaces"
         - "/root/.dsh/personas/devops-sre"
       write:
-        - "/workspaces"
+        - "/artifacts"
+        - "/workspaces/cases"
         - "/root/.dsh/sessions"
       deny:
         - "/etc"
