@@ -506,9 +506,9 @@ COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa0
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     curl \
-    && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
+    && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 playwright@1.49.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
-    && /usr/local/lib/node_modules/@mzxrai/mcp-webresearch/node_modules/.bin/playwright install-deps chromium \
+    && playwright install-deps chromium \
     && rm -rf /var/lib/apt/lists/* \
     && uv tool install --with 'mcp<2.0.0' mcp-server-sqlite@2025.4.25 \
     && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
