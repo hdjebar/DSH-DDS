@@ -253,7 +253,7 @@ Comprehensive guides organized by audience and operational goal:
 
 | Service | Local URL | Container Port | Purpose |
 | :--- | :--- | :--- | :--- |
-| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (proxy) → `3079` (engine) | Interactive AI Agent Workbench |
+| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (native service) | Interactive AI Agent Workbench |
 | **Arize Phoenix Telemetry** | **[http://localhost:6006](http://localhost:6006)** | `6006` | Real-time LLM Traces, Spans & Token Costs |
 
 ---

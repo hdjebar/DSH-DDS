@@ -19,10 +19,14 @@ node_modules/
 **/*.db-shm
 
 # Persistent session, telemetry & storage data
-config/sessions/
-config/storages/
-config/phoenix/
-config/audit/
+config/sessions/*
+!config/sessions/.gitkeep
+config/storages/*
+!config/storages/.gitkeep
+config/audit/*
+!config/audit/.gitkeep
+config/patch/*
+!config/patch/.gitkeep
 config/prompt-library/
 config/profiles/web/.dsh-market/
 config/profiles/.dsh-market/
@@ -54,3 +58,6 @@ pnpm-debug.log*
 # Workspace ephemeral outputs
 workspaces/*
 !workspaces/.gitkeep
+!workspaces/cases/
+workspaces/cases/*
+!workspaces/cases/.gitkeep

@@ -35,18 +35,21 @@ prepare_sandbox_home() {
 }
 
 prepare_standard_home() {
-  mkdir -p \
-    "$DSH_HOME/profiles/web" \
-    "$DSH_HOME/profiles/node_modules" \
-    "$DSH_HOME/storages" \
-    "$DSH_HOME/sessions" \
-    "$DSH_HOME/patch" \
-    "$RUNTIME_DIR" \
-    /var/log/dsh
+  mkdir -p /var/log/dsh "$RUNTIME_DIR" 2>/dev/null || true
   chmod 0750 /var/log/dsh 2>/dev/null || true
-  cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
-  if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
-    cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml"
+
+  # Only initialize mutable profile files if DSH_HOME is writable
+  if [ -w "$DSH_HOME" ]; then
+    mkdir -p \
+      "$DSH_HOME/profiles/web" \
+      "$DSH_HOME/profiles/node_modules" \
+      "$DSH_HOME/storages" \
+      "$DSH_HOME/sessions" \
+      "$DSH_HOME/patch"
+    cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+    if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
+      cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml" 2>/dev/null || true
+    fi
   fi
 }
 

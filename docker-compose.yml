@@ -9,7 +9,13 @@ services:
       - ./config:/root/.dsh:ro
       - ./config/sessions:/root/.dsh/sessions:rw
       - ./config/audit:/root/.dsh/audit:rw
-      - ./workspaces:/workspaces
+      - ./config/storages:/root/.dsh/storages:rw
+      - ./config/patch:/root/.dsh/patch:rw
+      - ./workspaces:/workspaces:ro
+      - ./workspaces/cases:/workspaces/cases:rw
+    tmpfs:
+      - /run/dsh:rw,size=32m
+      - /tmp:rw,size=64m
     environment:
       - PORT=3080
       - NODE_ENV=production

@@ -13,8 +13,7 @@ flowchart TD
     end
 
     subgraph DSH_Container ["🐳 Container: dsh-local"]
-        PROXY["🛡️ Reverse Proxy Gateway (Port 3080)\n0.0.0.0:3080 -> 127.0.0.1:3079"]
-        CORE["⚡ DeepSeek Harness Kernel (Port 3079)\n@deepseek-ai/dsh"]
+        CORE["⚡ DeepSeek Harness Kernel (Port 3080)\n@deepseek-ai/dsh (Native Cordis Webserver)"]
         
         subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (10 Plugins)"]
             PLUG_SRC["@liustack/modsearch (Web Search)"]
@@ -56,9 +55,8 @@ flowchart TD
     end
 
     %% Connections
-    BROWSER -->|Port 3080| PROXY
+    BROWSER -->|Port 3080| CORE
     BROWSER -->|Port 6006| PHOENIX_SRV
-    PROXY --> CORE
     CORE --> Plugins
     CORE --> MCP_Servers
     CORE --> LLM_Bridges

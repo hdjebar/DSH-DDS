@@ -24,7 +24,11 @@ export DSH_INSTALL="${DSH_INSTALL:-$(pwd)}"
 echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
 
 mkdir -p "$DSH_INSTALL/config/profiles/web" \
-         "$DSH_INSTALL/workspaces"
+         "$DSH_INSTALL/config/sessions" \
+         "$DSH_INSTALL/config/audit" \
+         "$DSH_INSTALL/config/storages" \
+         "$DSH_INSTALL/config/patch" \
+         "$DSH_INSTALL/workspaces/cases"
 
 # 2. Strict & Safe Environment Variable Loader
 load_env_safely() {
@@ -98,17 +102,18 @@ EOF
   fi
 fi
 
-DSH_REF="${DSH_REF:-main}"
-GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/$DSH_REF"
+DSH_REF="${DSH_REF:-v1.10.0}"
+DSH_REPO_URL="${DSH_REPO_URL:-https://raw.githubusercontent.com/hdjebar/DSH-DDS}"
+GITHUB_RAW="$DSH_REPO_URL/$DSH_REF"
 
 # Validate remote ref accessibility when downloading from remote (PR-004)
 validate_remote_ref() {
-  if [ -z "${DSH_SOURCE_DIR:-}" ]; then
-    if ! curl -fsSL -I "https://raw.githubusercontent.com/hdjebar/DSH-DDS/${DSH_REF}/Dockerfile" >/dev/null 2>&1; then
-      if [ "$DSH_REF" != "main" ] && curl -fsSL -I "https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/Dockerfile" >/dev/null 2>&1; then
+  if [ -z "${DSH_SOURCE_DIR:-}" ] || [ "${DSH_CHECK_REMOTE_REF:-0}" = "1" ]; then
+    if ! curl -fsSL -I "${DSH_REPO_URL}/${DSH_REF}/Dockerfile" >/dev/null 2>&1; then
+      if [ "$DSH_REF" != "main" ] && curl -fsSL -I "${DSH_REPO_URL}/main/Dockerfile" >/dev/null 2>&1; then
         echo "⚠️ Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main'..."
         DSH_REF="main"
-        GITHUB_RAW="https://raw.githubusercontent.com/hdjebar/DSH-DDS/main"
+        GITHUB_RAW="${DSH_REPO_URL}/main"
       else
         echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository." >&2
         exit 1
@@ -522,7 +527,13 @@ services:
       - ./config:/root/.dsh:ro
       - ./config/sessions:/root/.dsh/sessions:rw
       - ./config/audit:/root/.dsh/audit:rw
-      - ./workspaces:/workspaces
+      - ./config/storages:/root/.dsh/storages:rw
+      - ./config/patch:/root/.dsh/patch:rw
+      - ./workspaces:/workspaces:ro
+      - ./workspaces/cases:/workspaces/cases:rw
+    tmpfs:
+      - /run/dsh:rw,size=32m
+      - /tmp:rw,size=64m
     environment:
       - PORT=3080
       - NODE_ENV=production

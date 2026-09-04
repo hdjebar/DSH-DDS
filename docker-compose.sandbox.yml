@@ -35,6 +35,7 @@ services:
       - /root/.dsh:rw,nosuid,nodev,size=512m
       - /var/log/dsh:rw,nosuid,nodev,size=32m
       - /workspaces/cases:rw,size=64m
+      - /artifacts:rw,size=64m
     environment:
       - DSH_SANDBOX=1
       - DSH_CONFIG_SOURCE=/opt/dsh-config

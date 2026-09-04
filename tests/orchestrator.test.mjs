@@ -700,6 +700,140 @@ test('PR-011 Regression: test execution leaves repository workspaces clean witho
   );
 });
 
+test('FR-004 Regression: failed fallback propagates failure and marks workflow as FAILED', async () => {
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      failed_fallback_test: {
+        steps: [
+          {
+            name: 'Primary Probe with Failing Fallback',
+            action: 'probe_services',
+            target: 'http://127.0.0.1:99999',
+            on_failure: 'inspect_sqlite'
+          }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+  const result = await engine.executeWorkflow('failed_fallback_test');
+  assert.equal(result.status, 'FAILED');
+  assert.equal(result.executionLogs.length, 1);
+  assert.equal(result.executionLogs[0].status, 'FAILED');
+  assert.ok(
+    result.executionLogs[0].output.error.includes('Fallback') || (result.error && result.error.includes('Fallback')),
+    'Step output error must record fallback failure'
+  );
+});
+
+test('FR-005 Regression: checkpoint requires explicit approval, blocks unapproved resume, and prevents replay', async () => {
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      approval_replay_test: {
+        steps: [
+          { name: 'Step 1 Pre', action: 'fetch_sources', scope: testIsolatedDir },
+          { name: 'Step 2 Gated', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'q.json'), approval_required: true },
+          { name: 'Step 3 Post', action: 'write_report', destination: path.join(testIsolatedDir, 'cases', 'rep.md') }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. Fresh execution with ambient approved: true must still suspend
+  const freshRes = await engine.executeWorkflow('approval_replay_test', { approved: true });
+  assert.equal(freshRes.status, 'SUSPENDED_APPROVAL_REQUIRED');
+
+  // 2. Resume without explicit approval must be rejected
+  await assert.rejects(
+    async () => engine.resumeWorkflow(freshRes.instanceId),
+    /explicit human approval required/
+  );
+
+  // 3. Resume with explicit approval succeeds and completes
+  const resumeRes = await engine.resumeWorkflow(freshRes.instanceId, { approved: true });
+  assert.equal(resumeRes.status, 'COMPLETED');
+
+  // 4. Subsequent resume of already completed instance must be rejected as replay
+  await assert.rejects(
+    async () => engine.resumeWorkflow(freshRes.instanceId, { approved: true }),
+    /replays rejected/
+  );
+});
+
+test('FR-003 Regression: capability adapters validate syntax, schemas, and persist SOC incidents', async () => {
+  const meta = {
+    name: 'security-auditor',
+    rbac: {
+      role: 'security_auditor_role',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces', testIsolatedDir],
+          write: ['/workspaces', testIsolatedDir]
+        }
+      }
+    },
+    workflows: {
+      truthful_adapters_test: {
+        steps: [
+          { name: 'Validate Bare Agency', action: 'validate_sdmx_schema', target: 'LU1' },
+          {
+            name: 'Apply Bad Syntax JS',
+            action: 'apply_fix_or_patch',
+            target: path.join(testIsolatedDir, 'bad.js'),
+            content: 'function broken( { not valid js'
+          },
+          {
+            name: 'Escalate SOC Incident',
+            action: 'escalate_to_soc',
+            target: path.join(testIsolatedDir, 'cases', 'soc_esc.json')
+          }
+        ]
+      }
+    }
+  };
+
+  const engine = new DeclarativeWorkflowEngine(meta);
+
+  // 1. validate_sdmx_schema on bare LU1 without schema file fails closed
+  const step1 = await engine.executeStep(meta.workflows.truthful_adapters_test.steps[0], {}, 'test', 'tr-1', 'sp-1');
+  assert.equal(step1.status, 'failed');
+  assert.equal(step1.code, 'SDMX_SCHEMA_NOT_FOUND');
+
+  // 2. apply_fix_or_patch with invalid JS syntax fails closed
+  const step2 = await engine.executeStep(meta.workflows.truthful_adapters_test.steps[1], {}, 'test', 'tr-2', 'sp-2');
+  assert.equal(step2.status, 'failed');
+  assert.equal(step2.code, 'SYNTAX_VERIFICATION_FAILED');
+
+  // 3. escalate_to_soc persists durable ledger file on disk
+  const step3 = await engine.executeStep(meta.workflows.truthful_adapters_test.steps[2], { error: 'Test threat' }, 'test', 'tr-3', 'sp-3');
+  assert.equal(step3.status, 'success');
+  assert.equal(step3.escalation.status, 'DISPATCHED');
+  assert.ok(fs.existsSync(path.join(testIsolatedDir, 'cases', 'soc_esc.json')), 'SOC escalation file must be persisted');
+});
+
 test.after(() => {
   fs.rmSync(testIsolatedDir, { recursive: true, force: true });
 });

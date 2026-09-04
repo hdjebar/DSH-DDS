@@ -56,6 +56,23 @@ function safeErrorSnippet(rawText) {
 
 function checkSecretPermissions() {
   console.log('\n🔒 [0/9] Security & Secret Permissions:');
+  const hostEnvStatus = process.env.DSH_HOST_ENV_STATUS;
+  const hostEnvMode = process.env.DSH_HOST_ENV_MODE;
+
+  if (hostEnvStatus === 'PRESENT' && hostEnvMode) {
+    const modeNum = parseInt(hostEnvMode, 8);
+    const isGroupOrWorldReadable = !isNaN(modeNum) && (modeNum & 0o077) !== 0;
+    if (isGroupOrWorldReadable) {
+      warn('.env File Permissions (Host)', `Mode 0${hostEnvMode} is accessible by group/others. Run 'chmod 600 .env' to restrict.`);
+    } else {
+      pass('.env File Permissions (Host)', `Mode 0${hostEnvMode} (restricted to owner)`);
+    }
+    return;
+  } else if (hostEnvStatus === 'ABSENT') {
+    pass('.env File Permissions (Host)', 'No host .env file present');
+    return;
+  }
+
   const envPath = path.resolve(process.cwd(), '.env');
   if (fs.existsSync(envPath)) {
     try {

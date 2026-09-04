@@ -32,8 +32,17 @@ print_help() {
   echo "========================================================"
 }
 
+ensure_runtime_dirs() {
+  mkdir -p "$SCRIPT_DIR/config/sessions" \
+           "$SCRIPT_DIR/config/audit" \
+           "$SCRIPT_DIR/config/storages" \
+           "$SCRIPT_DIR/config/patch" \
+           "$SCRIPT_DIR/workspaces/cases"
+}
+
 case "$COMMAND" in
   up|start)
+    ensure_runtime_dirs
     echo "🚀 Starting DeepSeek Harness and Phoenix stack..."
     docker compose up -d
     echo "👉 Web UI: http://localhost:3080"
@@ -46,11 +55,13 @@ case "$COMMAND" in
     ;;
 
   restart)
+    ensure_runtime_dirs
     echo "🔄 Recreating and restarting containers with updated configuration..."
     docker compose up -d --force-recreate
     ;;
 
   build)
+    ensure_runtime_dirs
     echo "🔨 Rebuilding container images..."
     docker compose up -d --build
     ;;
@@ -62,7 +73,17 @@ case "$COMMAND" in
 
   doctor)
     echo "🩺 Running DeepSeek Harness Diagnostics..."
-    docker compose exec -T dsh node /root/.dsh/doctor.mjs
+    HOST_ENV_STATUS="ABSENT"
+    HOST_ENV_MODE=""
+    if [ -f "$SCRIPT_DIR/.env" ]; then
+      HOST_ENV_STATUS="PRESENT"
+      if stat -f "%Lp" "$SCRIPT_DIR/.env" >/dev/null 2>&1; then
+        HOST_ENV_MODE="$(stat -f "%Lp" "$SCRIPT_DIR/.env")"
+      elif stat -c "%a" "$SCRIPT_DIR/.env" >/dev/null 2>&1; then
+        HOST_ENV_MODE="$(stat -c "%a" "$SCRIPT_DIR/.env")"
+      fi
+    fi
+    docker compose exec -T -e DSH_HOST_ENV_STATUS="$HOST_ENV_STATUS" -e DSH_HOST_ENV_MODE="$HOST_ENV_MODE" dsh node /root/.dsh/doctor.mjs
     ;;
 
   sync-models)

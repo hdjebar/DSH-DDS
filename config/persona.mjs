@@ -345,8 +345,18 @@ export async function runWorkflow(name, workflowKey, options = {}) {
 
   let result;
   if (options.resume) {
+    if (!options.approved && !options.token) {
+      console.error(`❌ Error: Resuming workflow instance '${options.resume}' requires explicit human approval.`);
+      console.error(`   Provide '--approved' or '--token=<approvalToken>'.`);
+      console.error(`   Example: ./dsh.sh persona run ${safeName} --resume=${options.resume} --approved`);
+      process.exit(2);
+    }
     console.log(`🔄 Resuming suspended declarative workflow instance '\x1b[36m${options.resume}\x1b[0m' for persona '\x1b[32m${safeName}\x1b[0m'...`);
-    result = await engine.resumeWorkflow(options.resume, { context: workflowContext });
+    result = await engine.resumeWorkflow(options.resume, {
+      approved: Boolean(options.approved),
+      approvalToken: options.token,
+      context: workflowContext
+    });
   } else {
     const safeWfKey = validateSlug(workflowKey, 'workflow key');
     if (!Object.prototype.hasOwnProperty.call(workflows, safeWfKey)) {
@@ -406,6 +416,7 @@ export function parsePersonaArgs(argv) {
   let sessionId = null;
   let title = null;
   let approved = false;
+  let token = null;
   let context = {};
   let forceHostUnsafe = false;
   let resumeId = null;
@@ -466,6 +477,17 @@ export function parsePersonaArgs(argv) {
       if (!title) throw new Error(`Missing value for option '${arg}'`);
     } else if (arg === '--approve' || arg === '--approved') {
       approved = true;
+    } else if (arg === '--token' || arg === '--approval-token') {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('-')) {
+        throw new Error(`Missing value for option '${arg}'`);
+      }
+      token = argv[++i];
+    } else if (arg.startsWith('--token=')) {
+      token = arg.slice(8);
+      if (!token) throw new Error(`Missing value for option '${arg}'`);
+    } else if (arg.startsWith('--approval-token=')) {
+      token = arg.slice(17);
+      if (!token) throw new Error(`Missing value for option '${arg}'`);
     } else if (arg === '--force-host-unsafe') {
       forceHostUnsafe = true;
     } else if (arg === '--context') {
@@ -490,13 +512,12 @@ export function parsePersonaArgs(argv) {
     }
   }
 
-  return { command, tier, profile, template, sessionId, title, approved, context, forceHostUnsafe, resumeId, allowStandardContainer, positionalArgs };
+  return { command, tier, profile, template, sessionId, title, approved, token, context, forceHostUnsafe, resumeId, allowStandardContainer, positionalArgs };
 }
 
-// Direct CLI Execution
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename || '')) {
+async function main() {
   try {
-    const { command, tier, profile, template, sessionId, title, approved, context, forceHostUnsafe, resumeId, allowStandardContainer, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
+    const { command, tier, profile, template, sessionId, title, approved, token, context, forceHostUnsafe, resumeId, allowStandardContainer, positionalArgs } = parsePersonaArgs(process.argv.slice(2));
 
     switch (command) {
       case 'list':
@@ -530,7 +551,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
 
       case 'workflow':
       case 'wf':
-        const wfResult = await runWorkflow(positionalArgs[0], positionalArgs[1], { approved, context, resume: resumeId || sessionId });
+        const wfResult = await runWorkflow(positionalArgs[0], positionalArgs[1], { approved, token, context, resume: resumeId || sessionId });
         if (wfResult && (wfResult.status === 'FAILED' || wfResult.status === 'ERROR')) {
           process.exit(1);
         } else if (wfResult && wfResult.status === 'SUSPENDED_APPROVAL_REQUIRED') {
