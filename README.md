@@ -23,6 +23,8 @@
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+DeepSeek Harness is a self-hosted environment for governed AI agents, combining multi-provider model routing, declarative workflows, MCP tools, human approval gates, sandboxed execution, and local observability in one reproducible Docker stack.
+
 ---
 
 ## ⚡ Quick Start
