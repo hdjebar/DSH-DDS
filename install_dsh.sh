@@ -339,6 +339,14 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
   config:
     enable_per_workspace_memory: true
     auto_index_project_briefs: true
+- id: session-telemetry-otel
+  config:
+    mode: !!js process.env.DSH_TELEMETRY_MODE || 'FULL'
+    shutdownTimeoutMillis: 3000
+    exporter:
+      url: !!js process.env.DSH_TELEMETRY_OTLP_URL || 'http://phoenix:6006/v1/traces'
+      compression: none
+      timeoutMillis: 2000
 - id: llm-pi-ai
   config:
     providers:
@@ -347,65 +355,47 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
         displayName: "Google AI Studio (Gemini)"
         api: openai-completions
         baseURL: "https://generativelanguage.googleapis.com/v1beta/openai"
-        compat:
-          supportsStore: false
         models:
           - id: "gemini-3.8-flash"
             name: "Google: Gemini 3.8 Flash"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-3.7-flash"
             name: "Google: Gemini 3.7 Flash"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-3.6-flash"
             name: "Google: Gemini 3.6 Flash"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-3.5-flash"
             name: "Google: Gemini 3.5 Flash"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-3.5-flash-lite"
             name: "Google: Gemini 3.5 Flash Lite"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-3.1-pro-preview"
             name: "Google: Gemini 3.1 Pro Preview"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-flash-latest"
             name: "Google: Gemini Flash (Auto-Updating)"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
           - id: "gemini-pro-latest"
             name: "Google: Gemini Pro (Auto-Updating)"
             contextWindow: 1048576
             maxTokens: 65536
             input: ["text", "image"]
-            compat:
-              supportsStore: false
       openrouter:
         apiKeyEnv: OPENROUTER_API_KEY
         displayName: "OpenRouter"
@@ -414,16 +404,36 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
         models:
           - id: "deepseek/deepseek-chat"
             name: "DeepSeek: DeepSeek V3"
+            contextWindow: 163840
+            maxTokens: 8192
           - id: "deepseek/deepseek-r1"
             name: "DeepSeek: DeepSeek R1"
+            contextWindow: 64000
+            maxTokens: 8192
           - id: "anthropic/claude-sonnet-5"
             name: "Anthropic: Claude Sonnet 5"
+            contextWindow: 200000
+            maxTokens: 8192
+          - id: "anthropic/claude-opus-5"
+            name: "Anthropic: Claude Opus 5"
+            contextWindow: 200000
+            maxTokens: 8192
           - id: "openai/gpt-6-astra"
             name: "OpenAI: GPT-6 Astra"
+            contextWindow: 1050000
+            maxTokens: 16384
+          - id: "openai/gpt-5.6-luna"
+            name: "OpenAI: GPT-5.6 Luna"
+            contextWindow: 1050000
+            maxTokens: 16384
           - id: "meta-llama/llama-3.3-70b-instruct"
             name: "Meta: Llama 3.3 70B Instruct"
+            contextWindow: 131072
+            maxTokens: 8192
           - id: "google/gemini-3.8-flash"
             name: "OpenRouter: Google Gemini 3.8 Flash"
+            contextWindow: 1048576
+            maxTokens: 65536
 - id: agent-default-model
   config:
     provider: openrouter
@@ -629,7 +639,8 @@ RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/n
     /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app \
     && chmod 0750 /var/log/dsh \
     && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
-    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh \
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis
 
 COPY docker/entrypoint.sh /usr/local/bin/dsh-entrypoint
 RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
@@ -638,8 +649,14 @@ RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
 # Copy pre-compiled and pre-built plugins to both internal cache and default profile location
 COPY --from=builder /root/.dsh/profiles/web /app/prebuilt-profiles/web
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
+COPY config/cordis.patch.yml* /root/.dsh/cordis.patch.yml
+COPY config/cordis.patch.yml* /opt/dsh-config/cordis.patch.yml
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /app/prebuilt-profiles/web/
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
+COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /app/prebuilt-profiles/headless/
+COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /root/.dsh/profiles/headless/
+COPY config/profiles/cli/cordis.yml* /app/prebuilt-profiles/cli/
+COPY config/profiles/cli/cordis.yml* /root/.dsh/profiles/cli/
 
 # Complete profile peer dependencies from DSH's runtime dependency tree
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \

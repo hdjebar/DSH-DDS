@@ -101,7 +101,8 @@ RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/n
     /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app \
     && chmod 0750 /var/log/dsh \
     && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
-    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh \
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis
 
 COPY docker/entrypoint.sh /usr/local/bin/dsh-entrypoint
 RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
@@ -110,8 +111,14 @@ RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
 # Copy pre-compiled and pre-built plugins to both internal cache and default profile location
 COPY --from=builder /root/.dsh/profiles/web /app/prebuilt-profiles/web
 COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
+COPY config/cordis.patch.yml* /root/.dsh/cordis.patch.yml
+COPY config/cordis.patch.yml* /opt/dsh-config/cordis.patch.yml
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /app/prebuilt-profiles/web/
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
+COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /app/prebuilt-profiles/headless/
+COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /root/.dsh/profiles/headless/
+COPY config/profiles/cli/cordis.yml* /app/prebuilt-profiles/cli/
+COPY config/profiles/cli/cordis.yml* /root/.dsh/profiles/cli/
 
 # Complete profile peer dependencies from DSH's runtime dependency tree
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \

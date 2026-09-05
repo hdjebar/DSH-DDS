@@ -23,6 +23,15 @@ test('Installer Parity: cordis.patch.yml matches config/profiles/web/cordis.patc
   assert.equal(committed, templated, 'install_dsh.sh cordis.patch.yml must match canonical file');
 });
 
+test('Installer Parity: root cordis.patch.yml matches config/cordis.patch.yml', () => {
+  const committed = fs.readFileSync(path.join(ROOT, 'config/cordis.patch.yml'), 'utf8').trim();
+  const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+  const match = installScript.match(/cat << 'EOF' > "\$DSH_INSTALL\/config\/cordis\.patch\.yml"\n([\s\S]*?)\nEOF/);
+  assert.ok(match, 'root cordis.patch.yml heredoc found in install_dsh.sh');
+  const templated = match[1].trim();
+  assert.equal(committed, templated, 'install_dsh.sh root cordis.patch.yml must match canonical file');
+});
+
 test('Installer Parity: Dockerfile template matches canonical Dockerfile', () => {
   const committed = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8').trim();
   const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
