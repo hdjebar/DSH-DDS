@@ -176,3 +176,52 @@ test('Patch Verification: patch-session-events adds events getter and safe fallb
   }
 });
 
+const MARKET_RESTART_PATCH = path.join(ROOT, 'config', 'patch-market-restart.mjs');
+
+test('Patch Verification: patch-market-restart enables container gateway restart requests cleanly and idempotently', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-market-patch-test-'));
+  const mockFile = path.join(tmpDir, 'restart.js');
+
+  const mockContent = 'export function trustedRestartRequest(request) {\n'
+    + '    const address = request.socket.remoteAddress;\n'
+    + "    if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1')\n"
+    + '        return false;\n'
+    + '    return true;\n'
+    + '}\n'
+    + 'export function scheduleRestart(port = null) {\n'
+    + "    setTimeout(() => process.kill(process.pid, 'SIGTERM'), 500);\n"
+    + '}\n';
+
+  fs.writeFileSync(mockFile, mockContent, 'utf8');
+
+  try {
+    const output = execFileSync(process.execPath, [MARKET_RESTART_PATCH], {
+      env: {
+        ...process.env,
+        DSH_MARKET_RESTART_FILE: mockFile
+      },
+      encoding: 'utf8'
+    });
+
+    assert.ok(output.includes('Patched dshmarket restart'));
+
+    const patched = fs.readFileSync(mockFile, 'utf8');
+    assert.ok(patched.includes('function isTrustedClientIp'));
+    assert.ok(patched.includes('if (!isTrustedClientIp(address))'));
+    assert.ok(patched.includes('process.exit(0)'));
+
+    // Idempotency
+    const secondOutput = execFileSync(process.execPath, [MARKET_RESTART_PATCH], {
+      env: {
+        ...process.env,
+        DSH_MARKET_RESTART_FILE: mockFile
+      },
+      encoding: 'utf8'
+    });
+    assert.ok(secondOutput.includes('already patched'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+

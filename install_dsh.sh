@@ -167,6 +167,7 @@ fetch_or_copy_file "config/patch-pi-ai.mjs"
 fetch_or_copy_file "config/patch-bash-local.mjs"
 fetch_or_copy_file "config/patch-client-connection.mjs"
 fetch_or_copy_file "config/patch-session-events.mjs"
+fetch_or_copy_file "config/patch-market-restart.mjs"
 fetch_or_copy_file "config/declarative-orchestrator.mjs"
 fetch_or_copy_file "config/rbac-policy.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
@@ -719,6 +720,10 @@ for (const f of files) {\
 # Patch @deepseek-ai/dsh-session and dsh-mnemon for session.events iterable compatibility
 COPY config/patch-session-events.mjs /usr/local/bin/patch-session-events.mjs
 RUN node /usr/local/bin/patch-session-events.mjs
+
+# Patch dshmarket to allow same-origin container gateway restart requests
+COPY config/patch-market-restart.mjs /usr/local/bin/patch-market-restart.mjs
+RUN node /usr/local/bin/patch-market-restart.mjs
 
 EXPOSE 3080
 
