@@ -349,17 +349,59 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
         compat:
           supportsStore: false
         models:
-          - id: "gemini-3.7-flash"
-            name: "Google: Gemini 3.7 Flash"
+          - id: "gemini-3.8-flash"
+            name: "Google: Gemini 3.8 Flash"
             contextWindow: 1048576
-            maxTokens: 8192
+            maxTokens: 65536
             input: ["text", "image"]
             compat:
               supportsStore: false
-          - id: "gemini-3.1-pro"
-            name: "Google: Gemini 3.1 Pro"
+          - id: "gemini-3.7-flash"
+            name: "Google: Gemini 3.7 Flash"
             contextWindow: 1048576
-            maxTokens: 8192
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-3.6-flash"
+            name: "Google: Gemini 3.6 Flash"
+            contextWindow: 1048576
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-3.5-flash"
+            name: "Google: Gemini 3.5 Flash"
+            contextWindow: 1048576
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-3.5-flash-lite"
+            name: "Google: Gemini 3.5 Flash Lite"
+            contextWindow: 1048576
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-3.1-pro-preview"
+            name: "Google: Gemini 3.1 Pro Preview"
+            contextWindow: 1048576
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-flash-latest"
+            name: "Google: Gemini Flash (Auto-Updating)"
+            contextWindow: 1048576
+            maxTokens: 65536
+            input: ["text", "image"]
+            compat:
+              supportsStore: false
+          - id: "gemini-pro-latest"
+            name: "Google: Gemini Pro (Auto-Updating)"
+            contextWindow: 1048576
+            maxTokens: 65536
             input: ["text", "image"]
             compat:
               supportsStore: false

@@ -81,17 +81,18 @@ async function fetchGoogleModels() {
       return { models: [], error: errText, configured: true };
     }
     const data = await res.json();
+    const sunset = new Set(['models/gemini-2.5-flash', 'models/gemini-2.5-pro', 'models/gemini-2.5-flash-lite']);
     const raw = data.models || [];
     const models = raw
-      .filter(m => m.supportedGenerationMethods?.includes('generateContent') && m.name.includes('gemini'))
+      .filter(m => m.supportedGenerationMethods?.includes('generateContent') && (m.name.includes('gemini') || m.name.includes('gemma')) && !sunset.has(m.name))
       .map(m => ({
         id: m.name.replace('models/', ''),
         name: m.displayName || m.name.replace('models/', ''),
         description: m.description || '',
         contextWindow: m.inputTokenLimit || 1048576,
-        maxTokens: m.outputTokenLimit || 8192
+        maxTokens: m.outputTokenLimit || 65536
       }));
-    console.log(`✅ Successfully fetched ${models.length} active Gemini models from Google AI Studio.`);
+    console.log(`✅ Successfully fetched ${models.length} active models from Google AI Studio.`);
     return { models, error: null, configured: true };
   } catch (err) {
     console.error('❌ Failed to fetch Google models:', err.message);
