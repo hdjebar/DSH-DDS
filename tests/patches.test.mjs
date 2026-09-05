@@ -127,3 +127,52 @@ test('Patch Verification: patch-client-connection eliminates 401 token fence cle
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+const SESSION_EVENTS_PATCH = path.join(ROOT, 'config', 'patch-session-events.mjs');
+
+test('Patch Verification: patch-session-events adds events getter and safe fallback cleanly and idempotently', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-session-patch-test-'));
+  const mockSessionFile = path.join(tmpDir, 'session.js');
+  const mockMnemonFile = path.join(tmpDir, 'mnemon.js');
+
+  const mockSessionContent = 'class Session {\n\townEvents() {\n\t\treturn [];\n\t}\n}\n';
+  const mockMnemonContent = 'function openAgentTurn(agent) {\n\tfor (const event of agent.session.events) {\n\t\tconsole.log(event);\n\t}\n}\n';
+
+  fs.writeFileSync(mockSessionFile, mockSessionContent, 'utf8');
+  fs.writeFileSync(mockMnemonFile, mockMnemonContent, 'utf8');
+
+  try {
+    const output = execFileSync(process.execPath, [SESSION_EVENTS_PATCH], {
+      env: {
+        ...process.env,
+        DSH_SESSION_FILE: mockSessionFile,
+        DSH_MNEMON_FILE: mockMnemonFile
+      },
+      encoding: 'utf8'
+    });
+
+    assert.ok(output.includes('Patched Session.prototype.events'));
+    assert.ok(output.includes('Patched safe openAgentTurn'));
+
+    const patchedSession = fs.readFileSync(mockSessionFile, 'utf8');
+    assert.ok(patchedSession.includes('get events()'));
+    assert.ok(patchedSession.includes('return this.snapshotEvents();'));
+
+    const patchedMnemon = fs.readFileSync(mockMnemonFile, 'utf8');
+    assert.ok(patchedMnemon.includes('agent?.session?.events ?? agent?.session?.snapshotEvents?.() ?? []'));
+
+    // Idempotency check
+    const secondOutput = execFileSync(process.execPath, [SESSION_EVENTS_PATCH], {
+      env: {
+        ...process.env,
+        DSH_SESSION_FILE: mockSessionFile,
+        DSH_MNEMON_FILE: mockMnemonFile
+      },
+      encoding: 'utf8'
+    });
+    assert.ok(secondOutput.includes('already patched'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+

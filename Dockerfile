@@ -171,6 +171,10 @@ for (const f of files) {\
   }\
 }'
 
+# Patch @deepseek-ai/dsh-session and dsh-mnemon for session.events iterable compatibility
+COPY config/patch-session-events.mjs /usr/local/bin/patch-session-events.mjs
+RUN node /usr/local/bin/patch-session-events.mjs
+
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
