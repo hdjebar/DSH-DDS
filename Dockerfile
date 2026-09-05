@@ -27,10 +27,13 @@ COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da39
 # Copy official maintained GitHub MCP server binary
 COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
-# Install official DeepSeek Harness engine and MCP tools globally
+# Install official DeepSeek Harness engine, build toolchain for native plugins, and MCP tools globally
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     curl \
+    make \
+    g++ \
+    build-essential \
     && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 playwright@1.49.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
     && playwright install-deps chromium \
