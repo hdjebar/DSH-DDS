@@ -44,15 +44,26 @@ prepare_standard_home() {
   mkdir -p /var/log/dsh "$RUNTIME_DIR" 2>/dev/null || true
   chmod 0750 /var/log/dsh 2>/dev/null || true
 
-  # Only initialize mutable profile files if DSH_HOME is writable
+  # Seed prebuilt web profile into writable profiles tmpfs
+  mkdir -p \
+    "$DSH_HOME/profiles/web" \
+    "$DSH_HOME/profiles/node_modules" 2>/dev/null || true
+  if [ -d "$PREBUILT_WEB" ]; then
+    ln -sf "$PREBUILT_WEB/node_modules" "$DSH_HOME/profiles/web/node_modules" 2>/dev/null || true
+    cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  fi
+
+  # Configure credentials path inside mutable tmpfs to prevent EROFS on read-only DSH_HOME
+  if [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && ! grep -q "id: credentials" "$DSH_HOME/profiles/web/cordis.patch.yml" 2>/dev/null; then
+    printf "\n- id: credentials\n  config:\n    path: /run/dsh/.credentials.yaml\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
+  fi
+
+  # Only initialize mutable root files if DSH_HOME is writable
   if [ -w "$DSH_HOME" ]; then
     mkdir -p \
-      "$DSH_HOME/profiles/web" \
-      "$DSH_HOME/profiles/node_modules" \
       "$DSH_HOME/storages" \
       "$DSH_HOME/sessions" \
       "$DSH_HOME/patch"
-    cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
     if [ ! -f "$DSH_HOME/settings.yaml" ] && [ -f "$DSH_HOME/settings.default.yaml" ]; then
       cp "$DSH_HOME/settings.default.yaml" "$DSH_HOME/settings.yaml" 2>/dev/null || true
     fi
@@ -95,8 +106,4 @@ if [ "$#" -gt 0 ]; then
 fi
 
 echo "[dsh] Launching DeepSeek Harness native service (0.0.0.0:${PORT:-3080})..."
-if [ "${DSH_SANDBOX:-0}" = "1" ]; then
-  exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web
-else
-  exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --patch "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
-fi
+exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --no-open

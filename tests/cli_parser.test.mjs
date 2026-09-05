@@ -281,7 +281,7 @@ test('FR-009 Regression: dsh.sh approve fails closed when DSH_APPROVAL_SECRET is
   try {
     execSync(`"${dshScript}" approve "valid-instance-id"`, {
       stdio: 'pipe',
-      env: { ...process.env, DSH_APPROVAL_SECRET: '', DSH_SECRET: '' }
+      env: { ...process.env, DSH_APPROVAL_SECRET: '', DSH_SECRET: '', DSH_APPROVAL_PRIVATE_KEY: '' }
     });
   } catch (err) {
     thrown = true;

@@ -80,6 +80,7 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'config/patch_translations.mjs',
     'config/patch-pi-ai.mjs',
     'config/patch-bash-local.mjs',
+    'config/patch-client-connection.mjs',
     'config/declarative-orchestrator.mjs',
     'config/rbac-policy.mjs',
     'config/settings.default.yaml',

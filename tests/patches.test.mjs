@@ -94,3 +94,36 @@ test('Patch Verification: patch-bash-local applies auto-workdir patch cleanly an
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+const CLIENT_CONN_PATCH = path.join(ROOT, 'config', 'patch-client-connection.mjs');
+
+test('Patch Verification: patch-client-connection eliminates 401 token fence cleanly and idempotently', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-conn-patch-test-'));
+  const mockFile = path.join(tmpDir, 'index.js');
+  const mockContent = 'if (req.method === "GET" && url.pathname === "/" && tokens.length === 1 && authority !== void 0 && tokenMatches(tokens.join(""), this.launchToken)) {\n'
+    + '\t\tif (this.isAuthenticated(req)) return true;\n\t\tthis.writeUnauthorized(req, res);\n\t\treturn false;\n'
+    + '\trequestRejection(request) {\n\t\tif (!isTrustedApiRequest(request, this.trustedHosts)) return 403;\n\t\treturn this.browserAuth.isAuthenticated(request) ? void 0 : 401;\n\t}\n';
+  fs.writeFileSync(mockFile, mockContent, 'utf8');
+
+  try {
+    const output = execFileSync(process.execPath, [CLIENT_CONN_PATCH], {
+      env: { ...process.env, DSH_CLIENT_CONNECTION_FILE: mockFile },
+      encoding: 'utf8'
+    });
+    assert.ok(output.includes('applied cleanly'));
+
+    const patched = fs.readFileSync(mockFile, 'utf8');
+    assert.ok(patched.includes('token fence bypass applied'));
+    assert.ok(patched.includes('sessionCookie(cookieName(authority)'));
+    assert.ok(!patched.includes('this.writeUnauthorized(req, res)'));
+
+    // Idempotency
+    const secondOutput = execFileSync(process.execPath, [CLIENT_CONN_PATCH], {
+      env: { ...process.env, DSH_CLIENT_CONNECTION_FILE: mockFile },
+      encoding: 'utf8'
+    });
+    assert.ok(secondOutput.includes('already applied'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

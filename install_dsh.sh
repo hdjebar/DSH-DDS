@@ -165,6 +165,7 @@ fetch_or_copy_file "config/persona.mjs"
 fetch_or_copy_file "config/patch_translations.mjs"
 fetch_or_copy_file "config/patch-pi-ai.mjs"
 fetch_or_copy_file "config/patch-bash-local.mjs"
+fetch_or_copy_file "config/patch-client-connection.mjs"
 fetch_or_copy_file "config/declarative-orchestrator.mjs"
 fetch_or_copy_file "config/rbac-policy.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
@@ -563,6 +564,10 @@ if (file && fs.existsSync(file)) {\
 COPY config/patch-bash-local.mjs /usr/local/bin/patch-bash-local.mjs
 RUN node /usr/local/bin/patch-bash-local.mjs
 
+# Build-Time Immutability: Patch dsh-client-connection to eliminate 401 token fence for Web Workbench access
+COPY config/patch-client-connection.mjs /usr/local/bin/patch-client-connection.mjs
+RUN node /usr/local/bin/patch-client-connection.mjs
+
 # Setup directories, shebang for internals exposure, and global CLI link
 RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
     /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \
@@ -598,6 +603,25 @@ RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$
     for p in /root/.dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
     ln -sf /root/.dsh/profiles/web/node_modules /app/node_modules
 
+# Patch dsh-model-sync and @deepseek-ai/dsh-settings for settingsNamespace export compatibility
+RUN node -e '\
+const fs = require("fs");\
+const files = [\
+  "/app/prebuilt-profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
+  "/root/.dsh/profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
+  "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
+  "/root/.dsh/profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
+  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-settings/lib/index.js"\
+];\
+for (const f of files) {\
+  if (fs.existsSync(f)) {\
+    let c = fs.readFileSync(f, "utf8");\
+    c = c.replace("export { settingsNamespace } from '\''@deepseek-ai/dsh-settings'\'';", "export function settingsNamespace(v) { return v; };");\
+    c = c.replace("export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets };", "export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets, parseSettingsNamespace as settingsNamespace };");\
+    fs.writeFileSync(f, c);\
+  }\
+}'
+
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
@@ -632,6 +656,7 @@ services:
     tmpfs:
       - /run/dsh:rw,size=32m
       - /tmp:rw,size=64m
+      - /root/.dsh/profiles:rw,size=256m
     environment:
       - PORT=3080
       - NODE_ENV=production

@@ -304,12 +304,13 @@ case "$COMMAND" in
 
     # Resolve host asymmetric private key or approval secret (FR-011, FR-017)
     APPROVAL_PRIVATE_KEY="${DSH_APPROVAL_PRIVATE_KEY:-}"
-    if [ -z "$APPROVAL_PRIVATE_KEY" ] && [ -f "$HOME/.dsh/keys/approval_ed25519" ]; then
+    if [ -z "${DSH_APPROVAL_PRIVATE_KEY+x}" ] && [ -f "$HOME/.dsh/keys/approval_ed25519" ]; then
       APPROVAL_PRIVATE_KEY="$(cat "$HOME/.dsh/keys/approval_ed25519")"
     fi
 
+    # Read from environment; only fall back to .env if both are unset
     APPROVAL_SECRET="${DSH_APPROVAL_SECRET:-${DSH_SECRET:-}}"
-    if [ -z "$APPROVAL_SECRET" ] && [ -f "$SCRIPT_DIR/.env" ]; then
+    if [ -z "${DSH_APPROVAL_SECRET+x}" ] && [ -z "${DSH_SECRET+x}" ] && [ -f "$SCRIPT_DIR/.env" ]; then
       APPROVAL_SECRET="$(grep -E '^DSH_APPROVAL_SECRET=' "$SCRIPT_DIR/.env" | cut -d= -f2- | tr -d ' "' || true)"
       if [ -z "$APPROVAL_SECRET" ]; then
         APPROVAL_SECRET="$(grep -E '^DSH_SECRET=' "$SCRIPT_DIR/.env" | cut -d= -f2- | tr -d ' "' || true)"

@@ -20,6 +20,7 @@ services:
     tmpfs:
       - /run/dsh:rw,size=32m
       - /tmp:rw,size=64m
+      - /root/.dsh/profiles:rw,size=256m
     environment:
       - PORT=3080
       - NODE_ENV=production

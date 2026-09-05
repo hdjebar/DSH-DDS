@@ -88,6 +88,10 @@ if (file && fs.existsSync(file)) {\
 COPY config/patch-bash-local.mjs /usr/local/bin/patch-bash-local.mjs
 RUN node /usr/local/bin/patch-bash-local.mjs
 
+# Build-Time Immutability: Patch dsh-client-connection to eliminate 401 token fence for Web Workbench access
+COPY config/patch-client-connection.mjs /usr/local/bin/patch-client-connection.mjs
+RUN node /usr/local/bin/patch-client-connection.mjs
+
 # Setup directories, shebang for internals exposure, and global CLI link
 RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
     /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \
@@ -122,6 +126,25 @@ RUN mkdir -p /app/prebuilt-profiles/web/node_modules/@deepseek-ai && \
 RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$p" "/usr/local/lib/node_modules/$(basename "$p")" || true; done && \
     for p in /root/.dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
     ln -sf /root/.dsh/profiles/web/node_modules /app/node_modules
+
+# Patch dsh-model-sync and @deepseek-ai/dsh-settings for settingsNamespace export compatibility
+RUN node -e '\
+const fs = require("fs");\
+const files = [\
+  "/app/prebuilt-profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
+  "/root/.dsh/profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
+  "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
+  "/root/.dsh/profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
+  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-settings/lib/index.js"\
+];\
+for (const f of files) {\
+  if (fs.existsSync(f)) {\
+    let c = fs.readFileSync(f, "utf8");\
+    c = c.replace("export { settingsNamespace } from '\''@deepseek-ai/dsh-settings'\'';", "export function settingsNamespace(v) { return v; };");\
+    c = c.replace("export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets };", "export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets, parseSettingsNamespace as settingsNamespace };");\
+    fs.writeFileSync(f, c);\
+  }\
+}'
 
 EXPOSE 3080
 
