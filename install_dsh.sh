@@ -413,14 +413,20 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
         models:
           - id: "deepseek/deepseek-chat"
             name: "DeepSeek: DeepSeek V3"
-          - id: "openai/gpt-4o"
-            name: "OpenAI: GPT-4o"
-          - id: "anthropic/claude-3.5-sonnet"
-            name: "Anthropic: Claude 3.5 Sonnet"
+          - id: "deepseek/deepseek-r1"
+            name: "DeepSeek: DeepSeek R1"
+          - id: "anthropic/claude-sonnet-5"
+            name: "Anthropic: Claude Sonnet 5"
+          - id: "openai/gpt-6-astra"
+            name: "OpenAI: GPT-6 Astra"
+          - id: "meta-llama/llama-3.3-70b-instruct"
+            name: "Meta: Llama 3.3 70B Instruct"
+          - id: "google/gemini-3.8-flash"
+            name: "OpenRouter: Google Gemini 3.8 Flash"
 - id: agent-default-model
   config:
-    provider: gemini
-    model: gemini-3.7-flash
+    provider: openrouter
+    model: deepseek/deepseek-chat
 EOF
 fi
 
