@@ -41,5 +41,5 @@
         command: mcp-server-sqlite
         args:
           - --db-path
-          - /workspaces/data.db
+          - /root/.dsh/storages/data.db
 # --- end dsh-mcp-market managed ---

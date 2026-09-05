@@ -465,7 +465,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: mcp-server-sqlite
         args:
           - --db-path
-          - /workspaces/data.db
+          - /root/.dsh/storages/data.db
 # --- end dsh-mcp-market managed ---
 EOF
 fi
@@ -585,6 +585,12 @@ COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
       [ -e "$p" ] && [ ! -e "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" ] \
         && ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" || true; \
+    done
+
+# ESM plugins resolve DeepSeek scoped dependencies from their own profile tree.
+RUN mkdir -p /app/prebuilt-profiles/web/node_modules/@deepseek-ai && \
+    for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
+      [ -e "$p" ] && ln -sfn "$p" "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/$(basename "$p")"; \
     done
 
 # Link profile node_modules globally into /usr/local/lib/node_modules and /app/node_modules

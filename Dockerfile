@@ -112,6 +112,12 @@ RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/lo
         && ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" || true; \
     done
 
+# ESM plugins resolve DeepSeek scoped dependencies from their own profile tree.
+RUN mkdir -p /app/prebuilt-profiles/web/node_modules/@deepseek-ai && \
+    for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
+      [ -e "$p" ] && ln -sfn "$p" "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/$(basename "$p")"; \
+    done
+
 # Link profile node_modules globally into /usr/local/lib/node_modules and /app/node_modules
 RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$p" "/usr/local/lib/node_modules/$(basename "$p")" || true; done && \
     for p in /root/.dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
