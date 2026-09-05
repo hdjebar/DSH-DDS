@@ -37,6 +37,21 @@ prepare_sandbox_home() {
 
   # Fill missing image-owned profile files without replacing operator configuration.
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+
+  # Seed settings.yaml into writable sandbox storages volume
+  if [ ! -f "$DSH_HOME/storages/settings.yaml" ]; then
+    if [ -f "$config_source/settings.yaml" ]; then
+      cp -p "$config_source/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    elif [ -f "$DSH_HOME/settings.yaml" ]; then
+      cp -p "$DSH_HOME/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    elif [ -f "$DSH_HOME/settings.default.yaml" ]; then
+      cp -p "$DSH_HOME/settings.default.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    fi
+  fi
+  if [ -f "$RUNTIME_DIR/profiles/web/cordis.patch.yml" ] && ! grep -q "id: settings" "$RUNTIME_DIR/profiles/web/cordis.patch.yml" 2>/dev/null; then
+    printf "\n- id: settings\n  config:\n    path: /root/.dsh/storages/settings.yaml\n" >> "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
+  fi
+
   mkdir -p /var/log/dsh && chmod 0750 /var/log/dsh 2>/dev/null || true
 }
 
@@ -53,9 +68,24 @@ prepare_standard_home() {
     cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
   fi
 
-  # Configure credentials path inside mutable tmpfs to prevent EROFS on read-only DSH_HOME
+  # Seed settings.yaml into writable storages volume to avoid EROFS on read-only DSH_HOME
+  mkdir -p "$DSH_HOME/storages" 2>/dev/null || true
+  if [ ! -f "$DSH_HOME/storages/settings.yaml" ]; then
+    if [ -f "$DSH_HOME/settings.yaml" ]; then
+      cp -p "$DSH_HOME/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    elif [ -f "$DSH_HOME/settings.default.yaml" ]; then
+      cp -p "$DSH_HOME/settings.default.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    fi
+  elif [ -f "$DSH_HOME/settings.yaml" ] && [ "$DSH_HOME/settings.yaml" -nt "$DSH_HOME/storages/settings.yaml" ]; then
+    cp -p "$DSH_HOME/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+  fi
+
+  # Configure credentials and settings paths inside mutable locations to prevent EROFS on read-only DSH_HOME
   if [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && ! grep -q "id: credentials" "$DSH_HOME/profiles/web/cordis.patch.yml" 2>/dev/null; then
     printf "\n- id: credentials\n  config:\n    path: /run/dsh/.credentials.yaml\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
+  fi
+  if [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && ! grep -q "id: settings" "$DSH_HOME/profiles/web/cordis.patch.yml" 2>/dev/null; then
+    printf "\n- id: settings\n  config:\n    path: /root/.dsh/storages/settings.yaml\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
   fi
 
   # Only initialize mutable root files if DSH_HOME is writable

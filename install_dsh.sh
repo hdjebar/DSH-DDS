@@ -431,6 +431,9 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
   config:
     host: 0.0.0.0
     port: !!js Number(process.env.PORT ?? 3080)
+- id: settings
+  config:
+    path: /root/.dsh/storages/settings.yaml
 # --- dsh-mcp-market managed (auto-generated; do not edit) ---
 - insert:
     - id: mcp-fetch
@@ -622,6 +625,28 @@ for (const f of files) {\
   }\
 }'
 
+# Patch dsh-settings-file to avoid EROFS on read-only root configuration plane
+RUN node -e '\
+const fs = require("fs");\
+const files = [\
+  "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
+  "/root/.dsh/profiles/web/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
+  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
+  "/usr/local/lib/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js"\
+];\
+for (const f of files) {\
+  if (fs.existsSync(f)) {\
+    const real = fs.realpathSync(f);\
+    let c = fs.readFileSync(real, "utf8");\
+    const target = "const filename = resolve(config.path ?? join(resolveDshHome(config.dshHome), \"settings.yaml\"));";\
+    const repl = "const filename = resolve(config.path ?? process.env.DSH_SETTINGS_FILE ?? join(resolveDshHome(config.dshHome), \"storages\", \"settings.yaml\"));";\
+    if (c.includes(target)) {\
+      c = c.replace(target, repl);\
+      fs.writeFileSync(real, c, "utf8");\
+    }\
+  }\
+}'
+
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
@@ -670,6 +695,7 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_SETTINGS_FILE=/root/.dsh/storages/settings.yaml
     depends_on:
       phoenix:
         condition: service_healthy

@@ -34,6 +34,7 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_SETTINGS_FILE=/root/.dsh/storages/settings.yaml
     depends_on:
       phoenix:
         condition: service_healthy
