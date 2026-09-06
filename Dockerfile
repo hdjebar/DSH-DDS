@@ -186,6 +186,12 @@ RUN node /usr/local/bin/patch-session-events.mjs
 COPY config/patch-market-restart.mjs /usr/local/bin/patch-market-restart.mjs
 RUN node /usr/local/bin/patch-market-restart.mjs
 
+# Wrap pnpm to persist market restart and session patches across dynamic plugin installs
+RUN rm -f /usr/local/bin/pnpm /usr/local/bin/pn \
+    && printf '#!/bin/sh\nnode /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs "$@"\nSTATUS=$?\nif [ -f /usr/local/bin/patch-market-restart.mjs ]; then\n  node /usr/local/bin/patch-market-restart.mjs >/dev/null 2>&1 || true\nfi\nif [ -f /usr/local/bin/patch-session-events.mjs ]; then\n  node /usr/local/bin/patch-session-events.mjs >/dev/null 2>&1 || true\nfi\nif [ -f /root/.dsh/patch_translations.mjs ]; then\n  node /root/.dsh/patch_translations.mjs >/dev/null 2>&1 || true\nfi\nexit $STATUS\n' > /usr/local/bin/pnpm \
+    && chmod +x /usr/local/bin/pnpm \
+    && ln -sf /usr/local/bin/pnpm /usr/local/bin/pn
+
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

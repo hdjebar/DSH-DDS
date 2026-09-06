@@ -207,6 +207,7 @@ test('Patch Verification: patch-market-restart enables container gateway restart
 
     const patched = fs.readFileSync(mockFile, 'utf8');
     assert.ok(patched.includes('function isTrustedClientIp'));
+    assert.ok(patched.includes('function isSameOriginOrLoopback'));
     assert.ok(patched.includes('if (!isTrustedClientIp(address))'));
     assert.ok(patched.includes('process.exit(0)'));
 
