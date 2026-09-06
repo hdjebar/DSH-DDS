@@ -2,21 +2,30 @@
 
 > 🏛️ **Comprehensive State-of-the-Art Whitepaper**: For theoretical foundations, NIST/OWASP compliance mapping, and the 5-Pillar SOTA AI Harness engineering specification, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
 > 
-> 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](globalrefactoring/README.md)**.
+> 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](globalrefactoring/README.md)** and **[ADR 0006: Global Refactoring](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)**.
 
 ```mermaid
 flowchart TD
     subgraph Host ["💻 Host Environment (macOS / Linux / Windows)"]
         ENV[".env Configuration\n(Keys, Ports, Tokens)"]
-        VOL_CFG["📁 ./config (Mounted to /root/.dsh)"]
-        VOL_PHX["📁 ./config/phoenix (Mounted to /root/.phoenix)"]
-        VOL_WS["📁 ./workspaces (Mounted to /workspaces)"]
+        VOL_ETC["📁 ./config (Mounted to /etc/dsh :ro)"]
+        VOL_STATE["📁 ./config/{sessions,storages,audit,cache}\n(Mounted to /var/lib/dsh/... :rw)"]
+        VOL_PHX["📁 ./config/phoenix\n(Mounted to /home/phoenix/.phoenix :rw)"]
+        VOL_WS["📁 ./workspaces\n(Mounted to /workspaces :ro / :rw)"]
         BROWSER["🌐 User Browser\n(Web UI: 3080 | Phoenix: 6006)"]
     end
 
-    subgraph DSH_Container ["🐳 Container: dsh-local"]
-        CORE["⚡ DeepSeek Harness Kernel (Port 3080)\n@deepseek-ai/dsh (Native Cordis Webserver)"]
+    subgraph DSH_Container ["🐳 Container: dsh-local (UID 1000:1000, cap_drop: ALL)"]
+        CORE["⚡ DeepSeek Harness Kernel (Port 3080)\n@deepseek-ai/dsh (Cordis Microkernel)"]
         
+        subgraph Core_Plugin ["🧩 Native Core Plugin: @dsh-dds/core"]
+            GW["🌐 WebServer Gateway Middleware\n(Bridge IP Recognition & Origin Normalization)"]
+            RESTART["🔄 Lifecycle Supervisor\n(/dsh-dds/lifecycle/restart & /dsh-dds/health)"]
+            PEP["🛡️ In-Line Tool Interceptor (PEP)\n(Dynamic Policy Enforcement Point)"]
+            CATALOG["⚡ In-Process ModelCatalogService\n(/dsh-dds/api/models/sync & OTel Init)"]
+            I18N["🌐 Web UI Localization Tap\n(In-Memory HTML tapIndex)"]
+        end
+
         subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (10 Plugins)"]
             PLUG_SRC["@liustack/modsearch (Web Search)"]
             PLUG_FLOW["deepseek-flow (Visual Workflow Canvas)"]
@@ -37,16 +46,16 @@ flowchart TD
         end
 
         subgraph LLM_Bridges ["🧠 Model Provider Orchestration"]
-            BRIDGE_GEMINI["Google Gemini Thought Signature Bridge\n(Intercepts & preserves thought_signature)"]
-            AUTO_SYNC["Dynamic Boot Synchronizer (sync_models.mjs)\n(Fetches 420+ OpenRouter & 29+ Google Models)"]
+            BRIDGE_GEMINI["Google Gemini Thought Signature Bridge\n(Native pnpm patch in pi-ai)"]
+            AUTO_SYNC["ModelCatalogService In-Process Engine\n(Fetches 420+ OpenRouter & 31+ Google Models)"]
         end
 
         OTEL_EXPORTER["📡 OTel Trace Exporter\n(@deepseek-ai/dsh-session-telemetry-otel)"]
     end
 
-    subgraph Phoenix_Container ["📊 Container: dsh-phoenix"]
+    subgraph Phoenix_Container ["📊 Container: dsh-phoenix (UID 1000:1000, cap_drop: ALL)"]
         PHOENIX_SRV["🔥 Arize Phoenix Engine (Port 6006)"]
-        SQLITE_DB["💾 SQLite DB (/root/.phoenix/phoenix.db)\n(Persisted to ./config/phoenix)"]
+        SQLITE_DB["💾 SQLite DB (/home/phoenix/.phoenix/phoenix.db)\n(Persisted to ./config/phoenix)"]
         TRACES["🌊 Distributed Trace Waterfall & Evals"]
     end
 
@@ -57,8 +66,10 @@ flowchart TD
     end
 
     %% Connections
-    BROWSER -->|Port 3080| CORE
+    BROWSER -->|Port 3080| GW
+    GW --> CORE
     BROWSER -->|Port 6006| PHOENIX_SRV
+    CORE --> Core_Plugin
     CORE --> Plugins
     CORE --> MCP_Servers
     CORE --> LLM_Bridges
@@ -70,9 +81,10 @@ flowchart TD
     OTEL_EXPORTER -->|HTTP /v1/traces| PHOENIX_SRV
     PHOENIX_SRV --> SQLITE_DB
     PHOENIX_SRV --> TRACES
-    AUTO_SYNC -->|GraphQL / SQLite| PHOENIX_SRV
+    CATALOG -->|GraphQL / SQLite| PHOENIX_SRV
 
-    VOL_CFG -.-> CORE
+    VOL_ETC -.->|/etc/dsh :ro| CORE
+    VOL_STATE -.->|/var/lib/dsh :rw| CORE
     VOL_PHX -.-> SQLITE_DB
     VOL_WS -.-> CORE
 ```
@@ -81,20 +93,27 @@ flowchart TD
 
 ## 🏗️ Core Layers
 
-### 1. Dual-Container Runtime Layer
-* **`dsh-local`**: Hardened production Node.js 24 image based directly on official `node:24-bookworm-slim` with `@deepseek-ai/dsh@0.1.2-rc.1` installed from npm. Compiles native binaries (`node-pty`) via multi-stage `pnpm`, embeds prebuilt plugins and MCP binaries, binds native Cordis HTTP server to `0.0.0.0:3080` without third-party proxies, and exposes port `3080` bound strictly to `127.0.0.1` on the host.
-* **`dsh-phoenix`**: Open-source Arize Phoenix instance (`arizephoenix/phoenix:20.5.0`) running uvicorn/Python on port `6006` bound strictly to `127.0.0.1` with embedded SQLite persistence.
+### 1. Dual-Container Non-Root Runtime Layer
+* **`dsh-local`**: Hardened production Node.js 24 multi-stage image built from `node:24-bookworm-slim`. Executes unprivileged as user `dsh:dsh` (UID/GID 1000) with stripped Linux capabilities (`cap_drop: [ALL]`) and disabled privilege escalation (`security_opt: [no-new-privileges:true]`).
+  - Strict Linux FHS directory segregation: `/etc/dsh` (read-only configuration), `/var/lib/dsh` (mutable runtime state), `/var/lib/dsh/profiles` (sticky tmpfs `mode=1777`), and `/workspaces` (user project files).
+  - Multi-stage build isolates compiler toolchains (`g++`, `make`) to the builder stage, achieving a slim 318 MB content size.
+  - Binds native Cordis HTTP server to `0.0.0.0:3080` internally, exposed strictly on loopback `127.0.0.1:3080`.
+* **`dsh-phoenix`**: Hardened Arize Phoenix instance (`arizephoenix/phoenix:20.5.0`) executing unprivileged as UID 1000 with `cap_drop: [ALL]`. Runs on port `6006` bound strictly to `127.0.0.1` with state persisted to `./config/phoenix` (`/home/phoenix/.phoenix/phoenix.db`).
 
-### 2. Google Gemini Thought Signature Bridge
-* In modern Gemini 3.x / 2.x Flash models, Google AI Studio generates reasoning tokens that require a proprietary `extra_content.google.thought_signature` when returning tool results in multi-turn conversations.
-* DSH-DDS embeds an in-memory thought signature interceptor in `pi-ai` that captures the signature on chunk streams (Step 1) and re-attaches it on outbound tool response payloads (Step 2).
+### 2. Native Cordis Core Plugin Architecture (`@dsh-dds/core`)
+* **Inversion-of-Control Microkernel**: Rather than ad-hoc monkey-patch scripts, system extension is implemented via the in-tree `@dsh-dds/core` plugin:
+  - **Gateway Middleware**: Intercepts HTTP requests on `ctx.webServer`, normalizes Host/Origin headers, recognizes trusted Docker bridge networks, and provides `/dsh-dds/health` and `/dsh-dds/lifecycle/restart`.
+  - **In-Process Model Catalog**: `ModelCatalogService` manages real-time pricing and context specs for 420+ models in memory without external cron shells or subshell polling.
+  - **In-Memory Localization**: Taps the root HTML document via `ctx.webServer.tapIndex()` to deliver seamless English localization at runtime.
+  - **In-Line RBAC PEP**: Dynamically intercepts `tool-execute` events to contain path traversal and enforce persona permissions in real time.
 
-### 3. Dynamic Boot-Time Model Synchronizer (`sync_models.mjs`)
-* Automatically queries `https://openrouter.ai/api/v1/models` and `https://generativelanguage.googleapis.com/v1beta/models` every time the container boots.
-* Ingests all **420+ models** with real-time prompt/completion token pricing directly into the Arize Phoenix SQLite database and DeepSeek Harness runtime.
+### 3. Native Package Mutation Engine (`pnpm.patchedDependencies`)
+* Eliminates hijacked wrapper binaries and post-install regex scripts.
+* Mutations to upstream packages (`dsh-mnemon`, `@deepseek-ai/dsh-session`, and `@earendil-works/pi-ai`) are maintained as standard unified diffs in `config/profiles/web/patches/` and recorded directly in `package.json#pnpm.patchedDependencies`.
+* Preserves Google Gemini thought signatures and fixes session iterable getters natively during package installation.
 
 ### 4. Authoritative Declarative Orchestrator & Acyclic Policy Engine (`config/`)
-* **`DeclarativeWorkflowEngine` ([declarative-orchestrator.mjs](../config/declarative-orchestrator.mjs))**: Evaluates 100% declarative workflow recipes defined in `persona.yaml` natively in JavaScript, permanently replacing shell scripts. Implements 15 typed capability adapters with real cryptographic SHA-256 hashing, real HTTP endpoint reachability probes, and airgap containment ledgers.
+* **`DeclarativeWorkflowEngine` ([declarative-orchestrator.mjs](../config/declarative-orchestrator.mjs))**: Evaluates 100% declarative workflow recipes defined in `persona.yaml` natively in JavaScript. Implements 15 typed capability adapters with real cryptographic SHA-256 hashing, real HTTP endpoint reachability probes, and airgap containment ledgers.
 * **Acyclic Policy Engine ([rbac-policy.mjs](../config/rbac-policy.mjs))**: Single source of truth for Zero Trust RBAC policy enforcement, canonical path resolution (`resolvePath`), strict directory containment (`isContainedWithin`), symlink ancestor canonicalization (`canonicalizeWithAncestorRealpath`), and escape detection (`checkSymlinkEscape`).
 * **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: Records structured decision lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel parent-child span correlation (`AgentPhoenixTracer`).
-* **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and read-only root filesystems.
+* **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and non-root execution.

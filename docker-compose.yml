@@ -2,29 +2,33 @@ services:
   dsh:
     build: .
     image: dsh-local:latest
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
-      - ./config:/root/.dsh:ro
-      - ./config/sessions:/root/.dsh/sessions:rw
-      - ./config/audit:/root/.dsh/audit:rw
-      - ./config/storages:/root/.dsh/storages:rw
-      - ./config/patch:/root/.dsh/patch:rw
-      - ./config/personas:/root/.dsh/personas:rw
-      - ./config/skills:/root/.dsh/skills:rw
-      - ./config/cache:/root/.dsh/cache:rw
+      - ./config:/etc/dsh:ro
+      - ./config/sessions:/var/lib/dsh/sessions:rw
+      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/storages:/var/lib/dsh/storages:rw
+      - ./config/patch:/var/lib/dsh/patch:rw
+      - ./config/personas:/var/lib/dsh/personas:rw
+      - ./config/skills:/var/lib/dsh/skills:rw
+      - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
     tmpfs:
-      - /run/dsh:rw,size=32m
-      - /tmp:rw,size=64m
-      - /root/.dsh/profiles:rw,size=256m
+      - /run/dsh:rw,size=32m,mode=1777
+      - /tmp:rw,size=512m,mode=1777
     environment:
       - PORT=3080
       - NODE_ENV=production
-      - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
+      - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/var/lib/dsh/profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
@@ -34,7 +38,9 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
-      - DSH_SETTINGS_FILE=/root/.dsh/storages/settings.yaml
+      - DSH_HOME=/var/lib/dsh
+      - DSH_CONFIG_DIR=/etc/dsh
+      - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
     depends_on:
       phoenix:
         condition: service_healthy
@@ -46,7 +52,12 @@ services:
 
   phoenix:
     image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "127.0.0.1:6006:6006"
     command:
@@ -59,13 +70,15 @@ services:
       retries: 5
       start_period: 15s
     environment:
+      - HOME=/home/phoenix
+      - PHOENIX_WORKING_DIR=/home/phoenix/.phoenix
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
     volumes:
-      - ./config/phoenix:/root/.phoenix
+      - ./config/phoenix:/home/phoenix/.phoenix
     logging:
       driver: "json-file"
       options:

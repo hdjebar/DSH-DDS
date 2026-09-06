@@ -9,6 +9,7 @@
 services:
   dsh:
     read_only: true
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -29,25 +30,31 @@ services:
       - sandbox-session-state:/var/lib/dsh-state
       - ./config/sessions:/var/lib/dsh-state/sessions:rw
     tmpfs:
-      - /tmp:rw,size=64m
-      - /run:rw,size=32m
-      - /root/.cache:rw,size=128m
-      - /root/.mnemon:rw,size=32m
-      - /root/.dsh:rw,nosuid,nodev,size=512m
-      - /var/log/dsh:rw,nosuid,nodev,size=32m
-      - /workspaces/cases:rw,size=64m
-      - /artifacts:rw,size=64m
+      - /tmp:rw,size=64m,mode=1777
+      - /run:rw,size=32m,mode=1777
+      - /home/dsh/.cache:rw,size=128m,mode=1777
+      - /home/dsh/.mnemon:rw,size=32m,mode=1777
+      - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777
+      - /root/.dsh:rw,nosuid,nodev,size=64m,mode=1777
+      - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=1777
+      - /workspaces/cases:rw,size=64m,mode=1777
+      - /artifacts:rw,size=64m,mode=1777
     environment:
       - DSH_SANDBOX=1
       - DSH_CONFIG_SOURCE=/opt/dsh-config
       - DSH_RUNTIME_DIR=/run/dsh
       - DSH_SESSION_STATE_DIR=/var/lib/dsh-state
-      - DSH_SESSIONS_DIR=/root/.dsh/sessions
+      - DSH_SESSIONS_DIR=/var/lib/dsh/sessions
       - DSH_DISABLE_MODEL_SYNC=1
     networks:
       - sandbox-net
 
   phoenix:
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - sandbox-net
 

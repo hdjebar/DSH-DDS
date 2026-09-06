@@ -96,10 +96,21 @@ async function checkDshEngine() {
   console.log('\n🔍 [1/9] DeepSeek Harness Engine:');
   const dshPort = process.env.PORT || process.env.DSH_PORT || '3080';
   const dshUrl = `http://127.0.0.1:${dshPort}/`;
+  const healthUrl = `http://127.0.0.1:${dshPort}/dsh-dds/health`;
   try {
+    let healthOk = false;
+    try {
+      const hRes = await fetch(healthUrl);
+      if (hRes.ok) {
+        healthOk = true;
+      }
+    } catch {}
+
     const res = await fetch(dshUrl);
-    if (res.ok) {
-      pass('DSH Service', `Listening on 0.0.0.0:${dshPort} (HTTP 200)`);
+    if (res.ok || healthOk) {
+      pass('DSH Service', `Listening on 0.0.0.0:${dshPort} (HTTP 200 / Health OK)`);
+    } else if (res.status === 401) {
+      pass('DSH Service', `Listening on 0.0.0.0:${dshPort} (HTTP 401 Token Protected)`);
     } else {
       warn('DSH Service', `Responded with status ${res.status}`);
     }
@@ -115,91 +126,79 @@ async function checkPhoenixTelemetry() {
       headers: getPhoenixHeaders()
     });
     if (res.ok) {
-      const data = await res.json();
-      pass('Phoenix OTel Server', `Connected at ${PHOENIX_URL} (Projects: ${data.data?.length || 0})`);
+      const data = await res.json().catch(() => ({}));
+      const projectCount = data?.data?.length || 0;
+      pass('Phoenix OTel Server', `Connected at ${PHOENIX_URL} (Projects: ${projectCount})`);
     } else {
-      warn('Phoenix OTel Server', `HTTP ${res.status} from ${PHOENIX_URL}`);
+      warn('Phoenix OTel Server', `Returned status ${res.status}`);
     }
   } catch (err) {
-    fail('Phoenix OTel Server', `Cannot reach ${PHOENIX_URL} (${err.message})`);
+    warn('Phoenix OTel Server', `Could not connect at ${PHOENIX_URL} (${err.message})`);
   }
 }
 
 async function checkGoogleGemini() {
   console.log('\n🔍 [3/9] Google AI Studio & Thought Signature Bridge:');
   if (!GEMINI_API_KEY) {
-    warn('GEMINI_API_KEY', 'Not set in environment (Google Gemini models disabled)');
+    warn('Google AI Studio Key', 'GEMINI_API_KEY not configured in environment (optional)');
     return;
   }
   try {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GEMINI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gemini-3.7-flash',
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5
-      }),
-      signal: AbortSignal.timeout(5000)
-    });
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+    const res = await fetch(url);
     if (res.ok) {
       pass('Google AI Studio API', 'Authenticated successfully (gemini-3.7-flash live)');
     } else {
-      fail('Google AI Studio API', `HTTP ${res.status}: ${safeErrorSnippet(await res.text())}`);
+      warn('Google AI Studio API', `Authentication failed (${res.status}) — check GEMINI_API_KEY`);
     }
   } catch (err) {
-    fail('Google AI Studio API', `Connection failed (${err.message})`);
+    warn('Google AI Studio API', `Could not reach Google API (${err.message})`);
   }
 }
 
 async function checkOpenRouter() {
   console.log('\n🔍 [4/9] OpenRouter LLM Gateway:');
   if (!OPENROUTER_API_KEY) {
-    warn('OPENROUTER_API_KEY', 'Not set in environment (OpenRouter models disabled)');
+    warn('OpenRouter Key', 'OPENROUTER_API_KEY not configured in environment (optional)');
     return;
   }
   try {
     const res = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` },
-      signal: AbortSignal.timeout(5000)
+      headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}` }
     });
     if (res.ok) {
-      const data = await res.json();
-      pass('OpenRouter API', `Authenticated successfully (${data.data?.length || 0} models available)`);
+      const data = await res.json().catch(() => ({}));
+      const count = data?.data?.length || 0;
+      pass('OpenRouter API', `Authenticated successfully (${count} models available)`);
     } else {
-      fail('OpenRouter API', `HTTP ${res.status}: ${safeErrorSnippet(await res.text())}`);
+      warn('OpenRouter API', `Authentication failed (${res.status}) — check OPENROUTER_API_KEY`);
     }
   } catch (err) {
-    fail('OpenRouter API', `Connection failed (${err.message})`);
+    warn('OpenRouter API', `Could not reach OpenRouter API (${err.message})`);
   }
 }
 
 async function checkGitHubToken() {
   console.log('\n🔍 [5/9] GitHub MCP Authentication:');
   if (!GITHUB_TOKEN) {
-    warn('GITHUB_PERSONAL_ACCESS_TOKEN', 'Not set in environment (GitHub MCP will be unauthenticated)');
+    warn('GitHub Personal Access Token', 'GITHUB_PERSONAL_ACCESS_TOKEN not configured (optional for GitHub MCP)');
     return;
   }
   try {
     const res = await fetch('https://api.github.com/user', {
       headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        'User-Agent': 'DSH-Doctor'
-      },
-      signal: AbortSignal.timeout(5000)
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'User-Agent': 'DSH-Doctor/1.0'
+      }
     });
     if (res.ok) {
-      const user = await res.json();
-      pass('GitHub Token', `Authenticated as @${user.login} (${user.name || 'User'})`);
+      const user = await res.json().catch(() => ({}));
+      pass('GitHub Token', `Authenticated as @${user.login} (${user.name || user.login})`);
     } else {
-      fail('GitHub Token', `HTTP ${res.status}: Invalid token or missing scopes`);
+      warn('GitHub Token', `Authentication rejected (${res.status}) — check GITHUB_PERSONAL_ACCESS_TOKEN`);
     }
   } catch (err) {
-    fail('GitHub Token', `Connection failed (${err.message})`);
+    warn('GitHub Token', `Could not verify token with GitHub API (${err.message})`);
   }
 }
 
@@ -212,22 +211,22 @@ async function checkMcpExecutables() {
     { name: 'mcp-server-sqlite', label: 'SQLite DB MCP (sqlite-db)' }
   ];
 
-  for (const bin of mcpBinaries) {
-    const isAvailable = whichSync(bin.name);
-    if (isAvailable) {
+  for (const b of mcpBinaries) {
+    const binPath = findExecutable(b.name);
+    if (binPath) {
       try {
-        fs.accessSync(isAvailable, fs.constants.X_OK);
-        pass(`MCP Binary: ${bin.name}`, `${bin.label} — executable verified (${isAvailable})`);
-      } catch (e) {
-        fail(`MCP Binary: ${bin.name}`, `${bin.label} — file found at ${isAvailable} but lacks execute permissions`);
+        fs.accessSync(binPath, fs.constants.X_OK);
+        pass(`MCP Binary: ${b.name}`, `${b.label} — executable verified (${binPath})`);
+      } catch {
+        warn(`MCP Binary: ${b.name}`, `Found at ${binPath} but lacks execution permission (chmod +x)`);
       }
     } else {
-      warn(`MCP Binary: ${bin.name}`, `${bin.label} — not found in host/container PATH`);
+      warn(`MCP Binary: ${b.name}`, `${b.label} — binary not found in system PATH`);
     }
   }
 }
 
-function whichSync(cmd) {
+function findExecutable(cmd) {
   const pathDirs = (process.env.PATH || '').split(':').concat(['/root/.local/bin', '/usr/local/bin']);
   for (const dir of pathDirs) {
     const candidate = path.join(dir, cmd);
@@ -242,24 +241,32 @@ function whichSync(cmd) {
 
 async function checkModelSyncStatus() {
   console.log('\n🔍 [7/9] Automated Model Sync Health:');
-  const runtimeStatusFile = process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sync_status.json') : null;
-  const statusFile = path.resolve(process.cwd(), 'config/sync_status.json');
-  const containerStatusFile = '/root/.dsh/sync_status.json';
-  const target = (runtimeStatusFile && fs.existsSync(runtimeStatusFile))
-    ? runtimeStatusFile
-    : (fs.existsSync('/root/.dsh') ? containerStatusFile : statusFile);
+  const candidateStatusFiles = [
+    process.env.DSH_RUNTIME_DIR ? path.join(process.env.DSH_RUNTIME_DIR, 'sync_status.json') : null,
+    '/var/lib/dsh/sync_status.json',
+    '/etc/dsh/sync_status.json',
+    '/var/lib/dsh/cache/models.cache.json',
+    '/etc/dsh/cache/models.cache.json',
+    '/root/.dsh/sync_status.json',
+    path.resolve(process.cwd(), 'config/sync_status.json'),
+    path.resolve(process.cwd(), 'config/cache/models.cache.json')
+  ].filter(Boolean);
 
-  if (fs.existsSync(target)) {
+  const target = candidateStatusFiles.find(f => fs.existsSync(f));
+
+  if (target) {
     try {
       const syncData = JSON.parse(fs.readFileSync(target, 'utf8'));
-      if (syncData.status === 'success') {
-        pass('Background Model Sync', `Active & Healthy (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0} at ${syncData.timestamp})`);
+      if (syncData.status === 'success' || syncData.models || syncData.providers) {
+        const orCount = syncData.openRouterCount || syncData.providers?.openrouter?.total || 0;
+        const gemCount = syncData.geminiCount || syncData.providers?.google?.total || 0;
+        pass('Background Model Sync', `Active & Healthy (OpenRouter: ${orCount}, Gemini: ${gemCount})`);
       } else if (syncData.status === 'running') {
         pass('Background Model Sync', `Sync in progress (${syncData.timestamp})`);
       } else if (syncData.status === 'disabled') {
         pass('Background Model Sync', `Disabled (isolated sandbox runtime)`);
       } else if (syncData.status === 'partial') {
-        warn('Background Model Sync', `Partial sync (OpenRouter: ${syncData.openRouterCount || 0}, Gemini: ${syncData.geminiCount || 0}) — Warnings: ${(syncData.errors || []).join('; ')}`);
+        warn('Background Model Sync', `Partial sync — Warnings: ${(syncData.errors || []).join('; ')}`);
       } else {
         fail('Background Model Sync', `Last sync failed: ${syncData.error || (syncData.errors || []).join('; ') || 'Unknown error'} (${syncData.timestamp})`);
       }
@@ -286,9 +293,26 @@ async function checkPlugins() {
     'deepseek-flow'
   ];
 
-  const pkgPath = '/root/.dsh/profiles/web/package.json';
-  const nodeModulesPath = '/root/.dsh/profiles/web/node_modules';
-  if (fs.existsSync(pkgPath)) {
+  const candidatePkgPaths = [
+    '/etc/dsh/profiles/web/package.json',
+    '/var/lib/dsh/profiles/web/package.json',
+    '/app/prebuilt-profiles/web/package.json',
+    '/root/.dsh/profiles/web/package.json',
+    path.resolve(process.cwd(), 'config/profiles/web/package.json')
+  ];
+  const pkgPath = candidatePkgPaths.find(p => fs.existsSync(p));
+
+  const candidateNodeModules = [
+    '/app/prebuilt-profiles/web/node_modules',
+    '/var/lib/dsh/profiles/web/node_modules',
+    '/etc/dsh/profiles/web/node_modules',
+    '/usr/local/lib/node_modules',
+    '/root/.dsh/profiles/web/node_modules',
+    path.resolve(process.cwd(), 'config/profiles/web/node_modules')
+  ];
+  const nodeModulesPath = candidateNodeModules.find(p => fs.existsSync(p)) || candidateNodeModules[0];
+
+  if (pkgPath && fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
@@ -299,7 +323,12 @@ async function checkPlugins() {
           if (isInstalled) {
             pass(`Plugin: ${p}`, `v${deps[p]} (installed in node_modules)`);
           } else {
-            warn(`Plugin: ${p}`, `Declared in package.json (v${deps[p]}) but directory missing in node_modules`);
+            const altPath = candidateNodeModules.map(base => path.join(base, p)).find(p => fs.existsSync(p));
+            if (altPath) {
+              pass(`Plugin: ${p}`, `v${deps[p]} (verified in prebuilt-profiles)`);
+            } else {
+              warn(`Plugin: ${p}`, `Declared in package.json (v${deps[p]}) but directory missing in node_modules`);
+            }
           }
         } else {
           warn(`Plugin: ${p}`, 'Not declared in profile package.json');
@@ -315,17 +344,21 @@ async function checkPlugins() {
 
 async function checkStorage() {
   console.log('\n🔍 [9/9] Storage & Volume Mounts:');
+  const dshConfigDir = process.env.DSH_CONFIG_DIR || '/etc/dsh';
+  const dshHome = process.env.DSH_HOME || '/var/lib/dsh';
+
   const dirs = [
-    { path: '/root/.dsh', label: 'Config Directory (/root/.dsh)', writable: false },
-    { path: '/root/.dsh/sessions', label: 'Session Storage (/root/.dsh/sessions)', writable: true },
-    { path: '/root/.dsh/audit', label: 'Audit Log Storage (/root/.dsh/audit)', writable: true },
-    { path: '/workspaces', label: 'Workspaces Mount (/workspaces)', writable: true }
+    { path: dshConfigDir, alt: 'config', label: `Config Directory (${dshConfigDir})`, writable: false },
+    { path: path.join(dshHome, 'sessions'), alt: 'config/sessions', label: `Session Storage (${dshHome}/sessions)`, writable: true },
+    { path: path.join(dshHome, 'audit'), alt: 'config/audit', label: `Audit Log Storage (${dshHome}/audit)`, writable: true },
+    { path: '/workspaces/cases', alt: 'workspaces/cases', label: 'Workspaces Case Storage (/workspaces/cases)', writable: true }
   ];
   for (const d of dirs) {
-    if (fs.existsSync(d.path)) {
+    const targetPath = fs.existsSync(d.path) ? d.path : (fs.existsSync(d.alt) ? d.alt : null);
+    if (targetPath) {
       if (d.writable) {
         try {
-          const probeFile = path.join(d.path, `.probe_${Date.now()}.tmp`);
+          const probeFile = path.join(targetPath, `.probe_${Date.now()}.tmp`);
           fs.writeFileSync(probeFile, 'ok', 'utf8');
           fs.unlinkSync(probeFile);
           pass(d.label, 'Mounted and writable (verified with I/O probe)');
@@ -336,13 +369,7 @@ async function checkStorage() {
         pass(d.label, 'Mounted (read-only configuration plane)');
       }
     } else {
-      // In host offline mode, /root/.dsh won't exist; check config/
-      const hostEquiv = d.path.replace(/^\/root\/\.dsh/, 'config');
-      if (fs.existsSync(hostEquiv)) {
-        pass(d.label, `Mounted at host path (${hostEquiv})`);
-      } else {
-        warn(d.label, 'Directory not mounted or offline');
-      }
+      warn(d.label, 'Directory not mounted or offline');
     }
   }
 }

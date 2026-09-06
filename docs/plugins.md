@@ -1,9 +1,35 @@
 # 🧩 DSH Plugins & Model Context Protocol (MCP) Guide
 
-This repository comes pre-packaged with **10 essential, pure English DSH plugins** and **4 pre-configured MCP servers** baked directly into the container image.
+This repository comes pre-packaged with **1 native core system plugin (`@dsh-dds/core`)**, **10 essential community plugins**, and **4 pre-configured MCP servers** baked directly into the container image.
 
 > [!WARNING]
 > **Mandatory Security Audit for Additional Plugins**: Any new plugin or MCP server added to this stack **must be strictly audited** before installation. Plugins execute in-process with the Node.js runtime and have access to container memory, mounted workspaces, and environment API credentials. Never install unvetted or untrusted plugins without reviewing their source code and dependencies.
+
+---
+
+## 🏛️ Foundational Core Plugin
+
+### `@dsh-dds/core` (Native In-Tree System Kernel Extension)
+* **Package**: [`packages/dsh-dds-core`](../packages/dsh-dds-core)
+* **Architecture**: Native Cordis plugin hooked via `ctx.inject(['webServer'], ...)` and `cordis.patch.yml`.
+* **Subsystems**:
+  1. **WebServer Gateway Middleware** ([gateway.js](../packages/dsh-dds-core/gateway.js)):
+     - Recognizes trusted container network bridges (`172.16.0.0/12`, `10.0.0.0/8`, `192.168.0.0/16`) to eliminate loopback IP rejections.
+     - Normalizes host and origin headers (`localhost:3080` <-> `127.0.0.1:3080`).
+     - Provides authenticated `/dsh-dds/lifecycle/restart` endpoint with PID 1 termination signal.
+     - Exposes unauthenticated `/dsh-dds/health` endpoint returning container UID and service status.
+  2. **In-Process Model Catalog** ([model-catalog.js](../packages/dsh-dds-core/model-catalog.js)):
+     - Embeds `ModelCatalogService` directly into the Cordis IoC microkernel.
+     - Automatically registers model specs and token pricing from OpenRouter and Google AI Studio into Arize Phoenix.
+     - Exposes authenticated `/dsh-dds/api/models/sync` route, replacing external shell polling daemons.
+  3. **In-Memory UI Localization** ([localization.js](../packages/dsh-dds-core/localization.js)):
+     - Dynamically intercepts the root HTML response via `ctx.webServer.tapIndex()`.
+     - Injects English localization transforms without mutating on-disk minified bundles.
+  4. **In-Line Zero-Trust Tool Interceptor PEP** ([rbac-interceptor.js](../packages/dsh-dds-core/rbac-interceptor.js)):
+     - Intercepts `tool-execute` events in real time as an authoritative Policy Enforcement Point.
+     - Validates tool calls and target files against the active persona's RBAC matrix.
+     - Auto-provisions required workspace working directories (`/workspaces/cases`).
+     - Appends tamper-evident audit records to `/var/lib/dsh/audit/decision.log`.
 
 ---
 

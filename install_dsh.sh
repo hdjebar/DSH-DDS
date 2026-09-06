@@ -28,8 +28,11 @@ mkdir -p "$DSH_INSTALL/config/profiles/web" \
          "$DSH_INSTALL/config/audit" \
          "$DSH_INSTALL/config/storages" \
          "$DSH_INSTALL/config/patch" \
+         "$DSH_INSTALL/config/phoenix" \
+         "$DSH_INSTALL/config/cache" \
          "$DSH_INSTALL/workspaces/cases" \
-         "$DSH_INSTALL/workspaces/artifacts"
+         "$DSH_INSTALL/workspaces/artifacts" \
+         "$DSH_INSTALL/packages/dsh-dds-core"
 
 # 2. Strict & Safe Environment Variable Loader
 load_env_safely() {
@@ -162,12 +165,7 @@ echo "📦 Provisioning runtime engines, personas, and diagnostic tools..."
 fetch_or_copy_file "config/sync_models.mjs"
 fetch_or_copy_file "config/doctor.mjs"
 fetch_or_copy_file "config/persona.mjs"
-fetch_or_copy_file "config/patch_translations.mjs"
-fetch_or_copy_file "config/patch-pi-ai.mjs"
-fetch_or_copy_file "config/patch-bash-local.mjs"
-fetch_or_copy_file "config/patch-client-connection.mjs"
-fetch_or_copy_file "config/patch-session-events.mjs"
-fetch_or_copy_file "config/patch-market-restart.mjs"
+
 fetch_or_copy_file "config/declarative-orchestrator.mjs"
 fetch_or_copy_file "config/rbac-policy.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
@@ -185,6 +183,15 @@ fetch_or_copy_file "docker-compose.sandbox.yml"
 fetch_or_copy_file "docker/entrypoint.sh"
 
 # Profiles
+fetch_or_copy_file "packages/dsh-dds-core/package.json"
+fetch_or_copy_file "packages/dsh-dds-core/index.js"
+fetch_or_copy_file "packages/dsh-dds-core/gateway.js"
+fetch_or_copy_file "packages/dsh-dds-core/model-catalog.js"
+fetch_or_copy_file "packages/dsh-dds-core/localization.js"
+fetch_or_copy_file "packages/dsh-dds-core/rbac-interceptor.js"
+fetch_or_copy_file "packages/dsh-dds-core/llm-gateway.js"
+fetch_or_copy_file "packages/dsh-dds-core/loader.mjs"
+fetch_or_copy_file "packages/dsh-dds-core/loader-hooks.mjs"
 fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
 fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
 fetch_or_copy_file "config/profiles/web/cordis.yml"
@@ -449,16 +456,17 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "@liustack/modsearch": "^5.10.0",
+    "@liustack/modsearch": "^5.10.1",
     "deepseek-flow": "^0.4.0",
+    "dsh-better-sidebar": "^0.18.0",
     "dsh-find-plugin": "^0.3.7",
     "dsh-mcp-market": "^0.1.2",
-    "dsh-mcp-panel": "^0.6.3",
-    "dsh-mnemon": "^0.4.4",
+    "dsh-mcp-panel": "^0.6.7",
+    "dsh-mnemon": "^0.5.4",
     "dsh-model-sync": "^0.1.6",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
     "dsh-session-reader": "^0.1.0",
-    "dshmarket": "^1.39.0"
+    "dshmarket": "^1.44.0"
   },
   "dsh": {
     "profile": {
@@ -474,7 +482,8 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
         "dsh-model-sync",
         "dsh-mcp-market",
         "dsh-session-reader",
-        "deepseek-flow"
+        "deepseek-flow",
+        "dsh-better-sidebar"
       ]
     }
   }
@@ -493,7 +502,17 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
     port: !!js Number(process.env.PORT ?? 3080)
 - id: settings
   config:
-    path: /root/.dsh/storages/settings.yaml
+    path: /var/lib/dsh/storages/settings.yaml
+- id: sub-model-access
+  disabled: true
+- id: model-sync
+  disabled: false
+- insert:
+    - id: dsh-dds-core
+      name: '@dsh-dds/core'
+      config:
+        enableToolRbac: true
+        modelSyncIntervalHours: 12
 # --- dsh-mcp-market managed (auto-generated; do not edit) ---
 - insert:
     - id: mcp-fetch
@@ -529,7 +548,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
         command: mcp-server-sqlite
         args:
           - --db-path
-          - /root/.dsh/storages/data.db
+          - /var/lib/dsh/storages/data.db
 # --- end dsh-mcp-market managed ---
 EOF
 fi
@@ -548,10 +567,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g pnpm@11.25.0 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /root/.dsh/profiles/web
+ENV HOME="/home/dsh"
+WORKDIR /var/lib/dsh/profiles/web
 COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml* config/profiles/web/pnpm-workspace.yaml* ./
 
-RUN pnpm config set minimum-release-age 0 \
+RUN mkdir -p /home/dsh/.local/share/pnpm/store/v11 \
+    && pnpm config set minimum-release-age 0 \
+    && pnpm config set store-dir /home/dsh/.local/share/pnpm/store/v11 \
     && pnpm install \
     && (pnpm approve-builds --all || true) \
     && pnpm prune --prod \
@@ -566,175 +588,119 @@ COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da39
 # Copy official maintained GitHub MCP server binary
 COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa08d80fb166abe73d851fff631c51c0079872967720699 /server/github-mcp-server /usr/local/bin/github-mcp-server
 
-# Install official DeepSeek Harness engine, build toolchain for native plugins, and MCP tools globally
+# ── Create unprivileged service user dsh (UID/GID 1000) ────────────
+RUN usermod -l dsh -d /home/dsh -m node \
+    && groupmod -n dsh node \
+    && mkdir -p /home/dsh/.local/bin /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools \
+    && chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools
+
+# Install official DeepSeek Harness engine and minimal runtime dependencies (no build compilers, no GUI bloat)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
     curl \
+    ca-certificates \
+    python3 \
     make \
     g++ \
-    build-essential \
-    && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 playwright@1.49.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
+    && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
-    && playwright install-deps chromium \
-    && rm -rf /var/lib/apt/lists/* \
-    && uv tool install --with 'mcp<2.0.0' mcp-server-sqlite@2025.4.25 \
-    && ln -sf /root/.local/bin/mcp-server-sqlite /usr/local/bin/mcp-server-sqlite
+    && rm -rf /var/lib/apt/lists/* /root/.cache /root/.npm \
+    && UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install --with 'mcp<2.0.0' mcp-server-sqlite@2025.4.25 \
+    && ln -sf /usr/local/bin/mcp-server-sqlite /home/dsh/.local/bin/mcp-server-sqlite \
+    && chmod -R 755 /usr/local/bin /usr/local/lib/node_modules /opt/uv-tools
 
-ENV PATH="/root/.local/bin:${PATH}"
-ENV NODE_PATH="/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules"
-
-# Patch pi-ai to preserve Google AI Studio thought_signature / extra_content on tool calls
-RUN node -e '\
-const fs = require("fs");\
-const path = require("path");\
-function findPiAi(dir) {\
-  if (!fs.existsSync(dir)) return null;\
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {\
-    const full = path.join(dir, entry.name);\
-    if (entry.isDirectory()) {\
-      if (entry.name === "@earendil-works") {\
-        const target = path.join(full, "pi-ai/dist/api/openai-completions.js");\
-        if (fs.existsSync(target)) return target;\
-      }\
-      const sub = findPiAi(full);\
-      if (sub) return sub;\
-    }\
-  }\
-  return null;\
-}\
-const candidates = [\
-  "/usr/local/lib/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",\
-  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",\
-  "/usr/local/lib/node_modules/@deepseek-ai/dsh-llm-pi-ai/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js"\
-];\
-const file = candidates.find(p => fs.existsSync(p)) || findPiAi("/usr/local/lib/node_modules");\
-if (file && fs.existsSync(file)) {\
-  let content = fs.readFileSync(file, "utf8");\
-  if (!content.includes("googleExtraContentCache")) {\
-    const anchor1 = "const name = toolCall.function?.name ?? toolCall.custom?.name;";\
-    const anchor2 = "return {\n                        id: tc.id,";\
-    if (!content.includes(anchor1)) throw new Error("pi-ai anchor1 missing in " + file);\
-    if (!content.includes(anchor2)) throw new Error("pi-ai anchor2 missing in " + file);\
-    content = "const googleExtraContentCache = new Map();\n" + content;\
-    content = content.replace(anchor1, "if (toolCall.extra_content) { block.extra_content = toolCall.extra_content; if (toolCall.id || block.id) { googleExtraContentCache.set(toolCall.id || block.id, toolCall.extra_content); } }\n                            " + anchor1);\
-    content = content.replace(anchor2, "const extra = tc.extra_content || googleExtraContentCache.get(tc.id);\n                    return {\n                        ...(extra ? { extra_content: extra } : {}),\n                        id: tc.id,");\
-    fs.writeFileSync(file, content, "utf8");\
-    console.log("✅ pi-ai thought signature bridge applied successfully to " + file);\
-  }\
-  nodeCheck = require("child_process").execSync("node --check " + file);\
-} else {\
-  console.log("ℹ️ pi-ai module not present in installation; skipping patch.");\
-}'
-
-# Build-Time Immutability: Patch dsh-bash-local to auto-create spec.workdir before spawning under Landlock
-COPY config/patch-bash-local.mjs /usr/local/bin/patch-bash-local.mjs
-RUN node /usr/local/bin/patch-bash-local.mjs
-
-# Build-Time Immutability: Patch dsh-client-connection to eliminate 401 token fence for Web Workbench access
-COPY config/patch-client-connection.mjs /usr/local/bin/patch-client-connection.mjs
-RUN node /usr/local/bin/patch-client-connection.mjs
+ENV HOME="/home/dsh"
+ENV PATH="/home/dsh/.local/bin:/usr/local/bin:${PATH}"
+ENV DSH_HOME="/var/lib/dsh"
+ENV DSH_CONFIG_DIR="/etc/dsh"
+ENV NODE_PATH="/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/var/lib/dsh/profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules"
 
 # Setup directories, shebang for internals exposure, and global CLI link
-RUN mkdir -p /root/.mnemon/runtime /root/.dsh/profiles/web /root/.dsh/profiles/node_modules \
-    /root/.dsh/storages /root/.dsh/sessions /root/.dsh/patch /run/dsh /workspaces \
-    /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app \
+RUN mkdir -p /home/dsh/.mnemon/runtime /var/lib/dsh/profiles/web /var/lib/dsh/profiles/node_modules \
+    /var/lib/dsh/storages /var/lib/dsh/sessions /var/lib/dsh/patch /var/lib/dsh/cache /run/dsh /workspaces \
+    /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app /etc/dsh \
     && chmod 0750 /var/log/dsh \
     && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh \
-    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis
+    && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis \
+    && ln -sf /var/lib/dsh /home/dsh/.dsh \
+    && ln -sf /var/lib/dsh /root/.dsh
 
 COPY docker/entrypoint.sh /usr/local/bin/dsh-entrypoint
 RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
     && sh -n /usr/local/bin/dsh-entrypoint
 
 # Copy pre-compiled and pre-built plugins to both internal cache and default profile location
-COPY --from=builder /root/.dsh/profiles/web /app/prebuilt-profiles/web
-COPY --from=builder /root/.dsh/profiles/web /root/.dsh/profiles/web
-COPY config/cordis.patch.yml* /root/.dsh/cordis.patch.yml
+COPY --from=builder /home/dsh/.local/share/pnpm/store /home/dsh/.local/share/pnpm/store
+COPY --from=builder /var/lib/dsh/profiles/web /app/prebuilt-profiles/web
+COPY --from=builder /var/lib/dsh/profiles/web /var/lib/dsh/profiles/web
+COPY config/cordis.patch.yml* /var/lib/dsh/cordis.patch.yml
 COPY config/cordis.patch.yml* /opt/dsh-config/cordis.patch.yml
+COPY config/cordis.patch.yml* /etc/dsh/cordis.patch.yml
 COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /app/prebuilt-profiles/web/
-COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /root/.dsh/profiles/web/
+COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /var/lib/dsh/profiles/web/
 COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /app/prebuilt-profiles/headless/
-COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /root/.dsh/profiles/headless/
+COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /var/lib/dsh/profiles/headless/
 COPY config/profiles/cli/cordis.yml* /app/prebuilt-profiles/cli/
-COPY config/profiles/cli/cordis.yml* /root/.dsh/profiles/cli/
+COPY config/profiles/cli/cordis.yml* /var/lib/dsh/profiles/cli/
 
-# Complete profile peer dependencies from DSH's runtime dependency tree
+# Complete profile peer dependencies from DSH's runtime dependency tree (never symlink scope dirs)
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
-      [ -e "$p" ] && [ ! -e "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" ] \
-        && ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" || true; \
+      case "$(basename "$p")" in \
+        @*) \
+          mkdir -p "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" "/var/lib/dsh/profiles/web/node_modules/$(basename "$p")"; \
+          for sub in "$p"/*; do \
+            [ -e "$sub" ] && [ ! -e "/app/prebuilt-profiles/web/node_modules/$(basename "$p")/$(basename "$sub")" ] \
+              && ln -s "$sub" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")/$(basename "$sub")" || true; \
+            [ -e "$sub" ] && [ ! -e "/var/lib/dsh/profiles/web/node_modules/$(basename "$p")/$(basename "$sub")" ] \
+              && ln -s "$sub" "/var/lib/dsh/profiles/web/node_modules/$(basename "$p")/$(basename "$sub")" || true; \
+          done ;; \
+        *) \
+          [ -e "$p" ] && [ ! -e "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" ] \
+            && ln -s "$p" "/app/prebuilt-profiles/web/node_modules/$(basename "$p")" || true; \
+          [ -e "$p" ] && [ ! -e "/var/lib/dsh/profiles/web/node_modules/$(basename "$p")" ] \
+            && ln -s "$p" "/var/lib/dsh/profiles/web/node_modules/$(basename "$p")" || true; ;; \
+      esac; \
     done
 
 # ESM plugins resolve DeepSeek scoped dependencies from their own profile tree.
-RUN mkdir -p /app/prebuilt-profiles/web/node_modules/@deepseek-ai && \
+RUN mkdir -p /app/prebuilt-profiles/web/node_modules/@deepseek-ai /var/lib/dsh/profiles/web/node_modules/@deepseek-ai && \
     for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
-      [ -e "$p" ] && ln -sfn "$p" "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/$(basename "$p")"; \
+      [ -e "$p" ] && ln -sfn "$p" "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/$(basename "$p")" && \
+      ln -sfn "$p" "/var/lib/dsh/profiles/web/node_modules/@deepseek-ai/$(basename "$p")"; \
     done
 
 # Link profile node_modules globally into /usr/local/lib/node_modules and /app/node_modules
-RUN for p in /root/.dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$p" "/usr/local/lib/node_modules/$(basename "$p")" || true; done && \
-    for p in /root/.dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
-    ln -sf /root/.dsh/profiles/web/node_modules /app/node_modules
+RUN for p in /var/lib/dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf "$p" "/usr/local/lib/node_modules/$(basename "$p")" || true; done && \
+    for p in /var/lib/dsh/profiles/web/node_modules/@*/*; do [ -e "$p" ] && mkdir -p "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)" && ln -sf "$p" "/usr/local/lib/node_modules/$(dirname "$p" | xargs basename)/$(basename "$p")" || true; done && \
+    ln -sf /var/lib/dsh/profiles/web/node_modules /app/node_modules
 
-# Patch dsh-model-sync and @deepseek-ai/dsh-settings for settingsNamespace export compatibility
-RUN node -e '\
-const fs = require("fs");\
-const files = [\
-  "/app/prebuilt-profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
-  "/root/.dsh/profiles/web/node_modules/dsh-model-sync/lib/dsh-adapter.js",\
-  "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
-  "/root/.dsh/profiles/web/node_modules/@deepseek-ai/dsh-settings/lib/index.js",\
-  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-settings/lib/index.js"\
-];\
-for (const f of files) {\
-  if (fs.existsSync(f)) {\
-    let c = fs.readFileSync(f, "utf8");\
-    c = c.replace("export { settingsNamespace } from '\''@deepseek-ai/dsh-settings'\'';", "export function settingsNamespace(v) { return v; };");\
-    c = c.replace("export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets };", "export { SettingsConflictError, SettingsProvider, SettingsProvider as default, redactSecrets, parseSettingsNamespace as settingsNamespace };");\
-    fs.writeFileSync(f, c);\
-  }\
-}'
+# Copy and link native in-tree @dsh-dds/core Cordis plugin
+COPY packages/dsh-dds-core /app/packages/dsh-dds-core
+RUN mkdir -p /usr/local/lib/node_modules/@dsh-dds /app/prebuilt-profiles/web/node_modules/@dsh-dds /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+    && ln -sfn /app/packages/dsh-dds-core /usr/local/lib/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/web/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /var/lib/dsh/profiles/web/node_modules/@dsh-dds/core
 
-# Patch dsh-settings-file to avoid EROFS on read-only root configuration plane
-RUN node -e '\
-const fs = require("fs");\
-const files = [\
-  "/app/prebuilt-profiles/web/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
-  "/root/.dsh/profiles/web/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
-  "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js",\
-  "/usr/local/lib/node_modules/@deepseek-ai/dsh-settings-file/lib/index.js"\
-];\
-for (const f of files) {\
-  if (fs.existsSync(f)) {\
-    const real = fs.realpathSync(f);\
-    let c = fs.readFileSync(real, "utf8");\
-    const target = "const filename = resolve(config.path ?? join(resolveDshHome(config.dshHome), \"settings.yaml\"));";\
-    const repl = "const filename = resolve(config.path ?? process.env.DSH_SETTINGS_FILE ?? join(resolveDshHome(config.dshHome), \"storages\", \"settings.yaml\"));";\
-    if (c.includes(target)) {\
-      c = c.replace(target, repl);\
-      fs.writeFileSync(real, c, "utf8");\
-    }\
-  }\
-}'
+# Standard unadulterated pnpm engine configured for unprivileged non-root runtime store
+RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
+    && ln -sf /usr/local/bin/pnpm /usr/local/bin/pn \
+    && mkdir -p /home/dsh/.local/share/pnpm/store /home/dsh/.config/pnpm \
+    && echo "store-dir=/home/dsh/.local/share/pnpm/store" >> /home/dsh/.pnpmrc \
+    && echo "minimum-release-age=0" >> /home/dsh/.pnpmrc \
+    && echo "minimumReleaseAge: 0" > /home/dsh/.config/pnpm/config.yaml
 
-# Patch @deepseek-ai/dsh-session and dsh-mnemon for session.events iterable compatibility
-COPY config/patch-session-events.mjs /usr/local/bin/patch-session-events.mjs
-RUN node /usr/local/bin/patch-session-events.mjs
+# Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
+ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
-# Patch dshmarket to allow same-origin container gateway restart requests
-COPY config/patch-market-restart.mjs /usr/local/bin/patch-market-restart.mjs
-RUN node /usr/local/bin/patch-market-restart.mjs
-
-# Wrap pnpm to persist market restart and session patches across dynamic plugin installs
-RUN rm -f /usr/local/bin/pnpm /usr/local/bin/pn \
-    && printf '#!/bin/sh\nnode /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs "$@"\nSTATUS=$?\nif [ -f /usr/local/bin/patch-market-restart.mjs ]; then\n  node /usr/local/bin/patch-market-restart.mjs >/dev/null 2>&1 || true\nfi\nif [ -f /usr/local/bin/patch-session-events.mjs ]; then\n  node /usr/local/bin/patch-session-events.mjs >/dev/null 2>&1 || true\nfi\nif [ -f /root/.dsh/patch_translations.mjs ]; then\n  node /root/.dsh/patch_translations.mjs >/dev/null 2>&1 || true\nfi\nexit $STATUS\n' > /usr/local/bin/pnpm \
-    && chmod +x /usr/local/bin/pnpm \
-    && ln -sf /usr/local/bin/pnpm /usr/local/bin/pn
+RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /usr/local/lib/node_modules
 
 EXPOSE 3080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3080/dsh-dds/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+USER dsh:dsh
+WORKDIR /home/dsh
 
 ENTRYPOINT ["/usr/local/bin/dsh-entrypoint"]
 EOF
@@ -747,29 +713,33 @@ services:
   dsh:
     build: .
     image: dsh-local:latest
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
-      - ./config:/root/.dsh:ro
-      - ./config/sessions:/root/.dsh/sessions:rw
-      - ./config/audit:/root/.dsh/audit:rw
-      - ./config/storages:/root/.dsh/storages:rw
-      - ./config/patch:/root/.dsh/patch:rw
-      - ./config/personas:/root/.dsh/personas:rw
-      - ./config/skills:/root/.dsh/skills:rw
-      - ./config/cache:/root/.dsh/cache:rw
+      - ./config:/etc/dsh:ro
+      - ./config/sessions:/var/lib/dsh/sessions:rw
+      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/storages:/var/lib/dsh/storages:rw
+      - ./config/patch:/var/lib/dsh/patch:rw
+      - ./config/personas:/var/lib/dsh/personas:rw
+      - ./config/skills:/var/lib/dsh/skills:rw
+      - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
     tmpfs:
-      - /run/dsh:rw,size=32m
-      - /tmp:rw,size=64m
-      - /root/.dsh/profiles:rw,size=256m
+      - /run/dsh:rw,size=32m,mode=1777
+      - /tmp:rw,size=512m,mode=1777
     environment:
       - PORT=3080
       - NODE_ENV=production
-      - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
+      - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/var/lib/dsh/profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
@@ -779,7 +749,9 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
-      - DSH_SETTINGS_FILE=/root/.dsh/storages/settings.yaml
+      - DSH_HOME=/var/lib/dsh
+      - DSH_CONFIG_DIR=/etc/dsh
+      - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
     depends_on:
       phoenix:
         condition: service_healthy
@@ -791,7 +763,12 @@ services:
 
   phoenix:
     image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "127.0.0.1:6006:6006"
     command:
@@ -804,13 +781,15 @@ services:
       retries: 5
       start_period: 15s
     environment:
+      - HOME=/home/phoenix
+      - PHOENIX_WORKING_DIR=/home/phoenix/.phoenix
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
     volumes:
-      - ./config/phoenix:/root/.phoenix
+      - ./config/phoenix:/home/phoenix/.phoenix
     logging:
       driver: "json-file"
       options:

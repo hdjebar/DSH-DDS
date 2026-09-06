@@ -20,6 +20,7 @@ print_help() {
   echo "  down / stop       Stop all containers"
   echo "  restart           Restart all containers"
   echo "  build             Rebuild container image with latest plugins"
+  echo "  token / web       Show or open the authenticated Web UI URL"
   echo "  logs [service]    View real-time logs (e.g. ./dsh.sh logs dsh)"
   echo "  doctor            Run ecosystem health check & diagnostics"
   echo "  sync-models       Fetch live model catalog (OpenRouter & Google)"
@@ -75,8 +76,32 @@ case "$COMMAND" in
     ensure_runtime_dirs
     echo "🚀 Starting DeepSeek Harness and Phoenix stack..."
     docker compose up -d
-    echo "👉 Web UI: http://localhost:3080"
+    sleep 2
+    WEB_URL="$(docker compose logs dsh 2>/dev/null | grep -Eo 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Za-z0-9_-]+' | tail -n 1 || true)"
+    if [ -n "$WEB_URL" ]; then
+      echo "👉 Web UI (Authenticated): $WEB_URL"
+    else
+      echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
+    fi
     echo "👉 Phoenix Telemetry: http://localhost:6006"
+    ;;
+
+  url|token|web|open)
+    WEB_URL="$(docker compose logs dsh 2>/dev/null | grep -Eo 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Za-z0-9_-]+' | tail -n 1 || true)"
+    if [ -n "$WEB_URL" ]; then
+      echo "👉 Authenticated Web UI: $WEB_URL"
+      if [ "$COMMAND" = "open" ] || [ "$COMMAND" = "web" ]; then
+        if command -v open >/dev/null 2>&1; then
+          echo "🌐 Opening in browser..."
+          open "$WEB_URL"
+        elif command -v xdg-open >/dev/null 2>&1; then
+          echo "🌐 Opening in browser..."
+          xdg-open "$WEB_URL" 2>/dev/null || true
+        fi
+      fi
+    else
+      echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
+    fi
     ;;
 
   down|stop)
@@ -88,6 +113,14 @@ case "$COMMAND" in
     ensure_runtime_dirs
     echo "🔄 Recreating and restarting containers with updated configuration..."
     docker compose up -d --force-recreate
+    sleep 2
+    WEB_URL="$(docker compose logs dsh 2>/dev/null | grep -Eo 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Za-z0-9_-]+' | tail -n 1 || true)"
+    if [ -n "$WEB_URL" ]; then
+      echo "👉 Web UI (Authenticated): $WEB_URL"
+    else
+      echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
+    fi
+    echo "👉 Phoenix Telemetry: http://localhost:6006"
     ;;
 
   build)
@@ -113,12 +146,12 @@ case "$COMMAND" in
         HOST_ENV_MODE="$(stat -c "%a" "$SCRIPT_DIR/.env")"
       fi
     fi
-    docker compose exec -T -e DSH_HOST_ENV_STATUS="$HOST_ENV_STATUS" -e DSH_HOST_ENV_MODE="$HOST_ENV_MODE" dsh node /root/.dsh/doctor.mjs
+    docker compose exec -T -e DSH_HOST_ENV_STATUS="$HOST_ENV_STATUS" -e DSH_HOST_ENV_MODE="$HOST_ENV_MODE" dsh node /etc/dsh/doctor.mjs
     ;;
 
   sync-models)
     echo "🔄 Running Dynamic Model Synchronizer..."
-    docker compose exec -T dsh node /root/.dsh/sync_models.mjs
+    docker compose exec -T dsh node /etc/dsh/sync_models.mjs
     ;;
 
   models)
@@ -126,6 +159,10 @@ case "$COMMAND" in
     docker compose exec -T dsh node -e "
       import fs from 'fs';
       const candidates = [
+        '/var/lib/dsh/cache/models.cache.json',
+        '/etc/dsh/cache/models.cache.json',
+        '/var/lib/dsh/storages/models.cache.json',
+        '/etc/dsh/storages/models.cache.json',
         '/root/.dsh/cache/models.cache.json',
         '/root/.dsh/storages/models.cache.json',
         '/root/.dsh/models.cache.json',
@@ -180,7 +217,7 @@ case "$COMMAND" in
         # Check whether container is running with sandbox override
         if docker compose exec -T dsh sh -c '[ "${DSH_SANDBOX:-0}" = "1" ]' 2>/dev/null; then
           echo "🛡️  Executing workflow inside hardened container sandbox (DSH_SANDBOX=1)..."
-          docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
+          docker compose exec -T dsh node /etc/dsh/persona.mjs "$@"
         elif echo "$*" | grep -q -- "--allow-standard-container"; then
           echo "⚠️  Executing workflow in standard container mode (--allow-standard-container supplied)."
           echo "   Kernel Landlock and full volume isolation are relaxed."
@@ -190,7 +227,7 @@ case "$COMMAND" in
               CLEANED_ARGS+=("$arg")
             fi
           done
-          docker compose exec -T dsh node /root/.dsh/persona.mjs "${CLEANED_ARGS[@]}"
+          docker compose exec -T dsh node /etc/dsh/persona.mjs "${CLEANED_ARGS[@]}"
         else
           echo "❌ Error: Declarative workflows require hardened sandbox profile by default (DSH_SANDBOX=1)."
           echo "   To start the sandbox stack:"
@@ -217,7 +254,7 @@ case "$COMMAND" in
       fi
     else
       if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
-        docker compose exec -T dsh node /root/.dsh/persona.mjs "$@"
+        docker compose exec -T dsh node /etc/dsh/persona.mjs "$@"
       elif echo "$*" | grep -q -- "--force-host-unsafe"; then
         echo "⚠️ WARNING: Executing persona command on host due to --force-host-unsafe."
         CLEANED_ARGS=()
@@ -239,7 +276,7 @@ case "$COMMAND" in
   sessions|session)
     shift || true
     if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
-      docker compose exec -T dsh node /root/.dsh/persona.mjs sessions "$@"
+      docker compose exec -T dsh node /etc/dsh/persona.mjs sessions "$@"
     elif echo "$*" | grep -q -- "--force-host-unsafe"; then
       echo "⚠️ WARNING: Executing session command on host due to --force-host-unsafe."
       CLEANED_ARGS=()
@@ -339,7 +376,7 @@ case "$COMMAND" in
               // Try container checkpoint export if running (FR-019)
               try {
                 const { execSync } = await import('child_process');
-                const raw = execSync(`docker compose exec -T dsh cat /var/lib/dsh-state/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /root/.dsh/sessions/checkpoints/${id}.json 2>/dev/null`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+                const raw = execSync(`docker compose exec -T dsh cat /var/lib/dsh/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /etc/dsh/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /root/.dsh/sessions/checkpoints/${id}.json 2>/dev/null`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
                 if (raw && raw.trim().startsWith('{')) {
                   cp = JSON.parse(raw);
                   fs.mkdirSync(path.dirname(checkpointPath), { recursive: true });

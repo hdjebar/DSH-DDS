@@ -593,6 +593,15 @@ async function main() {
   }
 }
 
+const isDirectCli = process.argv[1] && (
+  process.argv[1].endsWith('persona.mjs') ||
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+);
+if (isDirectCli) {
+  main();
+}
+
+
 function listSessions() {
   console.log('========================================================================');
   console.log('📜 DeepSeek Harness Interactive Web & CLI Sessions');

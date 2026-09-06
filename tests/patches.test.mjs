@@ -9,220 +9,44 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
-const PATCH_SCRIPT = path.join(ROOT, 'config', 'patch-pi-ai.mjs');
+const PATCHES_DIR = path.join(ROOT, 'config', 'profiles', 'web', 'patches');
 
-const MOCK_PI_AI_TEMPLATE = 'function handleCompletions() {\n'
-  + '    const name = toolCall.function?.name ?? toolCall.custom?.name;\n'
-  + '    return {\n'
-  + '                        id: tc.id,\n'
-  + '        name: name\n'
-  + '    };\n'
-  + '}\n';
-
-test('Patch Verification: patch-pi-ai applies thought_signature bridge cleanly', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-patch-test-'));
-  const mockFile = path.join(tmpDir, 'openai-completions.js');
-  fs.writeFileSync(mockFile, MOCK_PI_AI_TEMPLATE, 'utf8');
-
-  try {
-    const output = execFileSync(process.execPath, [PATCH_SCRIPT], {
-      env: { ...process.env, PI_AI_COMPLETIONS_FILE: mockFile },
-      encoding: 'utf8'
-    });
-
-    assert.ok(output.includes('Applied Google thought_signature bridge patch cleanly'));
-
-    const patchedContent = fs.readFileSync(mockFile, 'utf8');
-    assert.ok(patchedContent.includes('const googleExtraContentCache = new Map();'));
-    assert.ok(patchedContent.includes('googleExtraContentCache.set('));
-    assert.ok(patchedContent.includes('extra_content: extra'));
-
-    // Test Idempotency
-    const secondOutput = execFileSync(process.execPath, [PATCH_SCRIPT], {
-      env: { ...process.env, PI_AI_COMPLETIONS_FILE: mockFile },
-      encoding: 'utf8'
-    });
-    assert.ok(secondOutput.includes('already applied; nothing to do'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+test('Zero Patch Scripts Invariant: no legacy monkey-patch scripts exist in config/', () => {
+  const configDir = path.join(ROOT, 'config');
+  const entries = fs.readdirSync(configDir);
+  const legacyPatches = entries.filter(name => (name.startsWith('patch-') || name.startsWith('patch_')) && name.endsWith('.mjs'));
+  assert.deepEqual(
+    legacyPatches,
+    [],
+    `config/ must contain zero legacy monkey-patch scripts, but found: ${legacyPatches.join(', ')}`
+  );
 });
 
-test('Patch Verification: patch-pi-ai fails fast when upstream anchors deviate', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-patch-fail-'));
-  const brokenMockFile = path.join(tmpDir, 'openai-completions.js');
-  fs.writeFileSync(brokenMockFile, 'function upstreamChanged() { return true; }', 'utf8');
+test('Zero Disk Mutation Invariant: package.json has zero patchedDependencies and pnpm-workspace.yaml sets minimumReleaseAge: 0', () => {
+  const pkgPath = path.join(ROOT, 'config', 'profiles', 'web', 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  assert.equal(pkg.pnpm?.patchedDependencies, undefined, 'package.json must not have pnpm.patchedDependencies');
 
-  try {
-    assert.throws(() => {
-      execFileSync(process.execPath, [PATCH_SCRIPT], {
-        env: { ...process.env, PI_AI_COMPLETIONS_FILE: brokenMockFile },
-        encoding: 'utf8',
-        stdio: 'pipe'
-      });
-    }, /Command failed/);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+  const wsPath = path.join(ROOT, 'config', 'profiles', 'web', 'pnpm-workspace.yaml');
+  const ws = fs.readFileSync(wsPath, 'utf8');
+  assert.ok(ws.includes('minimumReleaseAge: 0'), 'pnpm-workspace.yaml must specify minimumReleaseAge: 0');
 });
 
-const BASH_LOCAL_PATCH = path.join(ROOT, 'config', 'patch-bash-local.mjs');
-
-test('Patch Verification: patch-bash-local applies auto-workdir patch cleanly and idempotently', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-bash-patch-test-'));
-  const mockFile = path.join(tmpDir, 'index.js');
-  fs.writeFileSync(mockFile, 'import z from "foo";\n\tspawnSpec(spec, argv, stdoutMaxBytes, signal) {\n  return true;\n}\n', 'utf8');
-
-  try {
-    const output = execFileSync(process.execPath, [BASH_LOCAL_PATCH], {
-      env: { ...process.env, DSH_BASH_LOCAL_FILE: mockFile },
-      encoding: 'utf8'
-    });
-    assert.ok(output.includes('applied cleanly'));
-
-    const patched = fs.readFileSync(mockFile, 'utf8');
-    assert.ok(patched.includes('import { existsSync, mkdirSync } from "node:fs";'));
-    assert.ok(patched.includes('mkdirSync(spec.workdir'));
-
-    // Idempotency
-    const secondOutput = execFileSync(process.execPath, [BASH_LOCAL_PATCH], {
-      env: { ...process.env, DSH_BASH_LOCAL_FILE: mockFile },
-      encoding: 'utf8'
-    });
-    assert.ok(secondOutput.includes('already applied'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-const CLIENT_CONN_PATCH = path.join(ROOT, 'config', 'patch-client-connection.mjs');
-
-test('Patch Verification: patch-client-connection eliminates 401 token fence cleanly and idempotently', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-conn-patch-test-'));
-  const mockFile = path.join(tmpDir, 'index.js');
-  const mockContent = 'if (req.method === "GET" && url.pathname === "/" && tokens.length === 1 && authority !== void 0 && tokenMatches(tokens.join(""), this.launchToken)) {\n'
-    + '\t\tif (this.isAuthenticated(req)) return true;\n\t\tthis.writeUnauthorized(req, res);\n\t\treturn false;\n'
-    + '\trequestRejection(request) {\n\t\tif (!isTrustedApiRequest(request, this.trustedHosts)) return 403;\n\t\treturn this.browserAuth.isAuthenticated(request) ? void 0 : 401;\n\t}\n';
-  fs.writeFileSync(mockFile, mockContent, 'utf8');
-
-  try {
-    const output = execFileSync(process.execPath, [CLIENT_CONN_PATCH], {
-      env: { ...process.env, DSH_CLIENT_CONNECTION_FILE: mockFile },
-      encoding: 'utf8'
-    });
-    assert.ok(output.includes('applied cleanly'));
-
-    const patched = fs.readFileSync(mockFile, 'utf8');
-    assert.ok(patched.includes('token fence bypass applied'));
-    assert.ok(patched.includes('sessionCookie(cookieName(authority)'));
-    assert.ok(!patched.includes('this.writeUnauthorized(req, res)'));
-
-    // Idempotency
-    const secondOutput = execFileSync(process.execPath, [CLIENT_CONN_PATCH], {
-      env: { ...process.env, DSH_CLIENT_CONNECTION_FILE: mockFile },
-      encoding: 'utf8'
-    });
-    assert.ok(secondOutput.includes('already applied'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-const SESSION_EVENTS_PATCH = path.join(ROOT, 'config', 'patch-session-events.mjs');
-
-test('Patch Verification: patch-session-events adds events getter and safe fallback cleanly and idempotently', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-session-patch-test-'));
-  const mockSessionFile = path.join(tmpDir, 'session.js');
-  const mockMnemonFile = path.join(tmpDir, 'mnemon.js');
-
-  const mockSessionContent = 'class Session {\n\townEvents() {\n\t\treturn [];\n\t}\n}\n';
-  const mockMnemonContent = 'function openAgentTurn(agent) {\n\tfor (const event of agent.session.events) {\n\t\tconsole.log(event);\n\t}\n}\n';
-
-  fs.writeFileSync(mockSessionFile, mockSessionContent, 'utf8');
-  fs.writeFileSync(mockMnemonFile, mockMnemonContent, 'utf8');
-
-  try {
-    const output = execFileSync(process.execPath, [SESSION_EVENTS_PATCH], {
-      env: {
-        ...process.env,
-        DSH_SESSION_FILE: mockSessionFile,
-        DSH_MNEMON_FILE: mockMnemonFile
-      },
-      encoding: 'utf8'
-    });
-
-    assert.ok(output.includes('Patched Session.prototype.events'));
-    assert.ok(output.includes('Patched safe openAgentTurn'));
-
-    const patchedSession = fs.readFileSync(mockSessionFile, 'utf8');
-    assert.ok(patchedSession.includes('get events()'));
-    assert.ok(patchedSession.includes('return this.snapshotEvents();'));
-
-    const patchedMnemon = fs.readFileSync(mockMnemonFile, 'utf8');
-    assert.ok(patchedMnemon.includes('agent?.session?.events ?? agent?.session?.snapshotEvents?.() ?? []'));
-
-    // Idempotency check
-    const secondOutput = execFileSync(process.execPath, [SESSION_EVENTS_PATCH], {
-      env: {
-        ...process.env,
-        DSH_SESSION_FILE: mockSessionFile,
-        DSH_MNEMON_FILE: mockMnemonFile
-      },
-      encoding: 'utf8'
-    });
-    assert.ok(secondOutput.includes('already patched'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-const MARKET_RESTART_PATCH = path.join(ROOT, 'config', 'patch-market-restart.mjs');
-
-test('Patch Verification: patch-market-restart enables container gateway restart requests cleanly and idempotently', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-market-patch-test-'));
-  const mockFile = path.join(tmpDir, 'restart.js');
-
-  const mockContent = 'export function trustedRestartRequest(request) {\n'
-    + '    const address = request.socket.remoteAddress;\n'
-    + "    if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1')\n"
-    + '        return false;\n'
-    + '    return true;\n'
-    + '}\n'
-    + 'export function scheduleRestart(port = null) {\n'
-    + "    setTimeout(() => process.kill(process.pid, 'SIGTERM'), 500);\n"
-    + '}\n';
-
-  fs.writeFileSync(mockFile, mockContent, 'utf8');
-
-  try {
-    const output = execFileSync(process.execPath, [MARKET_RESTART_PATCH], {
-      env: {
-        ...process.env,
-        DSH_MARKET_RESTART_FILE: mockFile
-      },
-      encoding: 'utf8'
-    });
-
-    assert.ok(output.includes('Patched dshmarket restart'));
-
-    const patched = fs.readFileSync(mockFile, 'utf8');
-    assert.ok(patched.includes('function isTrustedClientIp'));
-    assert.ok(patched.includes('function isSameOriginOrLoopback'));
-    assert.ok(patched.includes('if (!isTrustedClientIp(address))'));
-    assert.ok(patched.includes('process.exit(0)'));
-
-    // Idempotency
-    const secondOutput = execFileSync(process.execPath, [MARKET_RESTART_PATCH], {
-      env: {
-        ...process.env,
-        DSH_MARKET_RESTART_FILE: mockFile
-      },
-      encoding: 'utf8'
-    });
-    assert.ok(secondOutput.includes('already patched'));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+test('Zero Disk Patch Files Invariant: no patch directory or patch files exist in profiles', () => {
+  assert.ok(!fs.existsSync(PATCHES_DIR), 'config/profiles/web/patches must not exist');
 });
 
 
+test('Core Plugin Migration: core gateway and localization replace legacy monkey-patch scripts', async () => {
+  const corePlugin = await import('../packages/dsh-dds-core/index.js');
+  assert.equal(corePlugin.name, '@dsh-dds/core');
+  assert.ok(Array.isArray(corePlugin.inject));
+
+  const gatewayMod = await import('../packages/dsh-dds-core/gateway.js');
+  assert.equal(typeof gatewayMod.isTrustedGatewayIp, 'function');
+  assert.equal(typeof gatewayMod.isSameOriginOrLoopback, 'function');
+  assert.equal(typeof gatewayMod.registerGatewayMiddleware, 'function');
+
+  const locMod = await import('../packages/dsh-dds-core/localization.js');
+  assert.equal(typeof locMod.registerLocalizationTap, 'function');
+});

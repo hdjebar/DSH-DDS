@@ -25,6 +25,8 @@ config/storages/*
 !config/storages/.gitkeep
 config/audit/*
 !config/audit/.gitkeep
+config/cache/*
+!config/cache/.gitkeep
 config/patch/*
 !config/patch/.gitkeep
 config/prompt-library/

@@ -2,8 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { buildInstaller } from '../scripts/build_installer.mjs';
 
 const ROOT = path.resolve(process.cwd());
+
+test('Installer Parity: build_installer --check passes with zero drift', () => {
+  const result = buildInstaller({ checkOnly: true });
+  assert.equal(result, true, 'install_dsh.sh must match all canonical files via build_installer');
+});
 
 test('Installer Parity: package.json matches config/profiles/web/package.json', () => {
   const committed = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/profiles/web/package.json'), 'utf8'));
@@ -86,12 +92,6 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'config/sync_models.mjs',
     'config/doctor.mjs',
     'config/persona.mjs',
-    'config/patch_translations.mjs',
-    'config/patch-pi-ai.mjs',
-    'config/patch-bash-local.mjs',
-    'config/patch-client-connection.mjs',
-    'config/patch-session-events.mjs',
-    'config/patch-market-restart.mjs',
     'config/declarative-orchestrator.mjs',
     'config/rbac-policy.mjs',
     'config/settings.default.yaml',
@@ -100,7 +100,16 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'docker-compose.sandbox.yml',
     'docker/entrypoint.sh',
     'config/profiles/web/pnpm-lock.yaml',
-    'config/profiles/cli/pnpm-lock.yaml'
+    'config/profiles/cli/pnpm-lock.yaml',
+    'packages/dsh-dds-core/package.json',
+    'packages/dsh-dds-core/index.js',
+    'packages/dsh-dds-core/gateway.js',
+    'packages/dsh-dds-core/model-catalog.js',
+    'packages/dsh-dds-core/localization.js',
+    'packages/dsh-dds-core/rbac-interceptor.js',
+    'packages/dsh-dds-core/loader.mjs',
+    'packages/dsh-dds-core/loader-hooks.mjs',
+    'packages/dsh-dds-core/llm-gateway.js'
   ];
 
   for (const item of required) {

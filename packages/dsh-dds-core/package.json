@@ -1,0 +1,14 @@
+{
+  "name": "@dsh-dds/core",
+  "version": "1.0.0",
+  "description": "Native Cordis Core Plugin for DeepSeek Harness: Gateway, Lifecycle, In-Process Model Sync, Localization, and Zero-Trust RBAC PEP",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./loader": "./loader.mjs",
+    "./loader.mjs": "./loader.mjs",
+    "./loader-hooks": "./loader-hooks.mjs",
+    "./loader-hooks.mjs": "./loader-hooks.mjs"
+  }
+}

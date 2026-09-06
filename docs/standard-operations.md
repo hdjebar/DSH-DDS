@@ -16,12 +16,33 @@ This document provides a reference for everyday operations, CLI commands, headle
 | **`./dsh.sh sync-models`** | Fetches and syncs latest OpenRouter & Google models. |
 | **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
 | **`./dsh.sh persona [cmd]`** | Manages AI Personas (`list`, `create`, `distill`, `run`, `workflow`). |
+| **`./dsh.sh token`** / **`./dsh.sh web`** | Prints or automatically launches the authenticated Web UI with the session token. |
 | **`./dsh.sh cli`** | Opens an interactive terminal session inside the container. |
 | **`./dsh.sh run "<prompt>"`** | Runs a one-shot autonomous task in headless mode. |
 | **`./dsh.sh reset`** | Clears session caches and restarts the stack cleanly. |
 | **`./dsh.sh status`** | Shows running container health status. |
 
 ---
+
+## 🌐 Authenticated Web UI Access (`./dsh.sh web` / `./dsh.sh token`)
+
+Upstream DeepSeek Harness enforces browser session security via a one-time initial exchange token generated on container startup. If you navigate to `http://localhost:3080/` without this token parameter, the server returns HTTP 401:
+```text
+dsh web authentication required; reopen the URL printed by dsh web.
+```
+
+To resolve this and authenticate your browser session:
+```bash
+# Print the full authenticated URL with active token:
+./dsh.sh token
+
+# Automatically print and open the authenticated URL in your default browser (macOS / Linux):
+./dsh.sh web
+# or
+./dsh.sh open
+```
+
+Once opened with `?token=...`, the server sets an HTTP-only session cookie (`dsh-auth-...`) valid for 30 days. All subsequent requests in that browser session will remain authenticated without needing the query parameter again.
 
 ## 🤖 Headless Automations & Scripting
 
@@ -43,7 +64,7 @@ cat << 'EOF' > config/custom-model.patch.yml
 EOF
 
 docker compose exec dsh dsh --profile headless \
-  --patch /root/.dsh/custom-model.patch.yml \
+  --patch /etc/dsh/custom-model.patch.yml \
   "analyze /workspaces/package.json"
 ```
 
@@ -101,3 +122,28 @@ docker compose pull
 # 3. Verify health
 ./dsh.sh doctor
 ```
+
+---
+
+## ⚙️ Environment Variables & Security Hardening (`.env`)
+
+Configuration parameters are loaded on boot from `.env` on the host:
+
+| Variable | Requirement | Operational Role |
+| :--- | :---: | :--- |
+| `DSH_PORT` | **Optional** | Host port for Web UI (default: `3080`). Bound to `127.0.0.1`. |
+| `GEMINI_API_KEY` | **Conditionally Mandatory** | Google AI Studio API Key. Required to use Gemini models (`gemini-3.7-flash`). |
+| `OPENROUTER_API_KEY` | **Conditionally Mandatory** | OpenRouter API Key. Required to use DeepSeek V3, R1, Claude, and GPT-4o. |
+| `DSH_APPROVAL_SECRET` | **Auto-Generated (Internal)** | Internal HMAC/Ed25519 signing secret (min 16 chars). **NOT an external API key**; required only for signing `./dsh.sh approve` tokens. |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | **Optional** | Fine-grained PAT for GitHub MCP operations (repos, PRs, issues). |
+| `PHOENIX_ENABLE_AUTH` | **Optional** | `true`/`false`. Enables login authentication on Phoenix UI (`127.0.0.1:6006`). |
+| `PHOENIX_SECRET` | **Optional** | Secret for cookie encryption when `PHOENIX_ENABLE_AUTH=true`. |
+| `PHOENIX_API_KEY` | **Optional** | API key for programmatic OTel query endpoints. |
+
+> [!NOTE]
+> **Provider Requirement**: At least one model provider (`GEMINI_API_KEY` or `OPENROUTER_API_KEY`) must be configured for personas to run.
+> 
+> **No Registration for `DSH_APPROVAL_SECRET`**: You do not need to sign up for any service. It is an internal secret automatically generated on install with `openssl rand -hex 32`.
+> 
+> **File Security**: Always run `chmod 0600 .env` so credentials cannot be read by other local users. Check status anytime with `./dsh.sh doctor`.
+

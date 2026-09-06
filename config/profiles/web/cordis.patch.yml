@@ -8,7 +8,17 @@
     port: !!js Number(process.env.PORT ?? 3080)
 - id: settings
   config:
-    path: /root/.dsh/storages/settings.yaml
+    path: /var/lib/dsh/storages/settings.yaml
+- id: sub-model-access
+  disabled: true
+- id: model-sync
+  disabled: false
+- insert:
+    - id: dsh-dds-core
+      name: '@dsh-dds/core'
+      config:
+        enableToolRbac: true
+        modelSyncIntervalHours: 12
 # --- dsh-mcp-market managed (auto-generated; do not edit) ---
 - insert:
     - id: mcp-fetch
@@ -44,5 +54,5 @@
         command: mcp-server-sqlite
         args:
           - --db-path
-          - /root/.dsh/storages/data.db
+          - /var/lib/dsh/storages/data.db
 # --- end dsh-mcp-market managed ---

@@ -131,14 +131,24 @@ test('Build-Time Immutability Invariant: entrypoint.sh contains zero dynamic run
     !entrypoint.includes('patch-pi-ai'),
     'docker/entrypoint.sh must not contain runtime patch-pi-ai'
   );
+  assert.ok(
+    !entrypoint.includes('patch-'),
+    'docker/entrypoint.sh must not contain any runtime monkey-patch scripts'
+  );
+
+  const loaderHooks = fs.readFileSync(path.join(ROOT, 'packages', 'dsh-dds-core', 'loader-hooks.mjs'), 'utf8');
+  assert.ok(
+    loaderHooks.includes('extra_content') && loaderHooks.includes('googleExtraContentCache'),
+    'Universal loader hooks must provide pi-ai thought signature bridge in-memory'
+  );
 
   const dockerfile = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   assert.ok(
-    dockerfile.includes('Build-Time Immutability: Patch dsh-bash-local'),
-    'Dockerfile must apply dsh-bash-local patch at build time'
+    dockerfile.includes('packages/dsh-dds-core /app/packages/dsh-dds-core'),
+    'Dockerfile must wire in-tree @dsh-dds/core plugin at build time'
   );
   assert.ok(
-    dockerfile.includes('pi-ai thought signature bridge applied successfully'),
-    'Dockerfile must apply pi-ai patch at build time'
+    dockerfile.includes('USER dsh:dsh'),
+    'Dockerfile must configure non-root user dsh:dsh at build time'
   );
 });

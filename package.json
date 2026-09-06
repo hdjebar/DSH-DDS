@@ -5,7 +5,9 @@
   "type": "module",
   "description": "DeepSeek Harness Deployment & Multi-Model Multi-Persona Agentic Matrix",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "build:installer": "node scripts/build_installer.mjs",
+    "verify:installer": "node scripts/build_installer.mjs --check"
   },
   "dependencies": {
     "yaml": "2.9.0"

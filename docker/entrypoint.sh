@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-DSH_HOME="/root/.dsh"
+DSH_HOME="${DSH_HOME:-/var/lib/dsh}"
+DSH_CONFIG_DIR="${DSH_CONFIG_DIR:-/etc/dsh}"
 PREBUILT_WEB="/app/prebuilt-profiles/web"
 RUNTIME_DIR="${DSH_RUNTIME_DIR:-$DSH_HOME}"
 
@@ -49,43 +50,78 @@ prepare_sandbox_home() {
     fi
   fi
   if [ -f "$RUNTIME_DIR/profiles/web/cordis.patch.yml" ] && ! grep -q "id: settings" "$RUNTIME_DIR/profiles/web/cordis.patch.yml" 2>/dev/null; then
-    printf "\n- id: settings\n  config:\n    path: /root/.dsh/storages/settings.yaml\n" >> "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
+    printf "\n- id: settings\n  config:\n    path: %s/storages/settings.yaml\n" "$DSH_HOME" >> "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
   fi
 
   mkdir -p /var/log/dsh && chmod 0750 /var/log/dsh 2>/dev/null || true
 }
 
 prepare_standard_home() {
-  mkdir -p /var/log/dsh "$RUNTIME_DIR" 2>/dev/null || true
+  mkdir -p /var/log/dsh "$RUNTIME_DIR" "$DSH_HOME/storages" "$DSH_HOME/sessions" "$DSH_HOME/cache" "$DSH_HOME/patch" /workspaces/cases /home/dsh/.config/pnpm 2>/dev/null || true
   chmod 0750 /var/log/dsh 2>/dev/null || true
-
-  # Seed prebuilt web profile into writable profiles tmpfs
-  mkdir -p \
-    "$DSH_HOME/profiles/web" \
-    "$DSH_HOME/profiles/node_modules" 2>/dev/null || true
-  if [ -d "$PREBUILT_WEB" ]; then
-    ln -sf "$PREBUILT_WEB/node_modules" "$DSH_HOME/profiles/web/node_modules" 2>/dev/null || true
-    cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  if [ ! -f /home/dsh/.config/pnpm/config.yaml ]; then
+    echo "minimumReleaseAge: 0" > /home/dsh/.config/pnpm/config.yaml 2>/dev/null || true
   fi
 
-  # Seed settings.yaml into writable storages volume to avoid EROFS on read-only DSH_HOME
+  # Support /etc/dsh declarative configuration if present
+  if [ -d "$DSH_CONFIG_DIR" ]; then
+    if [ -d "$DSH_CONFIG_DIR/personas" ] && [ ! -e "$DSH_HOME/personas" ]; then
+      ln -sf "$DSH_CONFIG_DIR/personas" "$DSH_HOME/personas" 2>/dev/null || cp -r "$DSH_CONFIG_DIR/personas" "$DSH_HOME/personas" 2>/dev/null || true
+    fi
+    if [ -d "$DSH_CONFIG_DIR/skills" ] && [ ! -e "$DSH_HOME/skills" ]; then
+      ln -sf "$DSH_CONFIG_DIR/skills" "$DSH_HOME/skills" 2>/dev/null || cp -r "$DSH_CONFIG_DIR/skills" "$DSH_HOME/skills" 2>/dev/null || true
+    fi
+    if [ -f "$DSH_CONFIG_DIR/cordis.patch.yml" ] && [ ! -f "$DSH_HOME/cordis.patch.yml" ]; then
+      cp -p "$DSH_CONFIG_DIR/cordis.patch.yml" "$DSH_HOME/cordis.patch.yml" 2>/dev/null || true
+    fi
+    if [ -f "$DSH_CONFIG_DIR/sync_models.mjs" ] && [ ! -f "$DSH_HOME/sync_models.mjs" ]; then
+      cp -p "$DSH_CONFIG_DIR/sync_models.mjs" "$DSH_HOME/sync_models.mjs" 2>/dev/null || true
+    fi
+  fi
+
+  # Seed prebuilt web profile into writable profiles directory if missing
+  mkdir -p "$DSH_HOME/profiles/web" "$DSH_HOME/profiles/node_modules" 2>/dev/null || true
+  if [ -L "$DSH_HOME/profiles/web/node_modules" ]; then
+    rm -f "$DSH_HOME/profiles/web/node_modules"
+  fi
+  if [ ! -d "$DSH_HOME/profiles/web/node_modules" ] && [ -d "$PREBUILT_WEB" ]; then
+    cp -a "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  fi
+  # Ensure pnpm storeDir matches non-root runtime environment
+  if [ -f "$DSH_HOME/profiles/web/node_modules/.modules.yaml" ]; then
+    sed -i 's|/root/\.local/share/pnpm/store|/home/dsh/\.local/share/pnpm/store|g; s|/var/lib/dsh/profiles/\.pnpm-store|/home/dsh/\.local/share/pnpm/store|g' \
+      "$DSH_HOME/profiles/web/node_modules/.modules.yaml" 2>/dev/null || true
+  fi
+
+  # Seed settings.yaml into writable storages volume to avoid EROFS on read-only DSH_HOME or DSH_CONFIG_DIR
   mkdir -p "$DSH_HOME/storages" 2>/dev/null || true
   if [ ! -f "$DSH_HOME/storages/settings.yaml" ]; then
-    if [ -f "$DSH_HOME/settings.yaml" ]; then
+    if [ -f "$DSH_CONFIG_DIR/settings.yaml" ]; then
+      cp -p "$DSH_CONFIG_DIR/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    elif [ -f "$DSH_CONFIG_DIR/settings.default.yaml" ]; then
+      cp -p "$DSH_CONFIG_DIR/settings.default.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
+    elif [ -f "$DSH_HOME/settings.yaml" ]; then
       cp -p "$DSH_HOME/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
     elif [ -f "$DSH_HOME/settings.default.yaml" ]; then
       cp -p "$DSH_HOME/settings.default.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
     fi
+  elif [ -f "$DSH_CONFIG_DIR/settings.yaml" ] && [ "$DSH_CONFIG_DIR/settings.yaml" -nt "$DSH_HOME/storages/settings.yaml" ]; then
+    cp -p "$DSH_CONFIG_DIR/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
   elif [ -f "$DSH_HOME/settings.yaml" ] && [ "$DSH_HOME/settings.yaml" -nt "$DSH_HOME/storages/settings.yaml" ]; then
     cp -p "$DSH_HOME/settings.yaml" "$DSH_HOME/storages/settings.yaml" 2>/dev/null || true
   fi
 
-  # Configure credentials and settings paths inside mutable locations to prevent EROFS on read-only DSH_HOME
+  # Configure credentials and settings paths inside mutable locations
   if [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && ! grep -q "id: credentials" "$DSH_HOME/profiles/web/cordis.patch.yml" 2>/dev/null; then
     printf "\n- id: credentials\n  config:\n    path: /run/dsh/.credentials.yaml\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
   fi
   if [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && ! grep -q "id: settings" "$DSH_HOME/profiles/web/cordis.patch.yml" 2>/dev/null; then
-    printf "\n- id: settings\n  config:\n    path: /root/.dsh/storages/settings.yaml\n" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
+    printf "\n- id: settings\n  config:\n    path: %s/storages/settings.yaml\n" "$DSH_HOME" >> "$DSH_HOME/profiles/web/cordis.patch.yml"
+  fi
+
+  # Backward compatibility link for legacy scripts expecting /root/.dsh
+  if [ "$DSH_HOME" != "/root/.dsh" ] && [ ! -e "/root/.dsh" ]; then
+    ln -sf "$DSH_HOME" /root/.dsh 2>/dev/null || true
   fi
 
   # Only initialize mutable root files if DSH_HOME is writable
@@ -108,28 +144,14 @@ else
   prepare_standard_home
 fi
 
-start_sync_watcher() {
-  (
-    while true; do
-      if [ -f "/tmp/dsh-sync.trigger" ]; then
-        rm -f "/tmp/dsh-sync.trigger"
-        echo "[dsh-daemon] In-session model sync triggered via /tmp/dsh-sync.trigger..."
-        node "$DSH_HOME/sync_models.mjs" || true
-      fi
-      sleep 2
-    done
-  ) &
-}
-
-if [ -f "$DSH_HOME/sync_models.mjs" ]; then
-  if [ "${DSH_DISABLE_MODEL_SYNC:-0}" = "1" ]; then
-    node "$DSH_HOME/sync_models.mjs" || true
-  else
-    echo "[dsh] Auto-synchronizing multi-provider models..."
-    (node "$DSH_HOME/sync_models.mjs" || true) &
-    start_sync_watcher
-  fi
+# Ensure native @dsh-dds/core plugin is linked into runtime profile
+if [ -d "/app/packages/dsh-dds-core" ]; then
+  mkdir -p "$DSH_HOME/profiles/web/node_modules/@dsh-dds" 2>/dev/null || true
+  ln -sfn /app/packages/dsh-dds-core "$DSH_HOME/profiles/web/node_modules/@dsh-dds/core" 2>/dev/null || true
 fi
+
+# Ensure Universal Runtime Compatibility Loader is always active across all subprocesses
+export NODE_OPTIONS="${NODE_OPTIONS:-} --import /app/packages/dsh-dds-core/loader.mjs"
 
 if [ "$#" -gt 0 ]; then
   exec "$@"

@@ -444,7 +444,11 @@ export class DeclarativeWorkflowEngine {
       if (isMockEnabled) {
         const evaluationDetails = {};
         if (prompt.toLowerCase().includes('patch') || prompt.toLowerCase().includes('workspace')) {
-          const patchScripts = ['config/patch-pi-ai.mjs', 'config/patch-bash-local.mjs'];
+          const patchScripts = [
+            'packages/dsh-dds-core/loader.mjs',
+            'packages/dsh-dds-core/loader-hooks.mjs',
+            'packages/dsh-dds-core/llm-gateway.js'
+          ];
           evaluationDetails.detected_patches = patchScripts.filter(p => fs.existsSync(resolvePath(p)));
         }
         return {

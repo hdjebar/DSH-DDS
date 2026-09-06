@@ -3,3 +3,4 @@ packages:
 
 nodeLinker: hoisted
 autoInstallPeers: false
+minimumReleaseAge: 0
