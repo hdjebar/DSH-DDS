@@ -124,6 +124,7 @@ The technical implementation details are divided into dedicated modules:
 * **[03. Native Cordis Plugin Architecture](03-native-cordis-plugin.md)**: Service injection, lifecycle restart, in-line Zero-Trust RBAC tool interception, and event-driven model catalog synchronization.
 * **[04. Package Management & Upstream Evolution](04-package-management-and-upstream-evolution.md)**: Native `pnpm.patchedDependencies`, handling future upstream DeepSeek updates, single-source installer, and image footprint optimization.
 * **[05. Multi-User Architectural Roadmap](05-multi-user-roadmap.md)**: Scaling from single-tenant workbench to isolated multi-tenant organization deployments.
+* **[06. Phased Implementation Plan](06-implementation-plan.md)**: Phased execution plan, task work breakdown, continuous regression guardrails, and verification criteria.
 
 ---
 
