@@ -15,6 +15,7 @@ import { ModelCatalogService } from './model-catalog.js';
 import { registerLocalizationTap } from './localization.js';
 import { registerRbacInterceptor } from './rbac-interceptor.js';
 import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
+import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml } from './web-search.js';
 
 export const name = '@dsh-dds/core';
 
@@ -60,6 +61,9 @@ export function apply(ctx, config = {}) {
 
   // 6. In-Memory Bash Workdir Auto-Creation & Safe Fallback Shim
   registerBashWorkdirShim();
+
+  // 7. Resilient Zero-Key Web Search Fallback Engine
+  registerWebSearchFallback(ctx);
 
   console.log('✅ [@dsh-dds/core] Native Cordis core plugin initialized successfully.');
 }
@@ -128,7 +132,10 @@ export {
   registerLocalizationTap,
   registerRbacInterceptor,
   registerLlmGateway,
-  LlmSemanticGateway
+  LlmSemanticGateway,
+  registerWebSearchFallback,
+  resilientSearch,
+  parseDuckDuckGoHtml
 };
 
 

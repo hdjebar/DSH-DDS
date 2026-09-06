@@ -311,4 +311,54 @@ test('Core Plugin: registerBashWorkdirShim guarantees spec.workdir exists and fa
   fs.rmSync(tmpBase, { recursive: true, force: true });
 });
 
+test('Web Search Fallback: parseDuckDuckGoHtml extracts structured search results', async () => {
+  const { parseDuckDuckGoHtml } = await import('../packages/dsh-dds-core/index.js');
+  const sampleHtml = `
+    <div class="result results_links">
+      <h2 class="result__title">
+        <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fdeepseek&rut=123">DeepSeek AI News</a>
+      </h2>
+      <a class="result__snippet">Official release and updates about DeepSeek LLM models.</a>
+    </div>
+    <div class="result results_links">
+      <h2 class="result__title">
+        <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fstats&rut=456">European Statistics</a>
+      </h2>
+      <a class="result__snippet">SDMX and economic indicators for EU member states.</a>
+    </div>
+  `;
+
+  const results = parseDuckDuckGoHtml(sampleHtml, 5);
+  assert.equal(results.length, 2);
+  assert.equal(results[0].title, 'DeepSeek AI News');
+  assert.equal(results[0].url, 'https://example.com/deepseek');
+  assert.equal(results[0].snippet, 'Official release and updates about DeepSeek LLM models.');
+  assert.equal(results[1].title, 'European Statistics');
+  assert.equal(results[1].url, 'https://example.org/stats');
+});
+
+test('Web Search Fallback: registerWebSearchFallback intercepts engine failure and engages fallback', async () => {
+  const { registerWebSearchFallback } = await import('../packages/dsh-dds-core/index.js');
+
+  let originalCalled = false;
+  const mockCtx = {
+    web: {
+      search: async (req) => {
+        originalCalled = true;
+        throw new Error('Error: modsearch failed (exit 1): Error: Every engine for the web source failed. - firecrawl: firecrawl rejected the keyless request (403)');
+      }
+    }
+  };
+
+  registerWebSearchFallback(mockCtx);
+  assert.ok(mockCtx.web.__dds_wrapped, 'ctx.web must be wrapped');
+
+  const res = await mockCtx.web.search({ query: 'test query' });
+  assert.equal(originalCalled, true, 'Original search must be attempted first');
+  assert.ok(res.content, 'Fallback search must return content');
+  assert.ok(Array.isArray(res.sources), 'Fallback search must return sources array');
+  assert.equal(res.truncated, false);
+});
+
+
 

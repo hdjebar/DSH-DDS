@@ -192,6 +192,7 @@ fetch_or_copy_file "packages/dsh-dds-core/rbac-interceptor.js"
 fetch_or_copy_file "packages/dsh-dds-core/llm-gateway.js"
 fetch_or_copy_file "packages/dsh-dds-core/loader.mjs"
 fetch_or_copy_file "packages/dsh-dds-core/loader-hooks.mjs"
+fetch_or_copy_file "packages/dsh-dds-core/web-search.js"
 fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
 fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
 fetch_or_copy_file "config/profiles/web/cordis.yml"
@@ -742,6 +743,9 @@ services:
       - NODE_PATH=/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modules:/var/lib/dsh/profiles/web/node_modules:/root/.dsh/profiles/web/node_modules:/root/.dsh/profiles/node_modules
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+      - EXA_API_KEY=${EXA_API_KEY:-}
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - DSH_TELEMETRY_MODE=FULL
