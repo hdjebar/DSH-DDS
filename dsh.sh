@@ -39,6 +39,7 @@ ensure_runtime_dirs() {
            "$SCRIPT_DIR/config/audit" \
            "$SCRIPT_DIR/config/storages" \
            "$SCRIPT_DIR/config/patch" \
+           "$SCRIPT_DIR/config/phoenix" \
            "$SCRIPT_DIR/config/personas" \
            "$SCRIPT_DIR/config/skills" \
            "$SCRIPT_DIR/config/cache" \
