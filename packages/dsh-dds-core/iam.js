@@ -145,12 +145,7 @@ export function registerIamMiddleware(ctx, config = {}) {
 
   if (typeof ctx.provide === 'function') {
     try { ctx.provide('iam', iam); } catch {}
-    try { ctx.provide('user', iam.getCurrentUser()); } catch {}
   }
-
-  try {
-    ctx.user = iam.getCurrentUser();
-  } catch {}
 
   const hookWebServer = (webCtx) => {
     try {

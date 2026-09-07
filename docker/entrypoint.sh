@@ -83,6 +83,11 @@ prepare_standard_home() {
   if [ ! -d "$DSH_HOME/profiles/web/node_modules" ] && [ -d "$PREBUILT_WEB" ]; then
     cp -a "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
   fi
+  # Ensure web profile package.json with patchReload: startup is active
+  if [ -f "$DSH_CONFIG_DIR/profiles/web/package.json" ]; then
+    cp -p "$DSH_CONFIG_DIR/profiles/web/package.json" "$DSH_HOME/profiles/web/package.json" 2>/dev/null || true
+  fi
+
   # Ensure pnpm storeDir matches non-root runtime environment
   if [ -f "$DSH_HOME/profiles/web/node_modules/.modules.yaml" ]; then
     sed -i 's|/root/\.local/share/pnpm/store|/home/dsh/\.local/share/pnpm/store|g; s|/var/lib/dsh/profiles/\.pnpm-store|/home/dsh/\.local/share/pnpm/store|g' \

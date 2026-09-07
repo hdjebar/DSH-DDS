@@ -19,6 +19,8 @@ services:
       - ./config/personas:/var/lib/dsh/personas:ro
       - ./config/skills:/var/lib/dsh/skills:ro
       - ./config/cache:/var/lib/dsh/cache:rw
+      - ./packages/dsh-dds-core:/app/packages/dsh-dds-core:ro
+      - ./docker/entrypoint.sh:/usr/local/bin/dsh-entrypoint:ro
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
