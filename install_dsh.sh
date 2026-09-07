@@ -114,12 +114,16 @@ DSH_REF="${DSH_REF:-v1.10.0}"
 DSH_REPO_URL="${DSH_REPO_URL:-https://raw.githubusercontent.com/hdjebar/DSH-DDS}"
 GITHUB_RAW="$DSH_REPO_URL/$DSH_REF"
 
-# Validate remote ref accessibility when downloading from remote (PR-004)
+# Validate remote ref accessibility when downloading from remote (PR-004 & Supply Chain Hardening)
 validate_remote_ref() {
   if [ -z "${DSH_SOURCE_DIR:-}" ] || [ "${DSH_CHECK_REMOTE_REF:-0}" = "1" ]; then
     if ! curl -fsSL -I "${DSH_REPO_URL}/${DSH_REF}/Dockerfile" >/dev/null 2>&1; then
+      if [ "${DSH_STRICT_REF:-0}" = "1" ]; then
+        echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository (DSH_STRICT_REF=1 enforced)." >&2
+        exit 1
+      fi
       if [ "$DSH_REF" != "main" ] && curl -fsSL -I "${DSH_REPO_URL}/main/Dockerfile" >/dev/null 2>&1; then
-        echo "⚠️ Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main'..."
+        echo "⚠️ Security Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main'..."
         DSH_REF="main"
         GITHUB_RAW="${DSH_REPO_URL}/main"
       else
@@ -620,7 +624,6 @@ RUN mkdir -p /home/dsh/.mnemon/runtime /var/lib/dsh/profiles/web /var/lib/dsh/pr
     /var/lib/dsh/storages /var/lib/dsh/sessions /var/lib/dsh/patch /var/lib/dsh/cache /run/dsh /workspaces \
     /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app /etc/dsh \
     && chmod 0750 /var/log/dsh \
-    && sed -i 's|#!/usr/bin/env node|#!/usr/bin/env -S node --expose-internals|g' /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis \
     && ln -sf /var/lib/dsh /home/dsh/.dsh \
@@ -728,8 +731,8 @@ services:
       - ./config/audit:/var/lib/dsh/audit:rw
       - ./config/storages:/var/lib/dsh/storages:rw
       - ./config/patch:/var/lib/dsh/patch:rw
-      - ./config/personas:/var/lib/dsh/personas:rw
-      - ./config/skills:/var/lib/dsh/skills:rw
+      - ./config/personas:/var/lib/dsh/personas:ro
+      - ./config/skills:/var/lib/dsh/skills:ro
       - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw

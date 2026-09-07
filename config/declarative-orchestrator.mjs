@@ -1133,6 +1133,14 @@ export class DeclarativeWorkflowEngine {
         : '/workspaces/cases';
     }
 
+    // 0. Strict Fail-Closed on Unknown Action (Authoritative Capability Registry Check)
+    const isKnownCapability = this.actionHandlers.has(rawAction) ||
+      ['create_file', 'modify_file', 'save_artifact', 'read_file'].includes(rawAction) ||
+      rawAction.startsWith('mcp:');
+    if (!isKnownCapability) {
+      throw new Error(`UNKNOWN_ACTION_ERROR: Workflow action '${rawAction}' is not registered in the authoritative capability registry.`);
+    }
+
     // 1. Zero Trust RBAC Authorization Check (Fail-Closed)
     const rbacCheck = enforceRbacPolicy(this.meta, normalizedStep);
     logGrcAuditEvent({

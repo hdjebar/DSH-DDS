@@ -158,4 +158,4 @@ if [ "$#" -gt 0 ]; then
 fi
 
 echo "[dsh] Launching DeepSeek Harness native service (0.0.0.0:${PORT:-3080})..."
-exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --no-open
+exec node /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js web --no-open

@@ -221,6 +221,28 @@ test('CLI Parser: accepts --force-host-unsafe flag', () => {
   assert.equal(parsed.forceHostUnsafe, true);
 });
 
+test('Security Audit Finding 4: dsh.sh blocks --force-host-unsafe unless DSH_ALLOW_UNSAFE_HOST_EXEC=1', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const path = await import('node:path');
+  const dshScript = path.resolve(process.cwd(), 'dsh.sh');
+
+  // Without DSH_ALLOW_UNSAFE_HOST_EXEC=1, command must fail
+  let blocked = false;
+  try {
+    execFileSync(dshScript, ['persona', 'list', '--force-host-unsafe'], {
+      stdio: 'pipe',
+      env: { ...process.env, DSH_ALLOW_UNSAFE_HOST_EXEC: '0' }
+    });
+  } catch (err) {
+    blocked = true;
+    assert.equal(err.status, 1);
+    const stderr = err.stderr ? err.stderr.toString() : '';
+    assert.match(stderr, /Host execution blocked.*DSH_ALLOW_UNSAFE_HOST_EXEC=1/);
+  }
+  assert.equal(blocked, true, 'dsh.sh must block --force-host-unsafe without DSH_ALLOW_UNSAFE_HOST_EXEC=1');
+});
+
+
 test('Persona Creation: transactional creation does not leave partial dir on invalid template (AUD-013)', async () => {
   const fs = await import('node:fs');
   const path = await import('node:path');

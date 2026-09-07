@@ -322,6 +322,11 @@ export function enforceRbacPolicy(personaMeta, step) {
     'validate_sdmx_schema'
   ].includes(rawAction);
 
+  const isComputeAction = [
+    'run_llm_query', 'parse_intent', 'evaluate_incident',
+    'probe_services', 'verify_endpoint', 'fetch_sdmx_dataflows'
+  ].includes(rawAction);
+
   // AUD-001: Fail-closed if a filesystem write or read action lacks a concrete target
   if (isWriteAction && targetsToCheck.length === 0) {
     return {
@@ -466,6 +471,16 @@ export function enforceRbacPolicy(personaMeta, step) {
         code: 'RBAC_MCP_UNAUTHORIZED'
       };
     }
+  }
+
+  // 5. Strict Fail-Closed on Unrecognized Action (AUD Finding 1)
+  if (!isWriteAction && !isReadAction && !isComputeAction && !rawAction.startsWith('mcp:')) {
+    return {
+      allowed: false,
+      role,
+      violation: `Action '${rawAction}' is not categorized as read, write, compute, or mcp. Fail-closed policy rejected execution.`,
+      code: 'RBAC_ACTION_UNRECOGNIZED'
+    };
   }
 
   return {

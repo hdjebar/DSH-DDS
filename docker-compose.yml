@@ -16,8 +16,8 @@ services:
       - ./config/audit:/var/lib/dsh/audit:rw
       - ./config/storages:/var/lib/dsh/storages:rw
       - ./config/patch:/var/lib/dsh/patch:rw
-      - ./config/personas:/var/lib/dsh/personas:rw
-      - ./config/skills:/var/lib/dsh/skills:rw
+      - ./config/personas:/var/lib/dsh/personas:ro
+      - ./config/skills:/var/lib/dsh/skills:ro
       - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw

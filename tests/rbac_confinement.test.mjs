@@ -151,4 +151,54 @@ test('Build-Time Immutability Invariant: entrypoint.sh contains zero dynamic run
     dockerfile.includes('USER dsh:dsh'),
     'Dockerfile must configure non-root user dsh:dsh at build time'
   );
+  assert.ok(
+    !dockerfile.includes('--expose-internals'),
+    'Dockerfile must not contain --expose-internals (AUD Finding 5)'
+  );
+  assert.ok(
+    !entrypoint.includes('--expose-internals'),
+    'docker/entrypoint.sh must not contain --expose-internals (AUD Finding 5)'
+  );
 });
+
+test('Security Audit Finding 1: unclassified actions fail-closed with RBAC_ACTION_UNRECOGNIZED', () => {
+  const meta = {
+    name: 'test-persona',
+    rbac: {
+      role: 'tester',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces'],
+          write: ['/workspaces'],
+          deny: ['/etc']
+        },
+        mcp: { allowed: [] }
+      }
+    }
+  };
+
+  const unclassifiedStep = {
+    action: 'spawn_shell',
+    target: '/workspaces/test.sh'
+  };
+
+  const res = enforceRbacPolicy(meta, unclassifiedStep);
+  assert.equal(res.allowed, false);
+  assert.equal(res.code, 'RBAC_ACTION_UNRECOGNIZED');
+  assert.match(res.violation, /not categorized as read, write, compute, or mcp/);
+});
+
+test('Security Audit Finding 2: compose topology mounts personas and skills as read-only (:ro)', () => {
+  const compose = fs.readFileSync(path.join(ROOT, 'docker-compose.yml'), 'utf8');
+  assert.match(
+    compose,
+    /\.\/config\/personas:\/var\/lib\/dsh\/personas:ro/,
+    'docker-compose.yml must mount personas as :ro (AUD Finding 2)'
+  );
+  assert.match(
+    compose,
+    /\.\/config\/skills:\/var\/lib\/dsh\/skills:ro/,
+    'docker-compose.yml must mount skills as :ro (AUD Finding 2)'
+  );
+});
+

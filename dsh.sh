@@ -71,6 +71,13 @@ ensure_runtime_dirs() {
   fi
 }
 
+assert_unsafe_host_allowed() {
+  if [ "${DSH_ALLOW_UNSAFE_HOST_EXEC:-0}" != "1" ]; then
+    echo "❌ Error: Host execution blocked. Set DSH_ALLOW_UNSAFE_HOST_EXEC=1 to confirm host-level execution." >&2
+    exit 1
+  fi
+}
+
 case "$COMMAND" in
   up|start)
     ensure_runtime_dirs
@@ -236,6 +243,7 @@ case "$COMMAND" in
           exit 1
         fi
       elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+        assert_unsafe_host_allowed
         echo "⚠️ WARNING: Executing declarative workflow on host due to --force-host-unsafe."
         echo "   Container Landlock, dropped capabilities, and volume isolation are bypassed!"
         CLEANED_ARGS=()
@@ -256,6 +264,7 @@ case "$COMMAND" in
       if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
         docker compose exec -T dsh node /etc/dsh/persona.mjs "$@"
       elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+        assert_unsafe_host_allowed
         echo "⚠️ WARNING: Executing persona command on host due to --force-host-unsafe."
         CLEANED_ARGS=()
         for arg in "$@"; do
@@ -278,6 +287,7 @@ case "$COMMAND" in
     if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
       docker compose exec -T dsh node /etc/dsh/persona.mjs sessions "$@"
     elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+      assert_unsafe_host_allowed
       echo "⚠️ WARNING: Executing session command on host due to --force-host-unsafe."
       CLEANED_ARGS=()
       for arg in "$@"; do
