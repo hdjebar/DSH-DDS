@@ -10,9 +10,9 @@ services:
   dsh:
     read_only: true
     user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
-    security_opt:
+    security_opt: !override
       - no-new-privileges:true
-    cap_drop:
+    cap_drop: !override
       - ALL
     deploy:
       resources:
@@ -46,22 +46,37 @@ services:
       - DSH_SESSION_STATE_DIR=/var/lib/dsh-state
       - DSH_SESSIONS_DIR=/var/lib/dsh/sessions
       - DSH_DISABLE_MODEL_SYNC=1
+      - HTTP_PROXY=http://egress-filter:10000
+      - HTTPS_PROXY=http://egress-filter:10000
+      - NO_PROXY=localhost,127.0.0.1,phoenix,dsh
     networks:
-      - sandbox-net
+      - dsh-internal
 
   phoenix:
     user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
-    security_opt:
+    security_opt: !override
       - no-new-privileges:true
-    cap_drop:
+    cap_drop: !override
       - ALL
     networks:
-      - sandbox-net
+      - dsh-internal
+
+  egress-filter:
+    image: envoyproxy/envoy:v1.31-latest
+    container_name: dsh-egress-filter
+    restart: unless-stopped
+    volumes:
+      - ./config/network/envoy-egress.yaml:/etc/envoy/envoy.yaml:ro
+    networks:
+      - dsh-internal
+      - dsh-egress-net
 
 volumes:
   sandbox-session-state:
 
 networks:
-  sandbox-net:
+  dsh-internal:
     driver: bridge
     internal: true
+  dsh-egress-net:
+    driver: bridge
