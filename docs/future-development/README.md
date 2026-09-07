@@ -35,13 +35,13 @@ Level 4: High-Assurance      -> MicroVMs (Firecracker/gVisor), Dual-LLM quaranti
 +--------------------------------------------------------------------------------------------------+
   1. Architecture                3.3 / 4.0   Node.js 24 / Cordis ESM microkernel; declarative engine.
   2. Security & Containment      3.3 / 4.0   Immutable rootfs, cap_drop: ALL, cgroups, Landlock LSM.
-  3. Tool Governance             3.2 / 4.0   4 pre-compiled MCP servers; Google Antigravity (agy).
-  4. State & Memory              2.2 / 4.0   Clean host-bind mounts; GRC audit log; needs Git CoW.
-  5. Reliability & Resilience    2.7 / 4.0   Dynamic model switching; needs in-flight 429 failover.
+  3. Tool Governance             3.2 / 4.0   4 pre-compiled MCP servers; Credential-isolated search.
+  4. State & Memory              2.2 / 4.0   Clean host-bind mounts; GRC audit log; Git CoW staging.
+  5. Reliability & Resilience    2.7 / 4.0   Dynamic model switching; in-flight 429 failover gateway.
   6. Observability & Tracing     3.5 / 4.0   Arize Phoenix 20.5.0 on :6006; 128-bit OTel span trees.
-  7. Testing & Evaluation        3.2 / 4.0   72 automated tests in tests/ via native node:test.
+  7. Testing & Evaluation        3.2 / 4.0   120 automated tests in tests/ via native node:test.
   8. Deployment Operations       3.1 / 4.0   Pinned node:24-bookworm-slim, SHA256 digests, clean CLI.
-  9. Documentation               3.3 / 4.0   5 ADRs (0001–0005), comprehensive architectural guides.
+  9. Documentation               3.3 / 4.0   7 ADRs (0001–0007), comprehensive architectural guides.
 +--------------------------------------------------------------------------------------------------+
   OVERALL MATURITY RATING        3.10 / 4.0  LEVEL 3: GOVERNED PRODUCTION-GRADE HARNESS
 +--------------------------------------------------------------------------------------------------+
@@ -56,7 +56,7 @@ Level 4: High-Assurance      -> MicroVMs (Firecracker/gVisor), Dual-LLM quaranti
 ```mermaid
 graph LR
     subgraph DSHCore["Service: dsh-core (:3080)"]
-        DSHApp["Node.js 24 / Cordis Microkernel<br/>• 4 MCP Servers<br/>• Antigravity ('agy') Search<br/>• Declarative Orchestrator"]
+        DSHApp["Node.js 24 / Cordis Microkernel<br/>• 4 MCP Servers<br/>• Credential-Isolated Web Search<br/>• Declarative Orchestrator"]
     end
 
     subgraph PhoenixSvc["Service: phoenix (:6006)"]
@@ -65,15 +65,15 @@ graph LR
 
     subgraph HostMounts["Host Storage & Isolation Boundary"]
         Workspaces["./workspaces -> /workspace"]
-        Config["./config -> /etc/dsh/config"]
-        Auth["~/.config/antigravity -> Host Google Auth (:ro)"]
+        Config["./config -> /etc/dsh/config:ro"]
+        IsolationBoundary["Zero Host OAuth Tokens (ADR 0007)"]
         PhoenixData["./config/phoenix -> Persistent Telemetry"]
     end
 
     DSHApp -->|"HTTP OTLP (:4318)"| PhoenixApp
     Workspaces --> DSHApp
     Config --> DSHApp
-    Auth -.-> DSHApp
+    IsolationBoundary -.-> DSHApp
     PhoenixApp --> PhoenixData
 ```
 
@@ -90,7 +90,7 @@ Every feature, pull request, and upgrade in the roadmap must adhere to these 10 
 5. **Transactional Snapshots**: Stage workspace code modifications in temporary Git worktrees; auto-rollback on test failure.
 6. **Async Human Gates**: Suspend workflow execution on destructive (Tier 3) mutations until cryptographically approved.
 7. **Repetitive Loop Traps**: Deterministically terminate agent execution if identical tool call hashes recur $\ge 2$ times.
-8. **Cloud-Offloaded Research**: Delegate web research to Google Antigravity (`agy`); avoid memory-heavy in-container headless browsers.
+8. **Credential-Isolated Research**: Delegate web research to zero-credential (`@dsh-dds/core/web-search.js`) or scoped search APIs; never inject broad cloud/identity OAuth tokens into the sandbox (ADR 0007).
 9. **Outcome-Based Evals**: Evaluate task success exclusively by running sandboxed test suites; ignore model self-reports.
 10. **Distributed Tracing**: Emit W3C OpenTelemetry spans capturing latency, tokens, costs, and diffs for every step.
 
@@ -99,7 +99,7 @@ Every feature, pull request, and upgrade in the roadmap must adhere to these 10 
 ## 📅 Roadmap Overview at a Glance
 
 * **[Milestone 1 (v1.11.0)](ROADMAP.md#milestone-1-v1110--zero-trust-network-egress-model-failover--telemetry-hardening)**:
-  * **`dsh`**: Envoy egress forward proxy, Cordis in-flight failover gateway, typed Antigravity search plugin, dynamic on-the-fly MCP governance.
+  * **`dsh`**: Envoy egress forward proxy, Cordis in-flight failover gateway, credential-isolated web search, dynamic on-the-fly MCP governance.
   * **`phoenix`**: Cgroup limits (`2048M`), rolling storage retention (`14 days`), OTLP `4317/4318` standardization.
 * **[Milestone 2 (v1.12.0)](ROADMAP.md#milestone-2-v1120--transactional-state-management--automated-evaluations)**:
   * **`dsh`**: Ephemeral Git worktree staging (`config/worktree-staging.mjs`), zero-diff rollback on test failure.
@@ -114,7 +114,7 @@ Every feature, pull request, and upgrade in the roadmap must adhere to these 10 
 All production implementation blueprints are written in **Node.js 24 / Cordis ESM** and can be viewed directly in [Section 8 of `SOTA-ResearchReport-ProductionArch.md`](SOTA-ResearchReport-ProductionArch.md#8-concrete-implementation-blueprints-for-target-capabilities):
 
 1. 🔒 **[8.1 Envoy Network Egress Proxy (`config/network/envoy-egress.yaml`)](SOTA-ResearchReport-ProductionArch.md#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml)**
-2. 🔍 **[8.2 Google Antigravity Search Tool (`config/antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-wrapper-configantigravity-searchmjs)**
+2. 🔍 **[8.2 Credential-Isolated Web Search (`packages/dsh-dds-core/web-search.js`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-wrapper-configantigravity-searchmjs)**
 3. ⚡ **[8.3 In-Flight Model Failover Gateway (`config/failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs)**
 4. 🌲 **[8.4 Transactional Git Worktree Staging (`config/worktree-staging.mjs`)](SOTA-ResearchReport-ProductionArch.md#84-transactional-workspace-staging-configworktree-stagingmjs)**
 5. 🛡️ **[8.5 Hardened Compose Sandbox (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#85-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml)**

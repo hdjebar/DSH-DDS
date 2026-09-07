@@ -44,37 +44,37 @@ flowchart LR
 > **Implementation Blueprints**: Refer to [Section 8.1 (`envoy-egress.yaml`)](SOTA-ResearchReport-ProductionArch.md#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml), [Section 8.2 (`antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-wrapper-configantigravity-searchmjs), [Section 8.3 (`failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs), and [Section 8.5 (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#85-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml) for production code specifications.
 
 #### Task A.1: Envoy Egress Forward Proxy Sidecar (`config/network/envoy-egress.yaml`)
-* [ ] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and Google Antigravity.
+* [ ] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and read-only web fetches.
 * [ ] **Implementation Steps**:
   1. Add `egress-filter` service (`envoyproxy/envoy:v1.31-latest`) to `docker-compose.sandbox.yml`.
   2. Map `dsh-internal` (no direct WAN) and `dsh-egress-net` (bridge to WAN) to the Envoy proxy.
-  3. Configure domain allowlist in `config/network/envoy-egress.yaml`:
+  3. Configure domain allowlist in `config/network/envoy-egress.yaml` (ADR 0007):
      - **LLM Endpoints**: `generativelanguage.googleapis.com:443`, `openrouter.ai:443`.
-     - **Google Antigravity**: `antigravity.google:443`, `*.antigravity.google:443`, `oauth2.googleapis.com:443`.
      - **GitHub & Registries**: `api.github.com:443`, `github.com:443`, `registry.npmjs.org:443`, `pypi.org:443`.
+     - ❌ **Prohibited Endpoints**: Block `antigravity.google`, `accounts.google.com`, `oauth2.googleapis.com` (prevents cloud token exposure).
   4. **MCP-Safe Tier 2 Filter**: Restrict arbitrary web fetching for `mcp-fetch` to HTTP `GET` and `HEAD` methods with a 10s timeout; drop all outbound `POST`/`PUT`/`DELETE` attempts with `HTTP 403`.
 * [ ] **Acceptance Criteria**:
   - Outbound `curl -I https://generativelanguage.googleapis.com` succeeds through proxy.
   - Outbound `curl https://attacker-c2.com` drops immediately with a connection timeout or 403.
 
 #### Task A.2: Native Cordis In-Flight Failover Gateway (`config/failover-gateway.mjs`)
-* [ ] **Objective**: Transparently catch upstream HTTP 429 (Rate Limit) and HTTP 503 (Overloaded) errors mid-workflow without aborting the agent loop.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Transparently catch upstream HTTP 429 (Rate Limit) and HTTP 503 (Overloaded) errors mid-workflow without aborting the agent loop.
+* [x] **Implementation Steps**:
   1. Implement `config/failover-gateway.mjs` as an in-process Cordis service (`ctx.provide('gateway')`).
   2. Implement cascade array: `gemini-2.5-flash` $\rightarrow$ `openrouter/claude-3.5-sonnet` $\rightarrow$ `openrouter/llama-3.3-70b-instruct`.
   3. Implement schema translation between Gemini `functionDeclarations` and OpenRouter OpenAI-compatible tool calls.
-  4. Register plugin in `config/profiles/web/cordis.patch.yml`.
-* [ ] **Acceptance Criteria**:
+  4. Tested via `tests/failover_gateway.test.mjs` across 10 automated test cases.
+* [x] **Acceptance Criteria**:
   - Injected synthetic HTTP 429 triggers automated failover to secondary provider in $<1.5\text{ s}$ with conversation context preserved.
 
-#### Task A.3: Typed Google Antigravity Search Tool (`config/antigravity-search.mjs`)
-* [ ] **Objective**: Encapsulate the headless Google Antigravity CLI (`agy`) as a typed Cordis tool for agent personas.
-* [ ] **Implementation Steps**:
-  1. Create `config/antigravity-search.mjs` exporting a Cordis `search` service.
-  2. Execute `agy -p "<query>" --dangerously-skip-permissions` with non-interactive execution.
-  3. Bind HTTP/HTTPS proxy environment variables to the Envoy sidecar.
-* [ ] **Acceptance Criteria**:
-  - Agent querying web search receives clean, structured markdown without spawning in-container browser engines.
+#### Task A.3: Credential-Isolated Web Search Engine (`packages/dsh-dds-core/web-search.js`)
+* [x] **Objective**: Provide reliable, zero-credential web search and research without injecting Google OAuth tokens or unconstrained sub-agents (ADR 0007).
+* [x] **Implementation Steps**:
+  1. Reject in-container `agy` and `--dangerously-skip-permissions` to eliminate Google Cloud/OAuth token compromise.
+  2. Implement `executeDuckDuckGoSearch` in `@dsh-dds/core/web-search.js` for zero-key resilient search.
+  3. Automatically intercept `modsearch` failures and fall back to zero-key search without external API quotas.
+* [x] **Acceptance Criteria**:
+  - Web search queries execute successfully with zero API keys and zero host Google account credential exposure.
 
 #### Task A.4: Dynamic On-The-Fly Plugin & MCP Lifecycle Governance
 * [ ] **Objective**: Enable developers to safely add plugins and MCP servers at runtime via UI or prompt without breaking container immutability.

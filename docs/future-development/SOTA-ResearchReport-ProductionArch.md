@@ -444,26 +444,15 @@ static_resources:
             virtual_hosts:
             
             # -------------------------------------------------------------
-            # TIER 1: TRUSTED APIS (LLMs, Antigravity, GitHub, Registries)
+            # TIER 1: TRUSTED APIS (LLMs, GitHub, Registries - ADR 0007)
             # -------------------------------------------------------------
             - name: trusted_apis
               domains:
-              # Model Endpoints
+              # Model Endpoints (API key authenticated only; zero OAuth tokens)
               - "generativelanguage.googleapis.com"
               - "generativelanguage.googleapis.com:443"
               - "openrouter.ai"
               - "openrouter.ai:443"
-              # Google Antigravity (agy) Search & OAuth
-              - "antigravity.google"
-              - "antigravity.google:443"
-              - "*.antigravity.google"
-              - "*.antigravity.google:443"
-              - "oauth2.googleapis.com"
-              - "oauth2.googleapis.com:443"
-              - "www.googleapis.com"
-              - "www.googleapis.com:443"
-              - "accounts.google.com"
-              - "accounts.google.com:443"
               # GitHub & Registries
               - "api.github.com"
               - "api.github.com:443"
@@ -527,47 +516,25 @@ static_resources:
 
 ---
 
-### 8.2 Antigravity Search Tool Wrapper (`config/antigravity-search.mjs`)
+### 8.2 Credential-Isolated Resilient Web Search (`packages/dsh-dds-core/web-search.js`)
+
+> [!NOTE]
+> **Security Decision (ADR 0007)**: In-container execution of the Google Antigravity CLI (`agy`) was formally rejected. `agy` requests `https://www.googleapis.com/auth/cloud-platform`, stores plaintext tokens on disk, and executes with `--dangerously-skip-permissions`, creating critical credential theft and prompt injection vectors.
+> Web search is instead handled by the zero-credential, zero-token resilient search engine:
 
 ```javascript
-// config/antigravity-search.mjs
-import { execFileSync } from 'node:child_process';
-import { Context } from 'cordis';
+// packages/dsh-dds-core/web-search.js
+import https from 'node:https';
 
-export const name = 'antigravity-search';
-
-export function apply(ctx) {
-  ctx.provide('search');
-
-  ctx.search = {
-    async query(promptText, options = {}) {
-      ctx.emit('search/start', { query: promptText });
-
-      try {
-        const stdout = execFileSync('agy', [
-          '-p', `Search and synthesize current technical web findings for: ${promptText}`,
-          '--dangerously-skip-permissions'
-        ], {
-          encoding: 'utf8',
-          timeout: options.timeoutMs || 30000,
-          env: {
-            ...process.env,
-            HTTP_PROXY: process.env.HTTP_PROXY || 'http://egress-filter:10000',
-            HTTPS_PROXY: process.env.HTTPS_PROXY || 'http://egress-filter:10000',
-          }
-        });
-
-        const result = stdout.trim();
-        ctx.emit('search/success', { query: promptText, bytesReceived: result.length });
-        return result;
-      } catch (err) {
-        ctx.emit('search/error', { query: promptText, error: err.message });
-        throw new Error(`Google Antigravity search execution failed: ${err.message}`);
-      }
-    }
-  };
+export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000) {
+  // Zero-token, zero-credential HTML search parser
+  // ...
 }
 
+export async function resilientSearch(request, signal) {
+  // Intercepts modsearch or fetch failures and provides zero-key web search fallback
+  // ...
+}
 ```
 
 ---
@@ -739,7 +706,7 @@ export class TransactionalWorktree {
 
 ---
 
-### 8.5 Hardened Sandbox Specification with Antigravity Auth Mount (`docker-compose.sandbox.yml`)
+### 8.5 Hardened Sandbox Specification with Credential Isolation (`docker-compose.sandbox.yml`)
 
 ```yaml
 version: "3.8"
@@ -770,7 +737,7 @@ services:
     container_name: dsh-sandbox-worker
     init: true # PID 1 zombie process reaping
     read_only: true # Immutable root filesystem
-    user: "10001:10001" # Strictly non-root user
+    user: "1000:1000" # Strictly non-root user (dsh:dsh)
     security_opt:
       - no-new-privileges:true
       - seccomp:./config/seccomp-profile.json
@@ -793,10 +760,10 @@ services:
         read_only: false
         bind:
           propagation: rprivate
-      # Mount Host Antigravity Google Auth Cache (Read-Only)
+      # Configuration (read-only, zero host OAuth tokens per ADR 0007)
       - type: bind
-        source: ${HOME}/.config/antigravity
-        target: /home/dshuser/.config/antigravity
+        source: ./config
+        target: /opt/dsh-config
         read_only: true
       # Scratchpad memory
       - type: tmpfs
