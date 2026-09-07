@@ -260,6 +260,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — **Interactive Visual Architecture**: Standalone, verified HTML/SVG diagrams ([System Topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [Loop Trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP Sequence](docs/diagrams/agent-trace.sequence.html)).
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — **Comprehensive Whitepaper**: The 5 architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, and comparative benchmarks.
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
+* 🛡️ **[AI Guardrails & OWASP Agentic Security Guide](docs/guardrails.md)** — The 4 deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, and OWASP LLM / Agentic AI (ASI) compliance.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 11 plugins (1 core + 10 community) and 4 MCP servers.
 * 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, Zero Trust persona RBAC, and network isolation.
 * 📜 **[ADR 0001: Build-Time Immutability & RBAC](docs/adr/0001-build-time-immutability-and-rbac.md)** — Architecture Decision Record on build-time immutability, Zero Trust RBAC, and GRC audit logs.
