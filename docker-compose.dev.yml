@@ -1,0 +1,12 @@
+# ── Developer Live-Reload Override for Core Plugin & Entrypoint ──
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Mounts in-tree @dsh-dds/core package and entrypoint script from the host working tree
+# into the container for rapid iterative development without rebuilding images.
+
+services:
+  dsh:
+    volumes:
+      - ./packages/dsh-dds-core:/app/packages/dsh-dds-core:ro
+      - ./docker/entrypoint.sh:/usr/local/bin/dsh-entrypoint:ro

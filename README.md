@@ -159,7 +159,7 @@ Instead of having to stitch together an agent UI, a Python orchestration library
 
 * **📊 100% Local Arize Phoenix Telemetry**: Integrated OpenTelemetry collector and dashboard visualizing agent trajectories, token waterfalls, latency bottlenecks, and exact invocation costs.
 * **🔄 Automatic Dynamic Model Synchronization (`dsh-model-sync`)**: Queries OpenRouter (420+ models) and Google AI Studio (31+ models) on boot, caching live pricing, context limits, and token specs into local DSH configuration. Displays live token quotas and balance rings directly in the Web UI.
-* **🛡️ Hardened Sandbox Mode**: Drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation, and zero-egress network isolation for evaluating untrusted code.
+* **🛡️ Hardened Sandbox Mode**: Drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation, credential isolation, and zero-trust filtered egress via Envoy proxy for evaluating untrusted code.
 
 ---
 
@@ -301,10 +301,10 @@ Comprehensive guides organized by audience and operational goal:
 
 ## 📁 `config/` Directory & Persistent Storage
 
-The local `./config` folder on the host is bind-mounted to `/root/.dsh` inside the container. All interactive chat histories, agent memories, and custom personas **survive container rebuilds, updates, and restarts**:
+The local `./config` folder on the host is mounted into the container conforming to Linux FHS: declarative configuration is mounted read-only to `/etc/dsh:ro`, while mutable state (sessions, storages, audit) is mounted to `/var/lib/dsh`. (A `/root/.dsh -> /var/lib/dsh` symlink is maintained for backward compatibility with legacy scripts). All interactive chat histories, agent memories, and custom personas **survive container rebuilds, updates, and restarts**:
 
 ```text
-config/                          # Mounted directly to /root/.dsh in container
+config/                          # Mounted to /etc/dsh:ro and /var/lib/dsh in container
 ├── cordis.patch.yml             # LLM provider routing & plugin config overlay
 ├── settings.yaml                # Agent defaults, active model tier & UI preferences
 ├── sync_models.mjs              # Dynamic OpenRouter & Google model synchronizer
@@ -335,18 +335,25 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 ```
 
 **Sandbox Protections:**
-* **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/root/.dsh` tree on every start.
+* **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/var/lib/dsh` tree on every start.
 * **Read-Only Workspaces (`/workspaces:ro`)**: Protects host files from unauthorized modification.
 * **Linux Capability Stripping (`cap_drop: [ALL]`)**: Drops all privileged container capabilities.
 * **No New Privileges (`no-new-privileges:true`)**: Prevents privilege escalation inside the container.
-* **Zero-Egress Network**: Keeps DSH and Phoenix on an internal bridge without external network access.
-* **Persistent Session Data Only**: Preserves session transcripts and DSH JSON storage in the `sandbox-session-state` volume while profiles, patches, and caches remain disposable.
+* **Credential Isolation**: Explicitly blanks provider API keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, etc.) inside the untrusted container to eliminate exfiltration paths.
+* **Zero-Trust Filtered Egress**: Isolates DSH and Phoenix on an internal bridge network (`internal: true`) with outbound traffic restricted through a hardened Envoy proxy sidecar (`egress-filter`) enforcing strict destination allowlists and blocking unauthorized outbound mutations.
+* **Persistent Session Isolation (`sandbox-session-state`)**: Preserves session transcripts and DSH JSON storage in the dedicated `sandbox-session-state` volume, preventing contamination of trusted host session directories.
+* **Audit Trail Retention**: Persists GRC audit logs to `./config/audit` to preserve non-repudiation records even after sandbox teardown.
 * **Resource Caps**: Constrains container to 2 CPUs, 2GB RAM, and 150 PIDs.
 
 To destroy all transient sandbox session data:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 ```
+
+### 🛡️ Threat Model & Security Boundaries
+* **Kernel & Container Primitives**: The primary security boundaries for untrusted code execution are Linux kernel namespaces, cgroups, capability stripping (`cap_drop: ALL`), read-only root filesystems (`read_only: true`), non-root execution (`UID/GID 1000`), and Landlock LSM.
+* **Role of `@dsh-dds/core` Loader**: The Node.js loader (`loader.mjs`) is an internal runtime compatibility layer (ESM hooks, landlock parameter sanitization, and in-memory prototype augmentations) and an application-level Policy Enforcement Point (PEP). It is not an uncircumventable sandbox boundary against hostile subshell escapes; process-level containment rests on the container sandbox.
+* **Supply-Chain Policies**: Package installation uses `--frozen-lockfile` with explicit build script approval (`allowBuilds`) for native modules (`node-pty`, `protobufjs`, `sharp`). `minimumReleaseAge: 0` is configured to enable immediate consumption of verified release candidates and hermetic offline packages without artificial delay.
 
 ---
 

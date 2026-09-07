@@ -8,6 +8,14 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
@@ -19,8 +27,6 @@ services:
       - ./config/personas:/var/lib/dsh/personas:ro
       - ./config/skills:/var/lib/dsh/skills:ro
       - ./config/cache:/var/lib/dsh/cache:rw
-      - ./packages/dsh-dds-core:/app/packages/dsh-dds-core:ro
-      - ./docker/entrypoint.sh:/usr/local/bin/dsh-entrypoint:ro
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
@@ -79,7 +85,7 @@ services:
       - "-c"
       - "import os, sys; os.environ.pop('PHOENIX_SECRET', None) if not os.environ.get('PHOENIX_SECRET') else None; from phoenix.server.main import main; sys.argv = ['phoenix', 'serve']; main()"
     healthcheck:
-      test: ["CMD", "/usr/bin/python3.13", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/')"]
       interval: 10s
       timeout: 3s
       retries: 5

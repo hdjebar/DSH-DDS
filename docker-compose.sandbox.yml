@@ -4,7 +4,7 @@
 #
 # Provides strict process containment, capability stripping (cap_drop: ALL),
 # read-only host configuration and workspace containment (:ro), read-only root filesystem,
-# resource constraints (CPU/memory/pids limits), and zero-egress internal networking (internal: true).
+# resource constraints (CPU/memory/pids limits), and zero-trust filtered egress via Envoy proxy sidecar.
 
 services:
   dsh:
@@ -25,22 +25,21 @@ services:
           cpus: '0.5'
           memory: 512M
     volumes: !override
-      # Configuration is copied into disposable tmpfs; session data persists on host.
+      # Configuration is copied into disposable tmpfs; session data persists in dedicated named volume.
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
-      - ./config/sessions:/var/lib/dsh-state/sessions:rw
-      - ./config/storages:/var/lib/dsh-state/storages:rw
+      - ./config/audit:/var/lib/dsh/audit:rw
+      - sandbox-session-state:/var/lib/dsh-state:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
-      - /run:rw,size=32m,mode=1777
-      - /home/dsh/.cache:rw,size=128m,mode=1777
-      - /home/dsh/.mnemon:rw,size=32m,mode=1777
-      - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777
-      - /var/lib/dsh-state:rw,size=32m,mode=1777
-      - /root/.dsh:rw,nosuid,nodev,size=64m,mode=1777
-      - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=1777
-      - /workspaces/cases:rw,size=64m,mode=1777
-      - /artifacts:rw,size=64m,mode=1777
+      - /run:rw,size=32m,mode=0770
+      - /home/dsh/.cache:rw,size=128m,mode=0770
+      - /home/dsh/.mnemon:rw,size=32m,mode=0770
+      - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=0770
+      - /root/.dsh:rw,nosuid,nodev,size=64m,mode=0770
+      - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=0750
+      - /workspaces/cases:rw,size=64m,mode=0770
+      - /artifacts:rw,size=64m,mode=0770
     environment:
       - DSH_SANDBOX=1
       - DSH_CONFIG_SOURCE=/opt/dsh-config
@@ -48,6 +47,15 @@ services:
       - DSH_SESSION_STATE_DIR=/var/lib/dsh-state
       - DSH_SESSIONS_DIR=/var/lib/dsh/sessions
       - DSH_DISABLE_MODEL_SYNC=1
+      - OPENROUTER_API_KEY=
+      - GEMINI_API_KEY=
+      - TAVILY_API_KEY=
+      - FIRECRAWL_API_KEY=
+      - EXA_API_KEY=
+      - GITHUB_PERSONAL_ACCESS_TOKEN=
+      - GITHUB_TOKEN=
+      - PHOENIX_API_KEY=
+      - PHOENIX_SECRET=
       - HTTP_PROXY=http://egress-filter:10000
       - HTTPS_PROXY=http://egress-filter:10000
       - NO_PROXY=localhost,127.0.0.1,phoenix,dsh
@@ -67,12 +75,24 @@ services:
     image: envoyproxy/envoy:v1.31-latest
     container_name: dsh-egress-filter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     volumes:
       - ./config/network/envoy-egress.yaml:/etc/envoy/envoy.yaml:ro
     networks:
       - dsh-internal
       - dsh-egress-net
 
+volumes:
+  sandbox-session-state:
+    driver: local
 
 networks:
   dsh-internal:

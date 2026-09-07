@@ -118,7 +118,12 @@ export function resolvePath(candidatePath) {
     return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
   }
 
-  if (fs.existsSync('/workspaces') || fs.existsSync('/root/.dsh')) {
+  if (process.env.DSH_RUNTIME_DIR && (clean === '/var/lib/dsh' || clean.startsWith('/var/lib/dsh/'))) {
+    const rel = clean === '/var/lib/dsh' ? '' : clean.slice('/var/lib/dsh/'.length);
+    return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
+  }
+
+  if (fs.existsSync('/workspaces') || fs.existsSync('/var/lib/dsh') || fs.existsSync('/root/.dsh')) {
     return path.resolve(clean);
   }
 
@@ -132,10 +137,19 @@ export function resolvePath(candidatePath) {
     return path.resolve(process.cwd(), 'config', rel);
   }
 
+  if (clean === '/var/lib/dsh' || clean.startsWith('/var/lib/dsh/')) {
+    const rel = clean === '/var/lib/dsh' ? '' : clean.slice('/var/lib/dsh/'.length);
+    return path.resolve(process.cwd(), 'config', rel);
+  }
+
+  if (clean === '/etc/dsh' || clean.startsWith('/etc/dsh/')) {
+    const rel = clean === '/etc/dsh' ? '' : clean.slice('/etc/dsh/'.length);
+    return path.resolve(process.cwd(), 'config', rel);
+  }
+
   return path.resolve(clean);
 }
 
-/**
 /**
  * Canonicalize path resolving realpath for nearest existing ancestor directory
  * if the full target does not exist yet on disk.

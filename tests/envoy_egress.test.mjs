@@ -93,7 +93,8 @@ test('Sandbox Compose Topology: egress-filter sidecar and dual-network routing',
   const raw = fs.readFileSync(COMPOSE_SANDBOX_PATH, 'utf8');
   const overrideTag = {
     tag: '!override',
-    resolve: (doc, cst) => cst
+    collection: 'seq',
+    resolve: (value) => value
   };
   const compose = yaml.parse(raw, { customTags: [overrideTag] });
 

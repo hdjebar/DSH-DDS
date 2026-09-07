@@ -226,4 +226,4 @@ git checkout HEAD~1 Dockerfile config/profiles/web/package.json
 ```
 
 ### C. Persistent Data Safety
-User workspaces ([`workspaces/`](../workspaces)), Phoenix traces ([`config/phoenix/`](../config/phoenix)), and encrypted BYOK credentials ([`config/keys/`](../config/keys)) reside on the host. Rolling back or rebuilding containers **never deletes or modifies user data**.
+User workspaces (`workspaces/`), Phoenix traces (`config/phoenix/`), and encrypted BYOK credentials (`config/keys/`) reside on the host. Rolling back or rebuilding containers **never deletes or modifies user data**.

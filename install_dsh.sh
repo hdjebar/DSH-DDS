@@ -202,6 +202,7 @@ fi
 fetch_or_copy_file "dsh.sh"
 fetch_or_copy_file "reset.sh"
 fetch_or_copy_file "docker-compose.sandbox.yml"
+fetch_or_copy_file "docker-compose.dev.yml"
 fetch_or_copy_file "docker/entrypoint.sh"
 
 # Profiles
@@ -282,6 +283,7 @@ verify_and_promote_staged() {
     "dsh.sh"
     "reset.sh"
     "docker-compose.sandbox.yml"
+    "docker-compose.dev.yml"
     "docker/entrypoint.sh"
   )
   for f in "${required_staged[@]}"; do
@@ -596,13 +598,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV HOME="/home/dsh"
 WORKDIR /var/lib/dsh/profiles/web
-COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml* config/profiles/web/pnpm-workspace.yaml* ./
+COPY config/profiles/web/package.json config/profiles/web/pnpm-lock.yaml config/profiles/web/pnpm-workspace.yaml ./
 
 RUN mkdir -p /home/dsh/.local/share/pnpm/store/v11 \
     && pnpm config set minimum-release-age 0 \
     && pnpm config set store-dir /home/dsh/.local/share/pnpm/store/v11 \
-    && pnpm install \
-    && (pnpm approve-builds --all || true) \
+    && pnpm install --frozen-lockfile \
+    && (pnpm approve-builds node-pty protobufjs sharp || true) \
     && pnpm prune --prod \
     && rm -rf /root/.cache /root/.npm
 
@@ -630,9 +632,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     && npm install -g @deepseek-ai/dsh@0.1.2-rc.1 pnpm@11.25.0 yaml@2.7.0 @mzxrai/mcp-webresearch@0.1.7 @upstash/context7-mcp@1.0.14 \
     && npm cache clean --force \
-    && rm -rf /var/lib/apt/lists/* /root/.cache /root/.npm \
     && UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install --with 'mcp<2.0.0' mcp-server-sqlite@2025.4.25 \
     && ln -sf /usr/local/bin/mcp-server-sqlite /home/dsh/.local/bin/mcp-server-sqlite \
+    && apt-get purge -y --auto-remove make g++ \
+    && rm -rf /var/lib/apt/lists/* /root/.cache /root/.npm \
     && chmod -R 755 /usr/local/bin /usr/local/lib/node_modules /opt/uv-tools
 
 ENV HOME="/home/dsh"
@@ -659,15 +662,15 @@ RUN chmod 0755 /usr/local/bin/dsh-entrypoint \
 COPY --from=builder /home/dsh/.local/share/pnpm/store /home/dsh/.local/share/pnpm/store
 COPY --from=builder /var/lib/dsh/profiles/web /app/prebuilt-profiles/web
 COPY --from=builder /var/lib/dsh/profiles/web /var/lib/dsh/profiles/web
-COPY config/cordis.patch.yml* /var/lib/dsh/cordis.patch.yml
-COPY config/cordis.patch.yml* /opt/dsh-config/cordis.patch.yml
-COPY config/cordis.patch.yml* /etc/dsh/cordis.patch.yml
-COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /app/prebuilt-profiles/web/
-COPY config/profiles/web/cordis.patch.yml* config/profiles/web/cordis.yml* /var/lib/dsh/profiles/web/
-COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /app/prebuilt-profiles/headless/
-COPY config/profiles/headless/cordis.patch.yml* config/profiles/headless/cordis.yml* /var/lib/dsh/profiles/headless/
-COPY config/profiles/cli/cordis.yml* /app/prebuilt-profiles/cli/
-COPY config/profiles/cli/cordis.yml* /var/lib/dsh/profiles/cli/
+COPY config/cordis.patch.yml /var/lib/dsh/cordis.patch.yml
+COPY config/cordis.patch.yml /opt/dsh-config/cordis.patch.yml
+COPY config/cordis.patch.yml /etc/dsh/cordis.patch.yml
+COPY config/profiles/web/cordis.patch.yml /app/prebuilt-profiles/web/cordis.patch.yml
+COPY config/profiles/web/cordis.patch.yml /var/lib/dsh/profiles/web/cordis.patch.yml
+COPY config/profiles/headless/cordis.patch.yml /app/prebuilt-profiles/headless/cordis.patch.yml
+COPY config/profiles/headless/cordis.patch.yml /var/lib/dsh/profiles/headless/cordis.patch.yml
+COPY config/profiles/cli/cordis.yml /app/prebuilt-profiles/cli/cordis.yml
+COPY config/profiles/cli/cordis.yml /var/lib/dsh/profiles/cli/cordis.yml
 
 # Complete profile peer dependencies from DSH's runtime dependency tree (never symlink scope dirs)
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
@@ -718,7 +721,7 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
-RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /usr/local/lib/node_modules
+RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh
 
 EXPOSE 3080
 
@@ -745,6 +748,14 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     ports:
       - "127.0.0.1:${DSH_PORT:-3080}:3080"
     volumes:
@@ -756,8 +767,6 @@ services:
       - ./config/personas:/var/lib/dsh/personas:ro
       - ./config/skills:/var/lib/dsh/skills:ro
       - ./config/cache:/var/lib/dsh/cache:rw
-      - ./packages/dsh-dds-core:/app/packages/dsh-dds-core:ro
-      - ./docker/entrypoint.sh:/usr/local/bin/dsh-entrypoint:ro
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
@@ -816,7 +825,7 @@ services:
       - "-c"
       - "import os, sys; os.environ.pop('PHOENIX_SECRET', None) if not os.environ.get('PHOENIX_SECRET') else None; from phoenix.server.main import main; sys.argv = ['phoenix', 'serve']; main()"
     healthcheck:
-      test: ["CMD", "/usr/bin/python3.13", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6006/')"]
       interval: 10s
       timeout: 3s
       retries: 5

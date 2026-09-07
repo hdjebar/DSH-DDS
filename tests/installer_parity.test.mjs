@@ -98,6 +98,7 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'dsh.sh',
     'reset.sh',
     'docker-compose.sandbox.yml',
+    'docker-compose.dev.yml',
     'docker/entrypoint.sh',
     'config/profiles/web/pnpm-lock.yaml',
     'config/profiles/cli/pnpm-lock.yaml',
