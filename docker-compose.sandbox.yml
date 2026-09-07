@@ -28,14 +28,15 @@ services:
       # Configuration is copied into disposable tmpfs; session data persists on host.
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
-      - sandbox-session-state:/var/lib/dsh-state
       - ./config/sessions:/var/lib/dsh-state/sessions:rw
+      - ./config/storages:/var/lib/dsh-state/storages:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
       - /run:rw,size=32m,mode=1777
       - /home/dsh/.cache:rw,size=128m,mode=1777
       - /home/dsh/.mnemon:rw,size=32m,mode=1777
       - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777
+      - /var/lib/dsh-state:rw,size=32m,mode=1777
       - /root/.dsh:rw,nosuid,nodev,size=64m,mode=1777
       - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=1777
       - /workspaces/cases:rw,size=64m,mode=1777
@@ -72,8 +73,6 @@ services:
       - dsh-internal
       - dsh-egress-net
 
-volumes:
-  sandbox-session-state:
 
 networks:
   dsh-internal:
