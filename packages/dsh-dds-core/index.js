@@ -16,6 +16,9 @@ import { registerLocalizationTap } from './localization.js';
 import { registerRbacInterceptor } from './rbac-interceptor.js';
 import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
 import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml } from './web-search.js';
+import { registerIamMiddleware, IamService, extractUserFromHeaders, verifyBearerToken, DEFAULT_OPERATOR } from './iam.js';
+import { UserPartitionManager } from './user-partition.js';
+import { ByokVault, encryptSecret, decryptSecret } from './byok-vault.js';
 
 export const name = '@dsh-dds/core';
 
@@ -23,7 +26,18 @@ export const name = '@dsh-dds/core';
 export const inject = [];
 
 export function apply(ctx, config = {}) {
-  // 1. WebServer Gateway & Lifecycle Supervisor
+  // 1. Identity & Access Management (IAM)
+  const iam = registerIamMiddleware(ctx, config);
+
+  // 2. User Filesystem Partitioning & BYOK Vault
+  const userPartition = new UserPartitionManager(config);
+  const byokVault = new ByokVault(config);
+  if (typeof ctx.provide === 'function') {
+    ctx.provide('userPartition', userPartition);
+    ctx.provide('byokVault', byokVault);
+  }
+
+  // 3. WebServer Gateway & Lifecycle Supervisor
   const setupWebServer = (c) => {
     registerGatewayMiddleware(c, config);
     registerLocalizationTap(c);
@@ -135,7 +149,16 @@ export {
   LlmSemanticGateway,
   registerWebSearchFallback,
   resilientSearch,
-  parseDuckDuckGoHtml
+  parseDuckDuckGoHtml,
+  registerIamMiddleware,
+  IamService,
+  extractUserFromHeaders,
+  verifyBearerToken,
+  DEFAULT_OPERATOR,
+  UserPartitionManager,
+  ByokVault,
+  encryptSecret,
+  decryptSecret
 };
 
 

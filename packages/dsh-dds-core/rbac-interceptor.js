@@ -7,6 +7,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import { UserPartitionManager } from './user-partition.js';
 
 let rbacEngine = null;
 
@@ -30,13 +31,53 @@ async function getRbacEngine() {
 export function registerRbacInterceptor(ctx, config = {}) {
   if (config.enableToolRbac === false) return;
 
+  const partitionManager = new UserPartitionManager(config);
+
   const handler = async (actionContext) => {
     if (actionContext.workdir && !fs.existsSync(actionContext.workdir)) {
       try { fs.mkdirSync(actionContext.workdir, { recursive: true }); } catch {}
     }
 
+    const user = actionContext.user || ctx.user || { id: 'default', roles: ['admin'] };
+    const step = {
+      name: actionContext.toolName || 'tool-execute',
+      action: actionContext.action || 'execute',
+      target: actionContext.target || actionContext.path || actionContext.command
+    };
+
+    // Multi-tenant scoped workspace boundary evaluation
+    if (step.target && typeof step.target === 'string' && (step.target.startsWith('/') || step.target.startsWith('.'))) {
+      const tenantCheck = partitionManager.validatePathAccess(step.target, user);
+      if (!tenantCheck.allowed) {
+        const engine = await getRbacEngine();
+        if (engine && typeof engine.logGrcAuditEvent === 'function') {
+          engine.logGrcAuditEvent({
+            persona: actionContext.persona?.name || 'default',
+            workflow: actionContext.workflow || 'agent-session',
+            action: step.action,
+            target: step.target,
+            decision: 'DENIED',
+            role: user.roles?.[0] || 'user',
+            reason: tenantCheck.reason
+          });
+        }
+        throw new Error(`[Zero-Trust RBAC Violation] ${tenantCheck.reason}`);
+      }
+    }
+
     const engine = await getRbacEngine();
     if (!engine || typeof engine.enforceRbacPolicy !== 'function') return;
+
+    const readRoots = ['/workspaces', '/var/lib/dsh'];
+    const writeRoots = ['/workspaces/cases', '/var/lib/dsh/sessions', '/var/lib/dsh/storages'];
+    if (config.workspaceBase) {
+      readRoots.push(config.workspaceBase);
+      writeRoots.push(config.workspaceBase);
+    }
+    if (config.userStateBase) {
+      readRoots.push(config.userStateBase);
+      writeRoots.push(config.userStateBase);
+    }
 
     const personaMeta = actionContext.persona || {
       name: 'default',
@@ -44,18 +85,12 @@ export function registerRbacInterceptor(ctx, config = {}) {
         role: 'default',
         permissions: {
           filesystem: {
-            read: ['/workspaces', '/var/lib/dsh'],
-            write: ['/workspaces/cases', '/var/lib/dsh/sessions', '/var/lib/dsh/storages'],
+            read: readRoots,
+            write: writeRoots,
             deny: ['/etc', '/root/.ssh', 'reset.sh', 'install_dsh.sh']
           }
         }
       }
-    };
-
-    const step = {
-      name: actionContext.toolName || 'tool-execute',
-      action: actionContext.action || 'execute',
-      target: actionContext.target || actionContext.path || actionContext.command
     };
 
     const decision = engine.enforceRbacPolicy(personaMeta, step);
