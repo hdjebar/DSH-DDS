@@ -778,6 +778,16 @@ services:
       - ALL
     ports:
       - "127.0.0.1:6006:6006"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     command:
       - "-c"
       - "import os, sys; os.environ.pop('PHOENIX_SECRET', None) if not os.environ.get('PHOENIX_SECRET') else None; from phoenix.server.main import main; sys.argv = ['phoenix', 'serve']; main()"
@@ -792,6 +802,7 @@ services:
       - PHOENIX_WORKING_DIR=/home/phoenix/.phoenix
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
+      - PHOENIX_MAX_DAYS_RETENTION=14
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
