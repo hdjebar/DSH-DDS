@@ -134,9 +134,14 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
+# The profile tree stays writable for profile installs, but the @dsh-dds scope must not
+# be: a dsh-writable symlink there lets the agent shadow its own policy plugin through
+# bare-specifier resolution, bypassing the root ownership of /app.
 RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /run/dsh /var/log/dsh /etc/dsh \
     && chown -R root:root /app \
-    && chmod -R 755 /app
+    && chmod -R 755 /app \
+    && chown -R root:root /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+    && chmod -R 755 /var/lib/dsh/profiles/web/node_modules/@dsh-dds
 
 EXPOSE 3080
 

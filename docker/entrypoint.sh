@@ -146,11 +146,9 @@ else
   prepare_standard_home
 fi
 
-# Ensure native @dsh-dds/core plugin is linked into runtime profile
-if [ -d "/app/packages/dsh-dds-core" ]; then
-  mkdir -p "$DSH_HOME/profiles/web/node_modules/@dsh-dds" 2>/dev/null || true
-  ln -sfn /app/packages/dsh-dds-core "$DSH_HOME/profiles/web/node_modules/@dsh-dds/core" 2>/dev/null || true
-fi
+# The @dsh-dds/core link is created at build time in a root-owned directory
+# (see Dockerfile). Re-creating it here at runtime as dsh:dsh would hand the agent
+# process a writable symlink to its own policy enforcement code, so it is not done.
 
 # Ensure Universal Runtime Compatibility Loader is always active across all subprocesses
 export NODE_OPTIONS="${NODE_OPTIONS:-} --import /app/packages/dsh-dds-core/loader.mjs"

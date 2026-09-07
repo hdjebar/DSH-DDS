@@ -65,6 +65,29 @@ function checkSecretPermissions() {
     pass('BYOK Vault Master Key', `Configured (${vaultKey.length} chars)`);
   }
 
+  // GRC audit durability: the getGrcAuditLogPath() fallback (/var/log/dsh) is
+  // container-internal and does not survive `docker compose up --force-recreate`.
+  const auditLogFile = process.env.DSH_AUDIT_LOG_FILE;
+  if (!auditLogFile) {
+    if (process.env.DSH_SANDBOX === '1') {
+      warn('GRC Audit Trail', 'DSH_AUDIT_LOG_FILE unset; the JSONL trail buffers to tmpfs by design and durability rests on the Phoenix OTel export.');
+    } else {
+      fail('GRC Audit Trail', 'DSH_AUDIT_LOG_FILE is not set. The JSONL trail falls back to the container-internal /var/log/dsh and is destroyed on recreate; only the lossy Phoenix span export survives.');
+    }
+  } else {
+    const auditDir = path.dirname(auditLogFile);
+    if (!fs.existsSync(auditDir)) {
+      fail('GRC Audit Trail', `DSH_AUDIT_LOG_FILE directory ${auditDir} does not exist inside the container.`);
+    } else {
+      try {
+        fs.accessSync(auditDir, fs.constants.W_OK);
+        pass('GRC Audit Trail', `Writable at ${auditLogFile}`);
+      } catch {
+        fail('GRC Audit Trail', `${auditDir} is not writable; the JSONL trail will silently divert to the fallback path.`);
+      }
+    }
+  }
+
   const hostEnvStatus = process.env.DSH_HOST_ENV_STATUS;
   const hostEnvMode = process.env.DSH_HOST_ENV_MODE;
 

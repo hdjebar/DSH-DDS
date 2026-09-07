@@ -7,6 +7,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import crypto from 'node:crypto';
 import { UserPartitionManager } from './user-partition.js';
 
 let rbacEngine = null;
@@ -106,6 +107,13 @@ export function registerRbacInterceptor(ctx, config = {}) {
 
     const resolveEngine = async () => (config.getRbacEngine ? await config.getRbacEngine() : (config.rbacEngine || await getRbacEngine()));
 
+    // Correlate the JSONL record with its Phoenix span. Without this the PEP writes
+    // trace_id: null and emitGrcSpanToPhoenix falls back to a millisecond timestamp,
+    // which is neither unique under concurrency nor joinable with the LLM spans.
+    const traceId = actionContext.traceId
+      || actionContext.trace_id
+      || crypto.randomBytes(16).toString('hex');
+
     // Multi-tenant scoped workspace boundary evaluation
     if (step.target && typeof step.target === 'string') {
       const tenantCheck = partitionManager.validatePathAccess(step.target, user);
@@ -121,7 +129,7 @@ export function registerRbacInterceptor(ctx, config = {}) {
               decision: 'DENIED',
               role: user.roles?.[0] || 'user',
               reason: tenantCheck.reason
-            });
+            }, traceId);
           }
         } catch {}
         throw new Error(`[Zero-Trust RBAC Violation] ${tenantCheck.reason}`);
@@ -160,17 +168,21 @@ export function registerRbacInterceptor(ctx, config = {}) {
 
     const decision = engine.enforceRbacPolicy(personaMeta, step);
     if (!decision.allowed) {
-      if (typeof engine.logGrcAuditEvent === 'function') {
-        engine.logGrcAuditEvent({
-          persona: personaMeta.name,
-          workflow: actionContext.workflow || 'agent-session',
-          action: step.action,
-          target: step.target,
-          decision: 'DENIED',
-          role: decision.role,
-          reason: decision.violation
-        });
-      }
+      // The action is refused regardless; an audit-sink failure must not mask the
+      // policy violation that the caller needs to see.
+      try {
+        if (typeof engine.logGrcAuditEvent === 'function') {
+          engine.logGrcAuditEvent({
+            persona: personaMeta.name,
+            workflow: actionContext.workflow || 'agent-session',
+            action: step.action,
+            target: step.target,
+            decision: 'DENIED',
+            role: decision.role,
+            reason: decision.violation
+          }, traceId);
+        }
+      } catch {}
       throw new Error(`[Zero-Trust RBAC Violation] ${decision.violation}`);
     }
 
@@ -183,7 +195,7 @@ export function registerRbacInterceptor(ctx, config = {}) {
         decision: 'GRANTED',
         role: decision.role,
         reason: 'Policy check passed'
-      });
+      }, traceId);
     }
   };
 

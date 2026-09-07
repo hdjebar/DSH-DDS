@@ -363,7 +363,13 @@ export function enforceRbacPolicy(personaMeta, step) {
     };
   }
 
-  // Command string check against denied patterns
+  // Command string check against denied patterns.
+  // NOTE: this is a substring tripwire, not containment. A shell command can trivially
+  // evade it (quoting, $IFS, variable expansion, base64, symlinks), so it must never be
+  // treated as the control that confines `run_shell`. Real confinement comes from the
+  // workdir allowlist evaluated below plus the container controls (cap_drop, non-root,
+  // read_only rootfs, tmpfs layout). It stays because a cheap tripwire that fires loudly
+  // is still worth having.
   if (step.command && typeof step.command === 'string') {
     const deniedPatterns = filesystem?.deny || [];
     for (const pattern of deniedPatterns) {
@@ -374,7 +380,7 @@ export function enforceRbacPolicy(personaMeta, step) {
           allowed: false,
           role,
           violation: `Command '${step.command}' contains denied token '${pattern}'`,
-          code: 'RBAC_DENY_VIOLATION'
+          code: 'RBAC_SUSPICIOUS_COMMAND'
         };
       }
     }
@@ -605,17 +611,29 @@ export function logGrcAuditEvent(event, traceId = null) {
   };
 
   const primaryFile = getGrcAuditLogPath();
+  const line = JSON.stringify(auditEntry) + '\n';
 
+  // Fail-closed: an authorization decision that cannot be recorded must not execute.
+  // The primary sink is tried first, then a fallback; if BOTH fail the error propagates
+  // to the caller so the intercepted action is refused rather than silently unlogged.
+  let primaryError;
   try {
     const dir = path.dirname(primaryFile);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    fs.appendFileSync(primaryFile, JSON.stringify(auditEntry) + '\n', { encoding: 'utf8', mode: 0o600 });
-  } catch {
+    fs.appendFileSync(primaryFile, line, { encoding: 'utf8', mode: 0o600 });
+  } catch (err) {
+    primaryError = err;
     try {
       const fallbackDir = process.env.DSH_SESSIONS_DIR || path.join(process.cwd(), 'config', 'sessions');
+      if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true, mode: 0o700 });
       const fallbackFile = path.join(fallbackDir, 'audit_grc.jsonl');
-      fs.appendFileSync(fallbackFile, JSON.stringify(auditEntry) + '\n', 'utf8');
-    } catch {}
+      fs.appendFileSync(fallbackFile, line, { encoding: 'utf8', mode: 0o600 });
+    } catch (fallbackErr) {
+      throw new Error(
+        `GRC_AUDIT_WRITE_FAILED: could not record authorization decision to '${primaryFile}' `
+        + `(${primaryError.message}) or to the fallback sink (${fallbackErr.message}).`
+      );
+    }
   }
 
   // Non-blocking asynchronous OTel trace dispatch

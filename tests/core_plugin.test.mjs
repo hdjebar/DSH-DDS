@@ -585,3 +585,122 @@ test('Web Search Fallback: enforces HTTPS and duckduckgo.com domain restrictions
 
 
 
+
+test('Shell deny tripwire: documents that command-string inspection is not containment', async () => {
+  const { enforceRbacPolicy } = await import('../config/rbac-policy.mjs');
+  const persona = {
+    name: 'tripwire-probe',
+    rbac: {
+      role: 'probe',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces'],
+          write: ['/workspaces/cases'],
+          deny: ['/etc', 'reset.sh']
+        }
+      }
+    }
+  };
+  const shellStep = (command) => ({
+    name: 'bash',
+    action: 'run_shell',
+    target: '/workspaces/cases',
+    command,
+    workdir: '/workspaces/cases'
+  });
+
+  // The tripwire fires on the literal token and is reported as suspicious, not as
+  // path containment.
+  const tripped = enforceRbacPolicy(persona, shellStep('cat /etc/passwd'));
+  assert.equal(tripped.allowed, false);
+  assert.equal(tripped.code, 'RBAC_SUSPICIOUS_COMMAND');
+
+  // Trivially evaded by shell quoting. This assertion is deliberate: it pins the
+  // documented limitation so nobody mistakes the tripwire for enforcement. Confinement
+  // of run_shell comes from the workdir allowlist plus the container controls.
+  const evaded = enforceRbacPolicy(persona, shellStep('cat /e""tc/passwd'));
+  assert.equal(evaded.allowed, true, 'string blocklists cannot confine a shell; this is expected');
+
+  // The workdir allowlist is the control that actually holds.
+  const outside = enforceRbacPolicy(persona, {
+    name: 'bash', action: 'run_shell', target: '/root', command: 'ls', workdir: '/root'
+  });
+  assert.equal(outside.allowed, false);
+  assert.equal(outside.code, 'RBAC_WRITE_UNAUTHORIZED');
+});
+
+test('GRC correlation: in-line PEP records carry a real trace_id, not null', async () => {
+  const os = await import('node:os');
+  const fs = await import('node:fs');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-trace-'));
+  const auditFile = path.join(tmpDir, 'audit_grc.jsonl');
+  const prev = process.env.DSH_AUDIT_LOG_FILE;
+  process.env.DSH_AUDIT_LOG_FILE = auditFile;
+  try {
+    const engine = await import('../config/rbac-policy.mjs');
+    const handlers = [];
+    registerRbacInterceptor(
+      { before: (_e, fn) => handlers.push(fn) },
+      { enableToolRbac: true, workspaceBase: '/workspaces', userStateBase: '/var/lib/dsh/users', rbacEngine: engine }
+    );
+
+    await handlers[0]({
+      user: { id: 'admin', roles: ['admin'] },
+      toolName: 'read_file',
+      target: '/workspaces/cases/report.md'
+    });
+
+    const records = fs.readFileSync(auditFile, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    assert.ok(records.length >= 1, 'PEP must emit a GRC record');
+    for (const rec of records) {
+      assert.notEqual(rec.trace_id, null, 'PEP records must not write trace_id: null');
+      assert.match(
+        rec.trace_id,
+        /^[0-9a-f]{32}$/,
+        'trace_id must be a 128-bit hex id so the JSONL record joins its Phoenix span'
+      );
+    }
+
+    // An explicitly supplied trace id wins, so orchestrator-driven runs stay correlated.
+    await handlers[0]({
+      user: { id: 'admin', roles: ['admin'] },
+      toolName: 'read_file',
+      target: '/workspaces/cases/report.md',
+      traceId: 'aaaaaaaabbbbbbbbccccccccdddddddd'
+    });
+    const after = fs.readFileSync(auditFile, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    assert.equal(after.at(-1).trace_id, 'aaaaaaaabbbbbbbbccccccccdddddddd');
+  } finally {
+    if (prev === undefined) delete process.env.DSH_AUDIT_LOG_FILE;
+    else process.env.DSH_AUDIT_LOG_FILE = prev;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('GRC fail-closed: an unrecordable decision throws instead of executing unlogged', async () => {
+  const os = await import('node:os');
+  const fs = await import('node:fs');
+  const { logGrcAuditEvent } = await import('../config/rbac-policy.mjs');
+  const prevAudit = process.env.DSH_AUDIT_LOG_FILE;
+  const prevSessions = process.env.DSH_SESSIONS_DIR;
+  // Point both the primary and the fallback sink beneath a regular file, so every
+  // mkdir/append fails fast with ENOTDIR on any platform.
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-failclosed-'));
+  const blocker = path.join(tmpDir, 'blocker');
+  fs.writeFileSync(blocker, 'not a directory');
+  process.env.DSH_AUDIT_LOG_FILE = path.join(blocker, 'audit_grc.jsonl');
+  process.env.DSH_SESSIONS_DIR = path.join(blocker, 'sessions');
+  try {
+    assert.throws(
+      () => logGrcAuditEvent({ action: 'run_shell', decision: 'GRANTED', reason: 'probe' }),
+      /GRC_AUDIT_WRITE_FAILED/,
+      'both sinks failing must propagate so the intercepted action is refused'
+    );
+  } finally {
+    if (prevAudit === undefined) delete process.env.DSH_AUDIT_LOG_FILE;
+    else process.env.DSH_AUDIT_LOG_FILE = prevAudit;
+    if (prevSessions === undefined) delete process.env.DSH_SESSIONS_DIR;
+    else process.env.DSH_SESSIONS_DIR = prevSessions;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

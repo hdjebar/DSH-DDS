@@ -147,6 +147,56 @@ cleanup_staging() {
 }
 trap cleanup_staging EXIT INT TERM
 
+# Verify the release archive against the SHA256SUMS asset published for this ref.
+# Fails closed: an unverifiable archive is refused unless the operator explicitly
+# opts out with DSH_ALLOW_UNVERIFIED_ARCHIVE=1.
+verify_archive_checksum() {
+  local archive_path="$1"
+  local sums_url="https://github.com/hdjebar/DSH-DDS/releases/download/${DSH_REF}/SHA256SUMS"
+
+  if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
+    if [ "${DSH_ALLOW_UNVERIFIED_ARCHIVE:-0}" = "1" ]; then
+      echo "⚠️  Security Warning: no sha256 tool available; skipping archive verification (DSH_ALLOW_UNVERIFIED_ARCHIVE=1)." >&2
+      return 0
+    fi
+    echo "❌ Error: neither sha256sum nor shasum is available to verify the release archive." >&2
+    echo "   Install one, or rerun with DSH_ALLOW_UNVERIFIED_ARCHIVE=1 to accept an unverified download." >&2
+    exit 1
+  fi
+
+  if ! curl -fsSL "$sums_url" -o "$STAGE_DIR/SHA256SUMS" 2>/dev/null; then
+    if [ "${DSH_ALLOW_UNVERIFIED_ARCHIVE:-0}" = "1" ]; then
+      echo "⚠️  Security Warning: no SHA256SUMS published for ref '$DSH_REF'; installing unverified (DSH_ALLOW_UNVERIFIED_ARCHIVE=1)." >&2
+      return 0
+    fi
+    echo "❌ Error: no SHA256SUMS asset published for ref '$DSH_REF'; refusing to install an unverified archive." >&2
+    echo "   Rerun with DSH_ALLOW_UNVERIFIED_ARCHIVE=1 to accept the download without integrity verification." >&2
+    exit 1
+  fi
+
+  local expected
+  expected="$(awk '$2 ~ /(^|\/)archive\.tar\.gz$/ { print $1; exit }' "$STAGE_DIR/SHA256SUMS")"
+  if [ -z "$expected" ]; then
+    echo "❌ Error: SHA256SUMS for ref '$DSH_REF' contains no entry for archive.tar.gz." >&2
+    exit 1
+  fi
+
+  local actual
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual="$(sha256sum "$archive_path" | awk '{print $1}')"
+  else
+    actual="$(shasum -a 256 "$archive_path" | awk '{print $1}')"
+  fi
+
+  if [ "$expected" != "$actual" ]; then
+    echo "❌ Error: release archive checksum mismatch for ref '$DSH_REF'." >&2
+    echo "   expected: $expected" >&2
+    echo "   actual:   $actual" >&2
+    exit 1
+  fi
+  echo "🔐 Verified release archive checksum for $DSH_REF."
+}
+
 fetch_or_copy_file() {
   local rel_path="$1"
   local final_dest="$DSH_INSTALL/$rel_path"
@@ -171,7 +221,11 @@ fetch_or_copy_file() {
         curl -fsSL "$archive_url" -o "$STAGE_DIR/archive.tar.gz" 2>/dev/null || true
       fi
       if [ -f "$STAGE_DIR/archive.tar.gz" ] && [ -s "$STAGE_DIR/archive.tar.gz" ]; then
-        tar -xzf "$STAGE_DIR/archive.tar.gz" --strip-components=1 -C "$STAGE_DIR" 2>/dev/null || true
+        verify_archive_checksum "$STAGE_DIR/archive.tar.gz"
+        if ! tar -xzf "$STAGE_DIR/archive.tar.gz" --strip-components=1 -C "$STAGE_DIR"; then
+          echo "❌ Error: Failed to extract release archive for ref '$DSH_REF'." >&2
+          exit 1
+        fi
         rm -f "$STAGE_DIR/archive.tar.gz"
       fi
     fi
@@ -725,9 +779,14 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
+# The profile tree stays writable for profile installs, but the @dsh-dds scope must not
+# be: a dsh-writable symlink there lets the agent shadow its own policy plugin through
+# bare-specifier resolution, bypassing the root ownership of /app.
 RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /run/dsh /var/log/dsh /etc/dsh \
     && chown -R root:root /app \
-    && chmod -R 755 /app
+    && chmod -R 755 /app \
+    && chown -R root:root /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+    && chmod -R 755 /var/lib/dsh/profiles/web/node_modules/@dsh-dds
 
 EXPOSE 3080
 
@@ -798,6 +857,10 @@ services:
       - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
+      # Pin the GRC JSONL trail onto the mounted ./config/audit volume. Without this,
+      # getGrcAuditLogPath() falls back to the container-internal /var/log/dsh and the
+      # file is lost on recreate, leaving only the lossy Phoenix span export.
+      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
     depends_on:
       phoenix:

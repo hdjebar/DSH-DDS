@@ -91,10 +91,12 @@ test('Sandbox Compose: credential blanking, audit retention, named volume state,
     );
   }
 
-  // Audit preservation
+  // Audit integrity: an untrusted workload must NOT hold a writable host bind to the
+  // record of its own authorization decisions. In sandbox mode the audit file lives on
+  // tmpfs and the durable copy is the OTel export to the phoenix container.
   assert.ok(
-    dsh.volumes.some(v => v.includes('/var/lib/dsh/audit')),
-    'Sandbox must persist GRC audit logs into ./config/audit'
+    !dsh.volumes.some(v => v.includes('/var/lib/dsh/audit')),
+    'Sandbox must NOT bind-mount the host audit directory into the untrusted workload'
   );
 
   // Named volume session isolation
@@ -146,4 +148,35 @@ test('Developer Compose: live-reload bind mounts isolated to dev override', () =
     dsh.volumes.some(v => v.includes('docker/entrypoint.sh')),
     'dev compose must mount docker/entrypoint.sh'
   );
+});
+
+test('GRC Audit Durability: base compose pins the audit log onto a mounted volume', () => {
+  const compose = yaml.parse(fs.readFileSync(BASE_COMPOSE_PATH, 'utf8'));
+  const dsh = compose.services.dsh;
+
+  const entry = dsh.environment.find(e => String(e).startsWith('DSH_AUDIT_LOG_FILE='));
+  assert.ok(
+    entry,
+    'Base compose must set DSH_AUDIT_LOG_FILE; the getGrcAuditLogPath() default (/var/log/dsh) '
+    + 'is container-internal and is destroyed by docker compose up --force-recreate'
+  );
+
+  const auditPath = entry.split('=').slice(1).join('=');
+  const mountTargets = dsh.volumes.map(v => String(v).split(':')[1]).filter(Boolean);
+  assert.ok(
+    mountTargets.some(t => auditPath === t || auditPath.startsWith(t.endsWith('/') ? t : `${t}/`)),
+    `DSH_AUDIT_LOG_FILE (${auditPath}) must resolve inside a mounted volume, got mounts: ${mountTargets.join(', ')}`
+  );
+});
+
+test('GRC Audit Durability: getGrcAuditLogPath honours DSH_AUDIT_LOG_FILE over the internal default', async () => {
+  const { getGrcAuditLogPath } = await import('../config/rbac-policy.mjs');
+  const prev = process.env.DSH_AUDIT_LOG_FILE;
+  try {
+    process.env.DSH_AUDIT_LOG_FILE = '/var/lib/dsh/audit/audit_grc.jsonl';
+    assert.equal(getGrcAuditLogPath(), '/var/lib/dsh/audit/audit_grc.jsonl');
+  } finally {
+    if (prev === undefined) delete process.env.DSH_AUDIT_LOG_FILE;
+    else process.env.DSH_AUDIT_LOG_FILE = prev;
+  }
 });

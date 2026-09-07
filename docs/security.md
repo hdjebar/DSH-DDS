@@ -17,6 +17,10 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 ---
 
+> 📋 **Audit record**: the four-pass September 2026 adversarial audit — every finding, its
+> verification, the regressions the remediations introduced, and the items still open — is
+> recorded in **[Consolidated Security Audit — September 2026](security-audit-2026-09.md)**.
+
 ## 📊 Vulnerability & Risk Matrix (Security Audit)
 
 | ID | Category | Severity | Finding | Status / Remediation |
@@ -26,7 +30,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-03** | **Credential Security** | **PASS** | API Keys Injected via Process Environment | Controlled via `chmod 0600 .env` in standard mode. In sandbox mode (`docker-compose.sandbox.yml`), all provider API keys and tokens are explicitly blanked/overridden with empty values ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
-| **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim`; prebuilt with compilers stripped (`make`, `g++` purged) from runtime runner stage; dependencies pinned via `--frozen-lockfile` ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
+| **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim`; prebuilt with compilers stripped (`make`, `g++` purged) from runtime runner stage; dependencies pinned via `--frozen-lockfile`; `install_dsh.sh` verifies the release archive against the published `SHA256SUMS` and fails closed unless `DSH_ALLOW_UNVERIFIED_ARCHIVE=1` ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and in-line `@dsh-dds/core` PEP blocking unauthorized tools ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
 | **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via native `pnpm.patchedDependencies` and `@dsh-dds/core` Cordis plugin; zero runtime monkey-patch scripts ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
 | **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
@@ -35,8 +39,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-12** | **Threat Model Demarcation** | **PASS** | Boundary Confusion between Node PEP and Kernel Sandbox | Explicitly demarcated: `loader.mjs` is an internal engine PEP shim; process containment is enforced by Linux kernel cgroups, namespaces, Landlock LSM, and read-only rootfs ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-13** | **Cryptographic Integrity** | **PASS** | Default BYOK Master Key Fallback | Remediated: fail-closed master key enforcement (`DSH_VAULT_MASTER_KEY >= 32` chars), payload v2 format, 64KB body limit ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 | **SEC-14** | **Identity Spoofing** | **PASS** | Unvalidated Header Trust in Reverse Proxy Mode | Remediated: `x-dsh-user-id` and `x-dsh-user-roles` require `DSH_TRUST_PROXY_HEADERS=true` and trusted socket peer validation via `isTrustedGatewayIp()`; JWT pinned to `HS256` ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
-| **SEC-15** | **Policy Enforcement** | **PASS** | PEP Tool-to-Action Namespace Gap & Fail-Open Fallback | Remediated: `TOOL_ACTION_MAP` deterministically translates tools to policy verbs (`bash` -> `run_shell`) with prototype isolation and toolName precedence; policy engine failure strictly fails closed; shell commands are evaluated against deny patterns rather than path allowlists; sandbox `/run` is hardened (`mode=0770`); web-search enforces HTTPS and domain restrictions ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
-| **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` directory owned by `root:root` with `0755` permissions, preventing unprivileged `dsh:dsh` agent from tampering with loader or PEP code ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-15** | **Policy Enforcement** | **PASS** | PEP Tool-to-Action Namespace Gap & Fail-Open Fallback | Remediated: `TOOL_ACTION_MAP` deterministically translates tools to policy verbs (`bash` -> `run_shell`) with prototype isolation and toolName precedence; policy engine failure strictly fails closed; shell commands are confined by the `workdir` allowlist plus container controls, with command-string deny patterns as a best-effort tripwire only (`RBAC_SUSPICIOUS_COMMAND`) that quoting or encoding can evade; sandbox `/run` is hardened (`mode=0770`); web-search enforces HTTPS and domain restrictions ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` owned by `root:root` (`0755`) and the `@dsh-dds` scope in the writable profile tree likewise, so the unprivileged `dsh:dsh` agent can tamper with neither the `--import` loader path nor the plugin as resolved by bare specifier. The rest of the profile tree stays writable for profile installs; other bare specifiers are contained by the read-only rootfs in sandbox mode only ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 
 ---
 
@@ -120,7 +124,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`) & Arize Phoenix Observability
 * **Governance Standard & Non-Repudiation**:
   - Enterprise compliance frameworks (EU AI Act Arts. 12 & 14, NIST AI RMF, ISO/IEC 42001, SOC 2 Type II) mandate verifiable, non-repudiable audit logs of all autonomous agent actions.
-  - Every authorization check evaluated by the Policy Enforcement Point (PEP) produces a structured JSON Lines record capturing both `GRANTED` and `DENIED` decisions along with the evaluation reason:
+  - Every authorization check evaluated by the Policy Enforcement Point (PEP) produces a structured JSON Lines record capturing both `GRANTED` and `DENIED` decisions along with the evaluation reason. The sample below is an orchestrator-produced record (`config/declarative-orchestrator.mjs`), which carries `step_index` and a propagated `trace_id`; in-line PEP records omit `step_index`:
     ```json
     {
       "timestamp": "2026-09-03T01:32:22.185Z",
@@ -139,10 +143,12 @@ This document serves as both the **Security Architecture Guide** and the **Secur
     ```
 
 * **Persistence Guarantees (`audit_grc.jsonl`)**:
-  - **Host Persistence**: Stored on the host at `./config/audit/audit_grc.jsonl`.
-  - **Container Mount**: Mounted read-write at `/var/lib/dsh/audit:rw` in both `docker-compose.yml` and `docker-compose.sandbox.yml`, surviving container teardown, image rebuilds, and ephemeral session wipes (`docker compose down -v`).
-  - **Synchronous Disk Flush**: Written synchronously via `fs.appendFileSync` in `config/rbac-policy.mjs` (`logGrcAuditEvent`) before the intercepted action is allowed to proceed.
-  - **Restricted File Permissions**: Files are created with `0600` permissions (read/write only by the `dsh` UID 1000 process) and parent directories with `0700`.
+  - **Path resolution**: `getGrcAuditLogPath()` honours `DSH_AUDIT_LOG_FILE` first. **Standard mode sets it to `/var/lib/dsh/audit/audit_grc.jsonl`**, landing the trail on the mounted `./config/audit` host volume. This variable is load-bearing: without it the function falls back to the container-internal `/var/log/dsh`, which the image creates and which does **not** survive `docker compose down` or `up --force-recreate`. `./dsh.sh doctor` fails if the resolved path is unset or unwritable.
+  - **Container Mount**: `./config/audit:/var/lib/dsh/audit:rw` in `docker-compose.yml`; a bind mount, so it survives container teardown, image rebuilds, and `docker compose down -v`.
+  - **Sandbox mode deliberately has no such bind.** An untrusted workload must not hold a writable host handle to the record of its own authorization decisions. There the JSONL file is a tmpfs buffer and the durable record is the Phoenix span export — treat Phoenix as authoritative for sandbox runs.
+  - **Synchronous write, fail-closed**: `logGrcAuditEvent` appends via `fs.appendFileSync` before the intercepted action proceeds. If the primary sink fails it retries a fallback path; if **both** fail it throws, so an unrecordable decision cannot execute. Note this is a synchronous write syscall, not an `fsync` — ordering is guaranteed, durability across a host crash is not.
+  - **Restricted File Permissions**: `0600` on the primary and fallback files, `0700` on parent directories.
+  - **Retention asymmetry**: the JSONL ledger is retained indefinitely by the operator; Phoenix spans expire at `PHOENIX_MAX_DAYS_RETENTION` (14 days). For sandbox runs, where Phoenix is the only durable sink, 14 days is therefore the effective non-repudiation window.
 
 * **Dual-Layer Architecture: Cold Compliance Ledger vs. Hot Observability Waterfall**:
   To decouple legal compliance from developer observability, DSH-DDS implements a dual-path telemetry architecture:
@@ -177,12 +183,13 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 * **Why Arize Phoenix (`:6006`)?**:
   1. **100% Local Data Sovereignty (Zero Data Egress)**:
      - Commercial agent observability platforms (such as LangSmith, Datadog, or AgentOps) transmit complete multi-turn conversation transcripts, system instructions, and tool outputs to external third-party cloud servers.
-     - Arize Phoenix runs completely within a local container (`image: arizephoenix/phoenix:version-20.5.0`) bound strictly to loopback (`127.0.0.1:6006`). Zero prompt traces, completion tokens, or audit logs leave the host, ensuring compliance with GDPR Art. 9, HIPAA, and proprietary source code policies.
+     - Arize Phoenix runs completely within a local container (`image: arizephoenix/phoenix:20.5.0`, pinned by SHA256 digest) bound strictly to loopback (`127.0.0.1:6006`). Zero prompt traces, completion tokens, or audit logs leave the host, ensuring compliance with GDPR Art. 9, HIPAA, and proprietary source code policies.
   2. **W3C OpenTelemetry Native & OpenInference Standard**:
      - Operates as a standard OpenTelemetry (OTel) receiver over standard endpoints (`:4317` gRPC / `:4318` HTTP), eliminating proprietary SDK lock-in.
-  3. **Cryptographic Trace Correlation via `trace_id`**:
-     - Every audit entry written to `audit_grc.jsonl` embeds a 128-bit W3C `trace_id`.
-     - When a policy violation occurs (`DENIED`), an operator can query the `trace_id` in Arize Phoenix to inspect the exact prompt waterfall, intermediate thought signatures, latency, and context leading to the attempted unauthorized action.
+  3. **Trace Correlation via `trace_id`**:
+     - Audit entries embed a 128-bit `trace_id`: the declarative orchestrator propagates its workflow trace id into each step's record, and the in-line PEP generates one per intercepted action.
+     - When a policy violation occurs (`DENIED`), an operator can query that `trace_id` in Arize Phoenix to inspect the prompt waterfall, intermediate thought signatures, latency, and context leading to the attempted unauthorized action.
+     - The id is generated with `crypto.randomBytes(16)`, not derived from a clock; correlation therefore holds under concurrency.
   4. **Zero External Database Dependencies**:
      - Self-contained with an embedded SQLite/Parquet backend in a single container. Unlike Jaeger or Langfuse, it requires no auxiliary PostgreSQL, ClickHouse, Redis, or Elasticsearch clusters.
   5. **FinOps & Token Cost Tracking (OWASP LLM10 Defense)**:
@@ -194,9 +201,9 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 | Dimension | `audit_grc.jsonl` | Arize Phoenix (`:6006`) |
 | :--- | :--- | :--- |
-| **Architectural Role** | Cold compliance ledger & CI assertions | Hot interactive distributed tracing & debugging |
-| **Storage Backend** | Plaintext JSON Lines on host filesystem (`./config/audit`) | Embedded SQLite/Parquet in named volume |
-| **Execution Path** | Synchronous, blocking, fail-closed append | Asynchronous, non-blocking fire-and-forget OTel stream |
+| **Architectural Role** | Cold compliance ledger & CI assertions (operator-controlled retention) | Hot interactive distributed tracing & debugging (14-day retention) |
+| **Storage Backend** | Plaintext JSON Lines on host filesystem (`./config/audit`) | Embedded SQLite/Parquet on a host bind mount (`./config/phoenix`) |
+| **Execution Path** | Synchronous, blocking, fail-closed append (throws if every sink fails) | Asynchronous, non-blocking fire-and-forget OTel stream (1.5 s abort, drops are silent) |
 | **Primary Audience** | Legal auditors, SIEM pipelines, security automation | Developers, prompt engineers, DevOps operators |
 | **Consumption Interface** | CLI tools (`jq`, `grep`), log aggregators | Visual web dashboard (`http://localhost:6006`) |
 | **Correlation Key** | W3C `trace_id` (128-bit hex) | W3C `traceId` / `spanId` hierarchy |
@@ -265,7 +272,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 | **Privilege Escalation** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** |
 | **Host Config Mount** | **Read-Only (`./config:/etc/dsh:ro`)** | **Read-Only (`./config:/opt/dsh-config:ro`)** | **Read-Only (`./config:/etc/dsh:ro`)** |
 | **Workspace Mount** | Read-Write (`./workspaces`) | **Read-Only (`./workspaces:ro`)** | Read-Write (`./workspaces`) |
-| **GRC Audit Retention** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** |
+| **GRC Audit Retention** | **JSONL persisted (`./config/audit:/var/lib/dsh/audit:rw`) + Phoenix spans (`./config/phoenix`, 14 d)** | **Phoenix spans only (`./config/phoenix`, 14 d); JSONL is a tmpfs buffer, no host bind by design** | **JSONL persisted (`./config/audit`) + Phoenix spans** |
 | **Session & State Storage** | Persisted on host (`./config/sessions`, `./config/storages`) | **Isolated Named Volume (`sandbox-session-state:/var/lib/dsh-state:rw`)** | Persisted on host |
 | **Container Networking** | Bridge (Host DNS / Internet) | **Zero-Direct Egress (`dsh-internal` bridge through `egress-filter` Envoy sidecar)** | Bridge |
 | **Resource Constraints** | **Limits (`2.0 CPUs`, `4GB RAM`, `512 PIDs`)** | **Strict Limits (`2.0 CPUs`, `2GB RAM`, `150 PIDs`)** | Inherits standard limits |

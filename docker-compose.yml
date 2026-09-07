@@ -52,6 +52,10 @@ services:
       - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
+      # Pin the GRC JSONL trail onto the mounted ./config/audit volume. Without this,
+      # getGrcAuditLogPath() falls back to the container-internal /var/log/dsh and the
+      # file is lost on recreate, leaving only the lossy Phoenix span export.
+      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
     depends_on:
       phoenix:

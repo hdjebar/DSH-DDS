@@ -26,9 +26,11 @@ services:
           memory: 512M
     volumes: !override
       # Configuration is copied into disposable tmpfs; session data persists in dedicated named volume.
+      # No host bind for /var/lib/dsh/audit: an untrusted workload must not be able to
+      # rewrite its own authorization record on the host. The in-sandbox audit file is a
+      # tmpfs buffer only; the durable copy is the OTel span export to the phoenix container.
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
-      - ./config/audit:/var/lib/dsh/audit:rw
       - sandbox-session-state:/var/lib/dsh-state:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
