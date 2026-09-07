@@ -110,7 +110,7 @@ EOF
   fi
 fi
 
-DSH_REF="${DSH_REF:-v1.10.0}"
+DSH_REF="${DSH_REF:-v2.0.0}"
 DSH_REPO_URL="${DSH_REPO_URL:-https://raw.githubusercontent.com/hdjebar/DSH-DDS}"
 GITHUB_RAW="$DSH_REPO_URL/$DSH_REF"
 
@@ -155,11 +155,29 @@ fetch_or_copy_file() {
   local local_source="${DSH_SOURCE_DIR:-.}/$rel_path"
   if [ -f "$local_source" ]; then
     cp "$local_source" "$stage_dest"
+  elif [ -f "$stage_dest" ]; then
+    return 0
   else
-    echo "⬇️  Downloading $rel_path from repository..."
-    if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$stage_dest"; then
-      echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
-      exit 1
+    # Atomic archive retrieval to prevent TOCTOU and supply chain inconsistency (Finding 3)
+    if [ ! -f "$STAGE_DIR/.archive_attempted" ]; then
+      touch "$STAGE_DIR/.archive_attempted"
+      echo "📦 Fetching atomic release archive ($DSH_REF) to prevent TOCTOU supply chain risks..."
+      local archive_url="https://github.com/hdjebar/DSH-DDS/archive/refs/tags/${DSH_REF}.tar.gz"
+      if ! curl -fsSL "$archive_url" -o "$STAGE_DIR/archive.tar.gz" 2>/dev/null; then
+        archive_url="https://github.com/hdjebar/DSH-DDS/archive/refs/heads/${DSH_REF}.tar.gz"
+        curl -fsSL "$archive_url" -o "$STAGE_DIR/archive.tar.gz" 2>/dev/null || true
+      fi
+      if [ -f "$STAGE_DIR/archive.tar.gz" ] && [ -s "$STAGE_DIR/archive.tar.gz" ]; then
+        tar -xzf "$STAGE_DIR/archive.tar.gz" --strip-components=1 -C "$STAGE_DIR" 2>/dev/null || true
+        rm -f "$STAGE_DIR/archive.tar.gz"
+      fi
+    fi
+    if [ ! -f "$stage_dest" ]; then
+      echo "⬇️  Downloading $rel_path from repository..."
+      if ! curl -fsSL "$GITHUB_RAW/$rel_path" -o "$stage_dest"; then
+        echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
+        exit 1
+      fi
     fi
   fi
 }
