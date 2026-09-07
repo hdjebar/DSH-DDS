@@ -134,14 +134,31 @@ exit 0
       testEnv.PATH = `${mockBinDir}:${process.env.PATH || ''}`;
     }
 
+    // 1. Strict default: invalid ref fails closed unless opt-in is set
+    await assert.rejects(
+      async () => {
+        await execAsync(`bash install_dsh.sh`, {
+          env: testEnv,
+          cwd: runnerDir
+        });
+      },
+      (err) => {
+        assert.match(err.stderr || err.message, /Could not resolve git ref 'non-existent-tag-v9.99.99'/);
+        assert.match(err.stderr || err.message, /DSH_ALLOW_REF_FALLBACK=1/);
+        return true;
+      },
+      'Installer must strictly fail closed on unresolved ref by default'
+    );
+
+    // 2. Opt-in: DSH_ALLOW_REF_FALLBACK=1 permits fallback to main
     const { stdout: output } = await execAsync(`bash install_dsh.sh`, {
-      env: testEnv,
+      env: { ...testEnv, DSH_ALLOW_REF_FALLBACK: '1' },
       cwd: runnerDir
     });
 
     assert.ok(
       output.includes("Falling back to 'main'") || output.includes('main'),
-      'Installer must detect invalid ref and fall back to main'
+      'Installer must detect invalid ref and fall back to main when DSH_ALLOW_REF_FALLBACK=1'
     );
     assert.ok(fs.existsSync(path.join(installTarget, 'docker-compose.yml')));
   } finally {

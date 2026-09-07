@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ultimate Single-File DeepSeek Harness Deployment Script (Automated .env Reader)
-set -e
+set -euo pipefail
 
 FORCE=false
 for arg in "$@"; do
@@ -81,6 +81,7 @@ else
     read -rp "  • DSH Web Port [default 3080]: " input_port
     
     AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
+    VAULT_MASTER_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
     cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=${input_port:-3080}
@@ -89,12 +90,14 @@ OPENROUTER_API_KEY=${input_openrouter:-}
 GITHUB_PERSONAL_ACCESS_TOKEN=${input_github:-}
 PHOENIX_API_KEY=
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
+DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "✅ Generated $DSH_INSTALL/.env (mode 0600)"
     load_env_safely "$DSH_INSTALL/.env"
   else
     AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
+    VAULT_MASTER_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
     cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=3080
@@ -103,6 +106,7 @@ OPENROUTER_API_KEY=
 GITHUB_PERSONAL_ACCESS_TOKEN=
 PHOENIX_API_KEY=
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
+DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "📝 Generated starter $DSH_INSTALL/.env template (mode 0600). You can populate keys anytime in .env."
@@ -118,18 +122,17 @@ GITHUB_RAW="$DSH_REPO_URL/$DSH_REF"
 validate_remote_ref() {
   if [ -z "${DSH_SOURCE_DIR:-}" ] || [ "${DSH_CHECK_REMOTE_REF:-0}" = "1" ]; then
     if ! curl -fsSL -I "${DSH_REPO_URL}/${DSH_REF}/Dockerfile" >/dev/null 2>&1; then
-      if [ "${DSH_STRICT_REF:-0}" = "1" ]; then
-        echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository (DSH_STRICT_REF=1 enforced)." >&2
-        exit 1
+      if [ "${DSH_ALLOW_REF_FALLBACK:-0}" = "1" ]; then
+        if [ "$DSH_REF" != "main" ] && curl -fsSL -I "${DSH_REPO_URL}/main/Dockerfile" >/dev/null 2>&1; then
+          echo "⚠️ Security Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main' (DSH_ALLOW_REF_FALLBACK=1)..."
+          DSH_REF="main"
+          GITHUB_RAW="${DSH_REPO_URL}/main"
+          return 0
+        fi
       fi
-      if [ "$DSH_REF" != "main" ] && curl -fsSL -I "${DSH_REPO_URL}/main/Dockerfile" >/dev/null 2>&1; then
-        echo "⚠️ Security Warning: DSH_REF '$DSH_REF' not found on remote. Falling back to 'main'..."
-        DSH_REF="main"
-        GITHUB_RAW="${DSH_REPO_URL}/main"
-      else
-        echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository." >&2
-        exit 1
-      fi
+      echo "❌ Error: Could not resolve git ref '$DSH_REF' from remote repository." >&2
+      echo "To permit falling back to 'main', rerun with DSH_ALLOW_REF_FALLBACK=1." >&2
+      exit 1
     fi
   fi
 }
@@ -219,6 +222,7 @@ fetch_or_copy_file "packages/dsh-dds-core/web-search.js"
 fetch_or_copy_file "packages/dsh-dds-core/iam.js"
 fetch_or_copy_file "packages/dsh-dds-core/user-partition.js"
 fetch_or_copy_file "packages/dsh-dds-core/byok-vault.js"
+fetch_or_copy_file "packages/dsh-dds-core/net-trust.js"
 fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
 fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
 fetch_or_copy_file "config/profiles/web/cordis.yml"
@@ -721,7 +725,9 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
-RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /app /run/dsh /var/log/dsh /etc/dsh
+RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /run/dsh /var/log/dsh /etc/dsh \
+    && chown -R root:root /app \
+    && chmod -R 755 /app
 
 EXPOSE 3080
 
@@ -789,6 +795,7 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml

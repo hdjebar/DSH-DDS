@@ -33,6 +33,10 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-10** | **Execution Boundary** | **PASS** | Ambient Host Execution Fallback in CLI | Remediated via fail-closed in-container execution dispatch in `dsh.sh` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
 | **SEC-11** | **Web Agent Confinement** | **PASS** | Indirect Prompt Injection & Cloud Metadata SSRF | Sanitized `mcp-fetch` text conversion, exfiltration stripping, and zero-egress sandbox profile. |
 | **SEC-12** | **Threat Model Demarcation** | **PASS** | Boundary Confusion between Node PEP and Kernel Sandbox | Explicitly demarcated: `loader.mjs` is an internal engine PEP shim; process containment is enforced by Linux kernel cgroups, namespaces, Landlock LSM, and read-only rootfs ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
+| **SEC-13** | **Cryptographic Integrity** | **PASS** | Default BYOK Master Key Fallback | Remediated: fail-closed master key enforcement (`DSH_VAULT_MASTER_KEY >= 32` chars), payload v2 format, 64KB body limit ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-14** | **Identity Spoofing** | **PASS** | Unvalidated Header Trust in Reverse Proxy Mode | Remediated: `x-dsh-user-id` and `x-dsh-user-roles` require `DSH_TRUST_PROXY_HEADERS=true` and trusted socket peer validation via `isTrustedGatewayIp()`; JWT pinned to `HS256` ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-15** | **Policy Enforcement** | **PASS** | PEP Tool-to-Action Namespace Gap & Fail-Open Fallback | Remediated: `TOOL_ACTION_MAP` deterministically translates tools to policy verbs (`bash` -> `run_shell`); unmapped tools and missing user identity fail closed; relative paths normalized ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` directory owned by `root:root` with `0755` permissions, preventing unprivileged `dsh:dsh` agent from tampering with loader or PEP code ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 
 ---
 
@@ -142,6 +146,40 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - **Hermetic Extraction**: The `mcp-fetch` adapter strips active scripts, inline styles, and embedded DOM iframes, converting content into sanitized plain markdown.
   - **Zero-Egress Isolation**: When auditing unverified third-party repositories or processing untrusted links, execute using `docker-compose.sandbox.yml` with `internal: true` to prevent network exfiltration.
   - **Host Loopback Protection**: Critical host services (DSH UI and Arize Phoenix) bind strictly to `127.0.0.1`, which is unreachable from within default Docker bridge containers without explicit routing.
+
+### 12. [SEC-13] Cryptographic Integrity & Fail-Closed BYOK Vault
+* **Threat Model & Prior Vulnerability**:
+  - `packages/dsh-dds-core/byok-vault.js` fell back to a default constant string when `DSH_VAULT_MASTER_KEY` was missing, leaving encrypted user API keys vulnerable to decryption with public repository knowledge.
+* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+  - `ByokVault` strictly requires `DSH_VAULT_MASTER_KEY >= 32` characters; missing or short secrets fail closed with `VAULT_MASTER_KEY_MISSING`.
+  - Payloads upgraded to `version: 2`; `decryptSecret` refuses legacy v1 blobs.
+  - REST API `/dsh-dds/api/vault/keys` enforces a 64 KB maximum payload limit and socket destruction on overflow.
+  - Turnkey installer automatically generates a 32-byte hex secret during `.env` creation; `./dsh.sh doctor` reports hard failure if key is absent.
+
+### 13. [SEC-14] Identity Spoofing & Gateway Peer Verification
+* **Threat Model & Prior Vulnerability**:
+  - Reverse proxy identity headers (`x-dsh-user-id`, `x-dsh-user-roles: admin`) were accepted without checking the requesting socket peer address.
+* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+  - Extracted network peer trust verification into `packages/dsh-dds-core/net-trust.js`.
+  - Reverse proxy headers are ignored unless `DSH_TRUST_PROXY_HEADERS=true` and `isTrustedGatewayIp(remoteAddress)` verifies the caller is loopback or an internal Docker bridge.
+  - JWT bearer token authentication strictly enforces `alg: HS256`.
+
+### 14. [SEC-15] Zero-Trust PEP Action Mapping & Fail-Closed Identity
+* **Threat Model & Prior Vulnerability**:
+  - Raw tool names (`bash`, `write_file`, `edit_file`) diverged from declarative workflow verbs (`run_shell`, `create_file`, `modify_file`), resulting in unmapped actions defaulting to unclassified execution.
+  - In-line PEP granted admin role when caller user context was omitted.
+* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+  - `TOOL_ACTION_MAP` maps agent tool names directly to policy verbs.
+  - `run_shell` is classified as a write action in `config/rbac-policy.mjs`, enforcing strict directory boundaries on shell operations.
+  - Missing identity context immediately fails closed with `[Zero-Trust RBAC Violation] Missing authenticated user identity context`.
+  - Multi-tenant boundary checks normalize all string targets against `/workspaces/users/<userId>` and `/workspaces/shared`.
+
+### 15. [SEC-16] Container Application Code Immutability
+* **Threat Model & Prior Vulnerability**:
+  - Although the process executed as unprivileged `dsh:dsh` (UID 1000), `dsh` owned `/app`, allowing an in-container compromise to rewrite `NODE_OPTIONS` loader shims or policy enforcement points.
+* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+  - In `Dockerfile`, `/app` is chowned to `root:root` with permissions `chmod -R 755 /app`.
+  - The runtime process (`dsh:dsh`) can read and execute application files, but cannot modify in-memory interception or policy validation code on disk.
 
 ---
 

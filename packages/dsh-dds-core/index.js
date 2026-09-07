@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import { registerGatewayMiddleware } from './gateway.js';
 import { ModelCatalogService } from './model-catalog.js';
 import { registerLocalizationTap } from './localization.js';
-import { registerRbacInterceptor } from './rbac-interceptor.js';
+import { registerRbacInterceptor, TOOL_ACTION_MAP } from './rbac-interceptor.js';
 import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
 import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml } from './web-search.js';
 import { registerIamMiddleware, IamService, extractUserFromHeaders, verifyBearerToken, DEFAULT_OPERATOR } from './iam.js';
@@ -31,10 +31,26 @@ export function apply(ctx, config = {}) {
 
   // 2. User Filesystem Partitioning & BYOK Vault
   const userPartition = new UserPartitionManager(config);
-  const byokVault = new ByokVault(config);
+  let byokVaultInstance = null;
+  const getByokVault = () => {
+    if (!byokVaultInstance) {
+      byokVaultInstance = new ByokVault(config);
+    }
+    return byokVaultInstance;
+  };
+
   if (typeof ctx.provide === 'function') {
     try { ctx.provide('userPartition', userPartition); } catch {}
-    try { ctx.provide('byokVault', byokVault); } catch {}
+    try {
+      const vaultProxy = new Proxy({}, {
+        get(target, prop) {
+          const vault = getByokVault();
+          const val = vault[prop];
+          return typeof val === 'function' ? val.bind(vault) : val;
+        }
+      });
+      ctx.provide('byokVault', vaultProxy);
+    } catch {}
   }
 
   // 3. WebServer Gateway & Lifecycle Supervisor
@@ -145,6 +161,7 @@ export {
   ModelCatalogService,
   registerLocalizationTap,
   registerRbacInterceptor,
+  TOOL_ACTION_MAP,
   registerLlmGateway,
   LlmSemanticGateway,
   registerWebSearchFallback,

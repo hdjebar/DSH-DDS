@@ -134,7 +134,9 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
-RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /app /run/dsh /var/log/dsh /etc/dsh
+RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /run/dsh /var/log/dsh /etc/dsh \
+    && chown -R root:root /app \
+    && chmod -R 755 /app
 
 EXPOSE 3080
 

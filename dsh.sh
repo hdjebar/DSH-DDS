@@ -379,6 +379,11 @@ case "$COMMAND" in
             const actor = process.argv[3] || 'host-operator';
             const ttl = Number(process.argv[4]) || 3600;
 
+            if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+              console.error(`❌ Error: Invalid instance ID: ${id}`);
+              process.exit(1);
+            }
+
             const checkpointPath = path.join(process.cwd(), 'config', 'sessions', 'checkpoints', `${id}.json`);
             let cp = null;
             if (fs.existsSync(checkpointPath)) {
@@ -386,12 +391,22 @@ case "$COMMAND" in
             } else {
               // Try container checkpoint export if running (FR-019)
               try {
-                const { execSync } = await import('child_process');
-                const raw = execSync(`docker compose exec -T dsh cat /var/lib/dsh/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /etc/dsh/sessions/checkpoints/${id}.json 2>/dev/null || docker compose exec -T dsh cat /root/.dsh/sessions/checkpoints/${id}.json 2>/dev/null`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-                if (raw && raw.trim().startsWith('{')) {
-                  cp = JSON.parse(raw);
-                  fs.mkdirSync(path.dirname(checkpointPath), { recursive: true });
-                  fs.writeFileSync(checkpointPath, JSON.stringify(cp, null, 2), 'utf8');
+                const { execFileSync } = await import('child_process');
+                const targetPaths = [
+                  `/var/lib/dsh/sessions/checkpoints/${id}.json`,
+                  `/etc/dsh/sessions/checkpoints/${id}.json`,
+                  `/root/.dsh/sessions/checkpoints/${id}.json`
+                ];
+                for (const p of targetPaths) {
+                  try {
+                    const raw = execFileSync('docker', ['compose', 'exec', '-T', 'dsh', 'cat', p], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+                    if (raw && raw.trim().startsWith('{')) {
+                      cp = JSON.parse(raw);
+                      fs.mkdirSync(path.dirname(checkpointPath), { recursive: true });
+                      fs.writeFileSync(checkpointPath, JSON.stringify(cp, null, 2), 'utf8');
+                      break;
+                    }
+                  } catch {}
                 }
               } catch {}
             }

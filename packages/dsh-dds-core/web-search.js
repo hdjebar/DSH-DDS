@@ -5,6 +5,7 @@
  * when third-party keyless quotas are exhausted or anonymous IP access is blocked.
  */
 
+import http from 'node:http';
 import https from 'node:https';
 
 export function parseDuckDuckGoHtml(html, maxResults = 5) {
@@ -24,11 +25,22 @@ export function parseDuckDuckGoHtml(html, maxResults = 5) {
   return results;
 }
 
-export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000) {
+function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, redirectCount = 0) {
   return new Promise((resolve, reject) => {
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const req = https.get(
-      url,
+    if (redirectCount > 3) {
+      return reject(new Error('DuckDuckGo search exceeded maximum redirect limit (3)'));
+    }
+
+    let parsed;
+    try {
+      parsed = new URL(targetUrl);
+    } catch (e) {
+      return reject(new Error(`Invalid search URL: ${targetUrl}`));
+    }
+
+    const client = parsed.protocol === 'http:' ? http : https;
+    const req = client.get(
+      targetUrl,
       {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -38,6 +50,11 @@ export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000
         timeout: timeoutMs
       },
       (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const nextUrl = new URL(res.headers.location, targetUrl).toString();
+          res.resume();
+          return fetchSearchUrl(nextUrl, maxResults, timeoutMs, redirectCount + 1).then(resolve, reject);
+        }
         if (res.statusCode && res.statusCode >= 400) {
           return reject(new Error(`DuckDuckGo returned HTTP ${res.statusCode}`));
         }
@@ -45,8 +62,8 @@ export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
           try {
-            const parsed = parseDuckDuckGoHtml(data, maxResults);
-            resolve(parsed);
+            const parsedResults = parseDuckDuckGoHtml(data, maxResults);
+            resolve(parsedResults);
           } catch (e) {
             reject(e);
           }
@@ -60,6 +77,11 @@ export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000
       reject(new Error(`Search request timed out after ${timeoutMs}ms`));
     });
   });
+}
+
+export function executeDuckDuckGoSearch(query, maxResults = 5, timeoutMs = 15000) {
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  return fetchSearchUrl(url, maxResults, timeoutMs, 0);
 }
 
 export async function resilientSearch(request, signal) {

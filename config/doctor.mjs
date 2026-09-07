@@ -56,6 +56,15 @@ function safeErrorSnippet(rawText) {
 
 function checkSecretPermissions() {
   console.log('\n🔒 [0/9] Security & Secret Permissions:');
+  const vaultKey = process.env.DSH_VAULT_MASTER_KEY;
+  if (!vaultKey) {
+    fail('BYOK Vault Master Key', 'DSH_VAULT_MASTER_KEY is not set. Vault encryption requires >= 32 chars.');
+  } else if (vaultKey.length < 32) {
+    fail('BYOK Vault Master Key', `DSH_VAULT_MASTER_KEY is too short (${vaultKey.length} chars, must be >= 32).`);
+  } else {
+    pass('BYOK Vault Master Key', `Configured (${vaultKey.length} chars)`);
+  }
+
   const hostEnvStatus = process.env.DSH_HOST_ENV_STATUS;
   const hostEnvMode = process.env.DSH_HOST_ENV_MODE;
 

@@ -5310,9 +5310,9 @@
           <h3>Container Hardening &amp; Non-Root</h3>
         </div>
         <ul>
-          <li>&bull; User browser binds strictly to 127.0.0.1:3080</li>
-          <li>&bull; Non-root UID 1000 with dropped Linux capabilities (cap_drop: ALL)</li>
-          <li>&bull; Strict cgroup resource limits (2.0 CPUs, 4GB RAM, 512 PIDs)</li>
+          <li>&bull; User browser binds strictly to 127.0.0.1:3080 with trusted peer header verification</li>
+          <li>&bull; Non-root UID 1000 with root:root 755 /app immutable code protection</li>
+          <li>&bull; Strict cgroup resource limits and dropped Linux capabilities (cap_drop: ALL)</li>
         </ul>
       </div>
 
@@ -5322,9 +5322,9 @@
           <h3>Zero-Trust Enforcement &amp; Egress</h3>
         </div>
         <ul>
-          <li>&bull; In-Line PEP verifies path containment and symlink escape</li>
-          <li>&bull; BYOK Vault encrypts keys with AES-256-GCM per user</li>
-          <li>&bull; Envoy sidecar enforces DNS caching and egress lockdown (ADR 0008)</li>
+          <li>&bull; In-Line PEP maps tool verbs to policy actions and validates tenant paths</li>
+          <li>&bull; BYOK Vault encrypts keys with fail-closed master key (AES-256-GCM v2)</li>
+          <li>&bull; Envoy sidecar digest-pinned, enforces DNS caching and egress lockdown</li>
         </ul>
       </div>
 

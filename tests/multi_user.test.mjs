@@ -26,13 +26,23 @@ test('IAM Service: default fallback when unauthenticated in single-operator mode
   assert.deepEqual(result.permissions, ['*']);
 });
 
-test('IAM Service: extracts user identity from custom gateway headers', () => {
+test('IAM Service: extracts user identity from custom gateway headers only from trusted peer', () => {
   const headers = {
     'x-dsh-user-id': 'alice_99',
     'x-dsh-user-name': 'Alice Analyst',
     'x-dsh-user-roles': 'data-analyst, researcher'
   };
-  const result = extractUserFromHeaders(headers, { authEnabled: false });
+
+  // Untrusted peer or trustProxyHeaders disabled -> Headers ignored, safe default returned
+  const untrustedResult = extractUserFromHeaders(headers, { authEnabled: false, trustProxyHeaders: false });
+  assert.equal(untrustedResult.id, 'default');
+  assert.deepEqual(untrustedResult.roles, ['admin']);
+
+  const untrustedIp = extractUserFromHeaders(headers, { authEnabled: false, trustProxyHeaders: true, remoteAddress: '198.51.100.4' });
+  assert.equal(untrustedIp.id, 'default');
+
+  // Trusted gateway with trustProxyHeaders enabled -> Successfully extracts user identity
+  const result = extractUserFromHeaders(headers, { authEnabled: false, trustProxyHeaders: true, remoteAddress: '127.0.0.1' });
   assert.equal(result.id, 'alice_99');
   assert.equal(result.name, 'Alice Analyst');
   assert.deepEqual(result.roles, ['data-analyst', 'researcher']);

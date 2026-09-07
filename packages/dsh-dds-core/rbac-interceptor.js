@@ -28,6 +28,38 @@ async function getRbacEngine() {
   }
 }
 
+export const TOOL_ACTION_MAP = {
+  bash: 'run_shell',
+  sh: 'run_shell',
+  shell: 'run_shell',
+  exec: 'run_shell',
+  terminal: 'run_shell',
+  execute_command: 'run_shell',
+  run_shell: 'run_shell',
+  read_file: 'read_file',
+  read: 'read_file',
+  cat: 'read_file',
+  view_file: 'read_file',
+  glob: 'read_file',
+  grep: 'read_file',
+  write: 'create_file',
+  write_file: 'create_file',
+  create_file: 'create_file',
+  edit: 'modify_file',
+  edit_file: 'modify_file',
+  modify_file: 'modify_file',
+  save_artifact: 'save_artifact',
+  fetch: 'fetch_sources',
+  fetch_sources: 'fetch_sources',
+  mcp_fetch: 'fetch_sources',
+  web_search: 'fetch_sources',
+  sqlite: 'inspect_sqlite',
+  sqlite_query: 'inspect_sqlite',
+  inspect_sqlite: 'inspect_sqlite',
+  tabular: 'inspect_tabular',
+  inspect_tabular: 'inspect_tabular'
+};
+
 export function registerRbacInterceptor(ctx, config = {}) {
   if (config.enableToolRbac === false) return;
 
@@ -38,15 +70,28 @@ export function registerRbacInterceptor(ctx, config = {}) {
       try { fs.mkdirSync(actionContext.workdir, { recursive: true }); } catch {}
     }
 
-    const user = actionContext.user || ctx.user || { id: 'default', roles: ['admin'] };
+    const user = actionContext.user || ctx.user;
+    if (!user) {
+      throw new Error('[Zero-Trust RBAC Violation] Missing authenticated user identity context');
+    }
+
+    const resolvedAction = TOOL_ACTION_MAP[actionContext.action]
+      || actionContext.action
+      || TOOL_ACTION_MAP[actionContext.toolName]
+      || null;
+
+    if (!resolvedAction) {
+      throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || 'unknown'}' is an unmapped or unauthorized tool`);
+    }
+
     const step = {
       name: actionContext.toolName || 'tool-execute',
-      action: actionContext.action || 'execute',
+      action: resolvedAction,
       target: actionContext.target || actionContext.path || actionContext.command
     };
 
     // Multi-tenant scoped workspace boundary evaluation
-    if (step.target && typeof step.target === 'string' && (step.target.startsWith('/') || step.target.startsWith('.'))) {
+    if (step.target && typeof step.target === 'string') {
       const tenantCheck = partitionManager.validatePathAccess(step.target, user);
       if (!tenantCheck.allowed) {
         const engine = await getRbacEngine();

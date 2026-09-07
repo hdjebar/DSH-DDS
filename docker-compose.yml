@@ -49,6 +49,7 @@ services:
       - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml

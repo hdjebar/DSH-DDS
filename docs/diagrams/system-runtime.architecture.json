@@ -59,18 +59,18 @@
       "dot": "cyan",
       "title": "Container Hardening & Non-Root",
       "items": [
-        "User browser binds strictly to 127.0.0.1:3080",
-        "Non-root UID 1000 with dropped Linux capabilities (cap_drop: ALL)",
-        "Strict cgroup resource limits (2.0 CPUs, 4GB RAM, 512 PIDs)"
+        "User browser binds strictly to 127.0.0.1:3080 with trusted peer header verification",
+        "Non-root UID 1000 with root:root 755 /app immutable code protection",
+        "Strict cgroup resource limits and dropped Linux capabilities (cap_drop: ALL)"
       ]
     },
     {
       "dot": "rose",
       "title": "Zero-Trust Enforcement & Egress",
       "items": [
-        "In-Line PEP verifies path containment and symlink escape",
-        "BYOK Vault encrypts keys with AES-256-GCM per user",
-        "Envoy sidecar enforces DNS caching and egress lockdown (ADR 0008)"
+        "In-Line PEP maps tool verbs to policy actions and validates tenant paths",
+        "BYOK Vault encrypts keys with fail-closed master key (AES-256-GCM v2)",
+        "Envoy sidecar digest-pinned, enforces DNS caching and egress lockdown"
       ]
     },
     {

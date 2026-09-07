@@ -5,19 +5,9 @@
  * Native Cordis integration intercepting requests on ctx.webServer.
  */
 import { handleVaultApiRequest, ByokVault } from './byok-vault.js';
+import { isTrustedGatewayIp, isLoopbackOrLocalBridgeIp } from './net-trust.js';
 
-export function isTrustedGatewayIp(addr) {
-  if (!addr) return false;
-  const ip = addr.replace(/^::ffff:/, '');
-  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
-  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
-  if (/^10\./.test(ip)) return true;
-  if (/^192\.168\./.test(ip)) return true;
-  if (/^169\.254\./.test(ip)) return true;
-  if (/^fe80:/i.test(ip)) return true;
-  if (/^fd[0-9a-f]{2}:/i.test(ip)) return true;
-  return false;
-}
+export { isTrustedGatewayIp, isLoopbackOrLocalBridgeIp };
 
 export function isSameOriginOrLoopback(originStr, hostStr) {
   if (!hostStr || !originStr) return false;
@@ -85,10 +75,15 @@ export function registerGatewayMiddleware(ctx, config = {}) {
       }
 
       const remote = req.socket?.remoteAddress;
-      const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : '');
+      let origin = req.headers.origin || '';
+      if (!origin && req.headers.referer) {
+        try {
+          origin = new URL(req.headers.referer).origin;
+        } catch {}
+      }
       const host = req.headers.host || '';
 
-      if (!isTrustedGatewayIp(remote) && !isSameOriginOrLoopback(origin, host)) {
+      if (!isLoopbackOrLocalBridgeIp(remote) && !isSameOriginOrLoopback(origin, host)) {
         res.statusCode = 403;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'Forbidden: Restart request must originate from loopback or container gateway.' }));
@@ -134,7 +129,19 @@ export function registerGatewayMiddleware(ctx, config = {}) {
     kind: 'exact',
     path: '/dsh-dds/api/vault/keys',
     handler: async (req, res) => {
-      const vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
+      let vault;
+      try {
+        vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+          success: false,
+          error: 'VAULT_UNAVAILABLE',
+          message: err.message
+        }));
+        return;
+      }
       const user = req.user || (typeof ctx.get === 'function' ? ctx.get('iam')?.getCurrentUser() : null) || { id: 'default' };
       await handleVaultApiRequest(req, res, vault, user);
     }

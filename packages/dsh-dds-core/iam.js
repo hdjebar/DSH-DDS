@@ -6,6 +6,7 @@
  */
 
 import crypto from 'node:crypto';
+import { isTrustedGatewayIp } from './net-trust.js';
 
 export const DEFAULT_OPERATOR = Object.freeze({
   id: 'default',
@@ -28,6 +29,16 @@ export function verifyBearerToken(token, secret) {
     // Check HMAC-signed format: header.payload.signature
     const parts = token.split('.');
     if (parts.length === 3) {
+      let header;
+      try {
+        header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      } catch {
+        return false;
+      }
+      // Strictly pin algorithm to HS256 to prevent algorithm confusion attacks
+      if (!header || header.alg !== 'HS256') {
+        return false;
+      }
       const data = `${parts[0]}.${parts[1]}`;
       const expectedSig = crypto.createHmac('sha256', secret).update(data).digest('base64url');
       if (crypto.timingSafeEqual(Buffer.from(parts[2]), Buffer.from(expectedSig))) {
@@ -50,6 +61,7 @@ export function verifyBearerToken(token, secret) {
 export function extractUserFromHeaders(headers = {}, options = {}) {
   const authSecret = options.authSecret || process.env.DSH_AUTH_SECRET;
   const authEnabled = options.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
+  const trustProxyHeaders = options.trustProxyHeaders ?? (process.env.DSH_TRUST_PROXY_HEADERS === 'true');
 
   const authHeader = headers['authorization'] || headers['Authorization'] || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
@@ -74,9 +86,9 @@ export function extractUserFromHeaders(headers = {}, options = {}) {
     };
   }
 
-  // Explicit user identity headers passed by reverse proxy or gateway
+  // Explicit user identity headers passed by reverse proxy or gateway (requires trusted peer & opt-in)
   const headerUserId = headers['x-dsh-user-id'];
-  if (headerUserId) {
+  if (headerUserId && trustProxyHeaders && isTrustedGatewayIp(options.remoteAddress)) {
     const id = sanitizeUserId(headerUserId);
     const name = headers['x-dsh-user-name'] || id;
     const rawRoles = headers['x-dsh-user-roles'] || headers['x-dsh-user-role'] || 'user';
@@ -100,6 +112,7 @@ export class IamService {
     this.config = config;
     this.authEnabled = config.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
     this.authSecret = config.authSecret || process.env.DSH_AUTH_SECRET || '';
+    this.trustProxyHeaders = config.trustProxyHeaders ?? (process.env.DSH_TRUST_PROXY_HEADERS === 'true');
     this.currentUser = { ...DEFAULT_OPERATOR };
   }
 
@@ -125,7 +138,9 @@ export class IamService {
     const headers = req?.headers || {};
     const result = extractUserFromHeaders(headers, {
       authEnabled: this.authEnabled,
-      authSecret: this.authSecret
+      authSecret: this.authSecret,
+      trustProxyHeaders: this.trustProxyHeaders,
+      remoteAddress: req?.socket?.remoteAddress
     });
 
     if (result.error) {

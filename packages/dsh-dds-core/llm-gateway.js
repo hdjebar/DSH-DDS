@@ -11,6 +11,7 @@ export class LlmSemanticGateway {
     this.ctx = ctx;
     this.config = config;
     this.thoughtSignatures = new Map(); // Keyed by tool_call_id
+    this.maxThoughtSignatures = config.maxThoughtSignatures || 1000;
   }
 
   install() {
@@ -126,6 +127,12 @@ export class LlmSemanticGateway {
       const toolCalls = chunk.tool_calls || (chunk.tool_call ? [chunk.tool_call] : []);
       for (const tc of toolCalls) {
         if (tc && tc.id && tc.extra_content) {
+          if (this.thoughtSignatures.size >= this.maxThoughtSignatures) {
+            const oldestKey = this.thoughtSignatures.keys().next().value;
+            if (oldestKey !== undefined) {
+              this.thoughtSignatures.delete(oldestKey);
+            }
+          }
           this.thoughtSignatures.set(tc.id, tc.extra_content);
         }
       }

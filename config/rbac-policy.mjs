@@ -21,7 +21,7 @@ function getYamlEngine() {
     try {
       return require('/usr/local/lib/node_modules/yaml');
     } catch {
-      return null;
+      throw new Error('YAML_ENGINE_MISSING: npm package "yaml" is required but not installed');
     }
   }
 }
@@ -265,7 +265,7 @@ export function enforceRbacPolicy(personaMeta, step) {
   }
 
   // PR-002: Strict validation of resource scalar types
-  const resourceFields = ['target', 'destination', 'scope', 'source', 'concrete_target'];
+  const resourceFields = ['target', 'destination', 'scope', 'source', 'concrete_target', 'schema', 'path', 'file'];
   for (const field of resourceFields) {
     if (field in step && step[field] !== undefined && step[field] !== null) {
       const val = step[field];
@@ -327,7 +327,8 @@ export function enforceRbacPolicy(personaMeta, step) {
 
   const isWriteAction = [
     'write_report', 'apply_fix_or_patch', 'save_artifact',
-    'create_file', 'contain_threat', 'modify_file', 'escalate_to_soc'
+    'create_file', 'contain_threat', 'modify_file', 'escalate_to_soc',
+    'run_shell'
   ].includes(rawAction);
 
   const isReadAction = [

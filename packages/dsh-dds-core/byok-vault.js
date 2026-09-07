@@ -41,13 +41,16 @@ export function encryptSecret(plaintext, masterSecret) {
     iv: iv.toString('base64'),
     tag: tag.toString('base64'),
     salt: salt.toString('base64'),
-    version: 1
+    version: 2
   };
 }
 
 export function decryptSecret(payload, masterSecret) {
   if (!payload || !payload.ciphertext || !payload.iv || !payload.tag || !payload.salt) {
     throw new Error('Invalid encrypted secret payload structure');
+  }
+  if (payload.version && payload.version < 2) {
+    throw new Error('DEPRECATED_VAULT_PAYLOAD: Legacy v1 vault payload format is no longer accepted.');
   }
   const salt = Buffer.from(payload.salt, 'base64');
   const iv = Buffer.from(payload.iv, 'base64');
@@ -64,7 +67,12 @@ export function decryptSecret(payload, masterSecret) {
 
 export class ByokVault {
   constructor(options = {}) {
-    this.masterSecret = options.masterSecret || process.env.DSH_VAULT_MASTER_KEY || 'dsh-vault-default-secret-change-in-prod';
+    this.masterSecret = options.masterSecret || process.env.DSH_VAULT_MASTER_KEY;
+    if (!this.masterSecret || this.masterSecret.length < 32) {
+      throw new Error(
+        'VAULT_MASTER_KEY_MISSING: set DSH_VAULT_MASTER_KEY (>=32 chars) before using the BYOK vault.'
+      );
+    }
     this.userStateBase = options.userStateBase || process.env.DSH_USER_STATE_BASE || '/var/lib/dsh/users';
   }
 
@@ -161,7 +169,17 @@ export async function handleVaultApiRequest(req, res, vault, user = { id: 'defau
 
   const parseJsonBody = () => new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', chunk => { body += chunk; });
+    let bytes = 0;
+    const MAX_BYTES = 65536; // 64 KB limit
+    req.on('data', chunk => {
+      bytes += chunk.length;
+      if (bytes > MAX_BYTES) {
+        req.destroy();
+        reject(new Error('PAYLOAD_TOO_LARGE: Request body exceeded 64 KB limit'));
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', () => {
       try {
         resolve(body ? JSON.parse(body) : {});

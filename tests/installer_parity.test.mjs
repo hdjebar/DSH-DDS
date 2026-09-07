@@ -110,7 +110,8 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     'packages/dsh-dds-core/rbac-interceptor.js',
     'packages/dsh-dds-core/loader.mjs',
     'packages/dsh-dds-core/loader-hooks.mjs',
-    'packages/dsh-dds-core/llm-gateway.js'
+    'packages/dsh-dds-core/llm-gateway.js',
+    'packages/dsh-dds-core/net-trust.js'
   ];
 
   for (const item of required) {

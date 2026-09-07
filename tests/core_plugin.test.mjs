@@ -11,7 +11,8 @@ import {
   registerLocalizationTap,
   registerRbacInterceptor,
   registerSessionEventsShim,
-  registerBashWorkdirShim
+  registerBashWorkdirShim,
+  DEFAULT_OPERATOR
 } from '../packages/dsh-dds-core/index.js';
 import { isTrustedGatewayIp, isSameOriginOrLoopback } from '../packages/dsh-dds-core/gateway.js';
 import { TRANSLATION_DICTIONARY } from '../packages/dsh-dds-core/localization.js';
@@ -190,6 +191,7 @@ test('Core Plugin: full plugin apply activates all subsystems cleanly', () => {
 test('Core RBAC Interceptor: intercepts and blocks unauthorized tool actions', async () => {
   let beforeHook = null;
   const mockCtx = {
+    user: DEFAULT_OPERATOR,
     before(event, fn) {
       if (event === 'tool-execute') beforeHook = fn;
     }
@@ -245,6 +247,34 @@ test('Core RBAC Interceptor: intercepts and blocks unauthorized tool actions', a
       await beforeHook(maliciousContext);
     },
     /Zero-Trust RBAC Violation/
+  );
+
+  // Test unmapped tool fails closed
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'unknown_unmapped_tool',
+        target: '/workspaces/cases/report.md'
+      });
+    },
+    /Zero-Trust RBAC Violation.*unmapped or unauthorized tool/
+  );
+
+  // Test missing identity context fails closed
+  const noUserCtx = {
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+  registerRbacInterceptor(noUserCtx, { enableToolRbac: true });
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'read_file',
+        target: '/workspaces/cases/report.md'
+      });
+    },
+    /Zero-Trust RBAC Violation.*Missing authenticated user identity context/
   );
 });
 

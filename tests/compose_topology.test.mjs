@@ -43,6 +43,12 @@ test('Base Compose: immutability, non-root user, and resource limits', () => {
     assert.match(port, /^127\.0\.0\.1:/, `Port binding must be loopback only: ${port}`);
   }
 
+  // Vault master key variable passed to container
+  assert.ok(
+    dsh.environment.some(e => e.startsWith('DSH_VAULT_MASTER_KEY=')),
+    'Base compose must pass DSH_VAULT_MASTER_KEY to dsh container'
+  );
+
   // Phoenix service
   const phoenix = compose.services.phoenix;
   assert.ok(phoenix, 'Must define phoenix service');
@@ -112,6 +118,11 @@ test('Sandbox Compose: credential blanking, audit retention, named volume state,
   // Hardened egress-filter sidecar
   const egressFilter = compose.services['egress-filter'];
   assert.ok(egressFilter, 'Must define egress-filter');
+  assert.match(
+    egressFilter.image,
+    /@sha256:[a-f0-9]{64}$/,
+    'egress-filter must pin an immutable sha256 image digest'
+  );
   assert.deepEqual(egressFilter.cap_drop, ['ALL'], 'egress-filter must drop ALL capabilities');
   assert.deepEqual(egressFilter.security_opt, ['no-new-privileges:true'], 'egress-filter must enforce no-new-privileges');
   assert.ok(egressFilter.deploy?.resources?.limits?.cpus, 'egress-filter must declare CPU limits');
