@@ -60,7 +60,6 @@ chmod +x install_dsh.sh
 git clone https://github.com/hdjebar/DSH-DDS.git
 cd DSH-DDS
 
-# Configure environment variables
 # Configure environment variables (restrict permissions)
 cp .env.example .env
 chmod 0600 .env
