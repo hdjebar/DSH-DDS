@@ -18,10 +18,12 @@ flowchart TD
     subgraph DSH_Container ["🐳 Container: dsh-local (UID 1000:1000, cap_drop: ALL)"]
         CORE["⚡ DeepSeek Harness Kernel (Port 3080)\n@deepseek-ai/dsh (Cordis Microkernel)"]
         
-        subgraph Core_Plugin ["🧩 Native Core Plugin: @dsh-dds/core"]
+        subgraph Core_Plugin ["🧩 Native Core Plugin: @dsh-dds/core (Level 4.0)"]
             GW["🌐 WebServer Gateway Middleware\n(Bridge IP Recognition & Origin Normalization)"]
+            IAM["👤 Identity & Access Management\n(Token Auth & Context Enrichment)"]
+            VAULT["🔐 BYOK Encrypted Vault\n(/dsh-dds/api/vault/keys & AES-256-GCM)"]
+            PEP["🛡️ In-Line Tool Interceptor (PEP)\n(Dynamic Policy & Tenant Confinement)"]
             RESTART["🔄 Lifecycle Supervisor\n(/dsh-dds/lifecycle/restart & /dsh-dds/health)"]
-            PEP["🛡️ In-Line Tool Interceptor (PEP)\n(Dynamic Policy Enforcement Point)"]
             CATALOG["⚡ In-Process ModelCatalogService\n(/dsh-dds/api/models/sync & OTel Init)"]
             I18N["🌐 Web UI Localization Tap\n(In-Memory HTML tapIndex)"]
         end

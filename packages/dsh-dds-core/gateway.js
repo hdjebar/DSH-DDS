@@ -4,6 +4,7 @@
  * Replaces ad-hoc disk patches (patch-market-restart.mjs, patch-client-connection.mjs).
  * Native Cordis integration intercepting requests on ctx.webServer.
  */
+import { handleVaultApiRequest, ByokVault } from './byok-vault.js';
 
 export function isTrustedGatewayIp(addr) {
   if (!addr) return false;
@@ -125,6 +126,17 @@ export function registerGatewayMiddleware(ctx, config = {}) {
         user: process.getuid ? process.getuid() : 'unknown',
         uptime: process.uptime()
       }));
+    }
+  });
+
+  // Authenticated BYOK Vault REST endpoint
+  webServer.register({
+    kind: 'exact',
+    path: '/dsh-dds/api/vault/keys',
+    handler: async (req, res) => {
+      const vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
+      const user = req.user || (typeof ctx.get === 'function' ? ctx.get('iam')?.getCurrentUser() : null) || { id: 'default' };
+      await handleVaultApiRequest(req, res, vault, user);
     }
   });
 }

@@ -1253,6 +1253,45 @@ export class DeclarativeWorkflowEngine {
     };
 
     try {
+      // Invariant 7: Deterministic Loop Trap & Hash Ring Guard
+      const stepTarget = normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || '';
+      const stepParams = normalizedStep.parameters || normalizedStep.params || {};
+      const signaturePayload = JSON.stringify({ action: rawAction, target: String(stepTarget).trim(), params: stepParams });
+      const stepSignature = crypto.createHash('sha256').update(signaturePayload).digest('hex');
+
+      if (!currentContext.__stepHashRing) {
+        currentContext.__stepHashRing = [];
+      }
+      const ring = currentContext.__stepHashRing;
+      if (ring.length > 0 && ring[ring.length - 1] === stepSignature) {
+        const loopErr = new Error(`[Agent Loop Trap] Deterministic circular step detected: action '${rawAction}' on target '${stepTarget}' executed repeatedly without divergence (LOOP_DETECTED)`);
+        loopErr.code = 'LOOP_DETECTED';
+
+        logGrcAuditEvent({
+          persona: this.meta.name,
+          workflow: workflowName,
+          step_name: normalizedStep.name || rawAction,
+          action: rawAction,
+          target: stepTarget,
+          decision: 'DENIED',
+          role: rbacCheck.role,
+          reason: loopErr.message
+        }, traceId);
+
+        const fallbackResult = await triggerFallback(loopErr.message);
+        if (fallbackResult) {
+          stepOutput = fallbackResult;
+          if (fallbackResult.status === 'recovered') {
+            stepError = null;
+          } else {
+            stepError = fallbackResult.error;
+          }
+          return stepOutput;
+        }
+        throw loopErr;
+      }
+      ring.push(stepSignature);
+
       stepOutput = await handler(canonicalEnvelope, currentContext);
       if (stepOutput && (stepOutput.status === 'failed' || stepOutput.failed === true)) {
         stepError = stepOutput.error || `Action '${rawAction}' failed semantic validation`;

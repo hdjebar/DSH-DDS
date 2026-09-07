@@ -143,3 +143,87 @@ export class ByokVault {
     return false;
   }
 }
+
+export async function handleVaultApiRequest(req, res, vault, user = { id: 'default' }) {
+  res.setHeader('Content-Type', 'application/json');
+
+  if (req.method === 'GET') {
+    const providers = vault.listConfiguredProviders(user.id);
+    res.statusCode = 200;
+    res.end(JSON.stringify({
+      success: true,
+      userId: user.id,
+      configuredProviders: providers,
+      count: providers.length
+    }));
+    return;
+  }
+
+  const parseJsonBody = () => new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on('error', reject);
+  });
+
+  if (req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody();
+      const { provider, apiKey } = payload;
+      if (!provider || typeof provider !== 'string' || !apiKey || typeof apiKey !== 'string') {
+        res.statusCode = 400;
+        res.end(JSON.stringify({
+          success: false,
+          error: 'BAD_REQUEST',
+          message: 'Both provider and apiKey are required and must be non-empty strings'
+        }));
+        return;
+      }
+      vault.setApiKey(user.id, provider, apiKey);
+      res.statusCode = 200;
+      res.end(JSON.stringify({
+        success: true,
+        userId: user.id,
+        provider: provider.trim().toLowerCase(),
+        message: 'API key encrypted and saved successfully'
+      }));
+    } catch (err) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ success: false, error: 'BAD_JSON', message: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const payload = await parseJsonBody();
+      const provider = payload.provider || (req.url && new URL(req.url, 'http://localhost').searchParams.get('provider'));
+      if (!provider) {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ success: false, error: 'BAD_REQUEST', message: 'Provider is required' }));
+        return;
+      }
+      const deleted = vault.deleteApiKey(user.id, provider);
+      res.statusCode = 200;
+      res.end(JSON.stringify({
+        success: true,
+        userId: user.id,
+        provider: provider.trim().toLowerCase(),
+        deleted
+      }));
+    } catch (err) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ success: false, error: 'BAD_JSON', message: err.message }));
+    }
+    return;
+  }
+
+  res.statusCode = 405;
+  res.end(JSON.stringify({ success: false, error: 'METHOD_NOT_ALLOWED', message: 'Supported methods: GET, POST, DELETE' }));
+}

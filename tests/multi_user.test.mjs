@@ -13,8 +13,10 @@ import {
   ByokVault,
   encryptSecret,
   decryptSecret,
+  handleVaultApiRequest,
   registerRbacInterceptor
 } from '../packages/dsh-dds-core/index.js';
+import { EventEmitter } from 'node:events';
 
 test('IAM Service: default fallback when unauthenticated in single-operator mode', () => {
   const result = extractUserFromHeaders({}, { authEnabled: false });
@@ -211,6 +213,71 @@ test('In-Line PEP: enforces multi-tenant workspace confinement during tool execu
         target: path.join(wsBase, 'users', 'bob', 'secret.txt')
       });
     });
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('BYOK Vault HTTP REST API: supports GET, POST, DELETE with JSON payloads', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-vault-api-'));
+  try {
+    const vault = new ByokVault({ masterSecret: 'test-vault-secret-1234567890123456', userStateBase: tmpDir });
+    const user = { id: 'alice', roles: ['user'] };
+
+    const mockRequest = (method, bodyObj, query = '') => {
+      const req = new EventEmitter();
+      req.method = method;
+      req.url = `/dsh-dds/api/vault/keys${query}`;
+      req.headers = {};
+      const res = {
+        statusCode: 0,
+        headers: {},
+        body: '',
+        setHeader(k, v) { this.headers[k] = v; },
+        end(data) { this.body = data; this.emit('finish'); }
+      };
+      Object.assign(res, EventEmitter.prototype);
+
+      process.nextTick(() => {
+        if (bodyObj) req.emit('data', JSON.stringify(bodyObj));
+        req.emit('end');
+      });
+      return { req, res };
+    };
+
+    // 1. Initial GET -> empty
+    const { req: getReq, res: getRes } = mockRequest('GET');
+    await handleVaultApiRequest(getReq, getRes, vault, user);
+    const getInitial = JSON.parse(getRes.body);
+    assert.equal(getInitial.success, true);
+    assert.equal(getInitial.count, 0);
+
+    // 2. POST to save key
+    const { req: postReq, res: postRes } = mockRequest('POST', { provider: 'openrouter', apiKey: 'sk-or-test-secret' });
+    await handleVaultApiRequest(postReq, postRes, vault, user);
+    const postData = JSON.parse(postRes.body);
+    assert.equal(postData.success, true);
+    assert.equal(postData.provider, 'openrouter');
+
+    // 3. GET after saving -> count 1
+    const { req: getReq2, res: getRes2 } = mockRequest('GET');
+    await handleVaultApiRequest(getReq2, getRes2, vault, user);
+    const getAfter = JSON.parse(getRes2.body);
+    assert.equal(getAfter.count, 1);
+    assert.deepEqual(getAfter.configuredProviders, ['openrouter']);
+
+    // 4. DELETE key
+    const { req: delReq, res: delRes } = mockRequest('DELETE', { provider: 'openrouter' });
+    await handleVaultApiRequest(delReq, delRes, vault, user);
+    const delData = JSON.parse(delRes.body);
+    assert.equal(delData.success, true);
+    assert.equal(delData.deleted, true);
+
+    // 5. GET after delete -> count 0
+    const { req: getReq3, res: getRes3 } = mockRequest('GET');
+    await handleVaultApiRequest(getReq3, getRes3, vault, user);
+    const getFinal = JSON.parse(getRes3.body);
+    assert.equal(getFinal.count, 0);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

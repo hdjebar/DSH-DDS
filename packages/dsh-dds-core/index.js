@@ -18,7 +18,7 @@ import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
 import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml } from './web-search.js';
 import { registerIamMiddleware, IamService, extractUserFromHeaders, verifyBearerToken, DEFAULT_OPERATOR } from './iam.js';
 import { UserPartitionManager } from './user-partition.js';
-import { ByokVault, encryptSecret, decryptSecret } from './byok-vault.js';
+import { ByokVault, encryptSecret, decryptSecret, handleVaultApiRequest } from './byok-vault.js';
 
 export const name = '@dsh-dds/core';
 
@@ -158,7 +158,8 @@ export {
   UserPartitionManager,
   ByokVault,
   encryptSecret,
-  decryptSecret
+  decryptSecret,
+  handleVaultApiRequest
 };
 
 
