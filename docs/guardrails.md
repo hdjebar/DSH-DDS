@@ -246,20 +246,102 @@ Autonomous agents introduce multi-step reasoning, tool execution, and state pers
 
 ---
 
-## 🗺️ 5. Interactive Visualizations via Archify
+## 🏛️ 5. Global AI Risk & Governance Frameworks Alignment
+
+While OWASP addresses application-level and agentic attack vectors, enterprise AI adoption requires compliance with formal international **AI Risk Management Frameworks**. `DSH-DDS` implements code-level controls satisfying the four leading standards:
+
+```mermaid
+flowchart TD
+    subgraph Frameworks ["Global AI Risk & Governance Frameworks"]
+        NIST["NIST AI RMF 1.0\n(Govern, Map, Measure, Manage)"]
+        ISO["ISO/IEC 42001:2023\n(AI Management System - AIMS)"]
+        EU["EU AI Act (2024/1689)\n(Articles 9, 12, 14, 15)"]
+        MITRE["MITRE ATLAS\n(Adversarial Threat Matrix)"]
+    end
+
+    subgraph DSH_Controls ["DSH-DDS Architectural Enforcements"]
+        GOV_MAP["Declarative Manifests & DAGs\n(persona.yaml & Capabilities)"]
+        PEP_RBAC["In-Line PEP & Non-Root Sandbox\n(Zero-Trust RBAC & cap_drop: ALL)"]
+        OTEL_AUDIT["On-Premise OTel & Immutable GRC\n(Arize Phoenix & audit_grc.jsonl)"]
+        HITL_GATES["Asymmetric Cryptographic Gates\n(Ed25519 ACM & Invariant 7 Trap)"]
+    end
+
+    NIST --> GOV_MAP
+    NIST --> OTEL_AUDIT
+    ISO --> GOV_MAP
+    ISO --> OTEL_AUDIT
+    EU --> HITL_GATES
+    EU --> OTEL_AUDIT
+    MITRE --> PEP_RBAC
+    MITRE --> HITL_GATES
+```
+
+---
+
+### 1. NIST AI Risk Management Framework (NIST AI RMF 1.0)
+The National Institute of Standards and Technology (NIST) defines four core functions for managing AI risks:
+
+| NIST Function | Subcategory Requirement | `DSH-DDS` Architectural Implementation |
+| :--- | :--- | :--- |
+| **GOVERN** | **Govern 1.2 & 1.3**: Policies, roles, and responsibilities for AI systems are documented and enforced continuously. | **Immutable Declarative Personas**: Roles, tool access, model bindings, and security boundaries are version-controlled in `persona.yaml`. |
+| **MAP** | **Map 1.1 & 1.5**: Context, system capabilities, and boundary constraints are identified and categorized. | **15 Typed Capability Adapters**: Tools and actions are explicitly classified into typed adapters (HTTP probe, patch, syntax check, SOC alert) rather than arbitrary shell execution. |
+| **MEASURE** | **Measure 2.6 & 2.7**: System performance, safety metrics, and autonomous trajectories are tracked continuously. | **Local OTel & Trajectory Auditing**: Arize Phoenix records every span waterfall in SQLite (`127.0.0.1:6006`). `TrajectoryEvaluator` scores agent safety and compliance in real time. |
+| **MANAGE** | **Manage 2.2 & 2.4**: High-consequence risks are prioritized, mitigated, and subjected to human oversight. | **Ed25519 ACM Approval Gates & Invariant 7 Loop Trap**: Automated execution pauses for operator consent before high-risk mutations; runaway loops are terminated after 3 duplicate hashes. |
+
+---
+
+### 2. ISO/IEC 42001:2023 (Artificial Intelligence Management System - AIMS)
+ISO/IEC 42001 is the certifiable international management standard for organizations providing or utilizing AI systems:
+
+| ISO/IEC 42001 Section | Standard Requirement | `DSH-DDS` Compliance Control |
+| :--- | :--- | :--- |
+| **Clause 6.1** | **Actions to Address AI Risks**: Systematic risk assessment and treatment methodology for AI systems. | **Fail-Closed RBAC & In-Line PEP**: Evaluates risk dynamically before tool dispatch; unknown or unlisted actions default to deny (`RBAC_ACTION_UNRECOGNIZED`). |
+| **Clause 8.1** | **Operational Planning and Control**: Operating criteria and controlled life cycle for AI workflows. | **Deterministic Step Lifecycles**: Acyclic execution DAGs with atomic checkpoint state persistence (`.dsh_step_checkpoint.json`). |
+| **Annex A.6** | **AI System Life Cycle**: Verification and validation across deployment and operations. | **Multi-Persona Validation**: Domain separation (e.g., `coder` generates code; `security-auditor` validates syntax; `sdmx-expert` verifies official data structures). |
+| **Annex A.9** | **Third-Party AI Models**: Governance over external model providers and data exposure. | **BYOK Multi-Tenant Keystore**: Per-user AES-256-GCM encryption with loopback Envoy proxy egress isolation (ADR 0007). |
+| **Annex A.10** | **Traceability and Auditability**: Non-repudiable logs of AI decisions, inputs, and outputs. | **Immutable GRC Audit Ledger**: Records structured decision events in `audit_grc.jsonl` with 128-bit W3C TraceContext span correlation. |
+
+---
+
+### 3. EU AI Act (Regulation (EU) 2024/1689)
+The European Union Artificial Intelligence Act establishes mandatory compliance requirements for high-risk and general-purpose AI (GPAI) systems:
+
+| Article | Legal Requirement | `DSH-DDS` Architectural Control |
+| :--- | :--- | :--- |
+| **Article 9** | **Risk Management System**: Continuous, iterative risk management system active throughout the AI system life cycle. | **Real-Time PEP Interceptor**: Every tool call is intercepted by `@dsh-dds/core` and verified against directory containment allowlists and symlink escape checks (F-02). |
+| **Article 12** | **Record-Keeping & Automated Logging**: High-risk AI systems must implement automated logging of events to ensure traceability. | **On-Premise Non-Repudiable Ledger**: All policy decisions, approval tokens, and step executions are stored in local append-only `audit_grc.jsonl` and Phoenix SQLite storage. |
+| **Article 14** | **Human Oversight**: AI systems must be designed to allow natural persons to oversee, intervene, or halt autonomous operation. | **Asymmetric Ed25519 Approval Gates**: Autonomous execution halts at sensitive milestones, requiring an out-of-band operator signature (`./dsh.sh approve <id>`). |
+| **Article 15** | **Accuracy, Robustness & Cybersecurity**: Resilience against unauthorized third-party exploitation, prompt manipulation, and data poisoning. | **Defense-in-Depth Container Sandbox**: Non-root execution (`1000:1000`), stripped Linux capabilities (`cap_drop: ALL`), read-only FHS mounts, and loopback Envoy egress filtering. |
+
+---
+
+### 4. MITRE ATLAS (Adversarial Threat Landscape for AI Systems)
+MITRE ATLAS documents real-world adversary tactics, techniques, and procedures (TTPs) targeting AI-enabled systems:
+
+| ATLAS Tactic & Technique | Threat Description | `DSH-DDS` Countermeasure |
+| :--- | :--- | :--- |
+| **AML.T0054 (LLM Direct Prompt Injection)** | Adversary manipulates prompt to hijack model instructions. | **Elimination of Arbitrary Shells**: Subprocess shells abolished; actions execute strictly via typed JavaScript capability adapters. |
+| **AML.T0056 (Sensitive Information Disclosure)** | Adversary crafts queries to extract system credentials or files. | **Ancestor Realpath Canonicalization**: Traps path traversal (`..`) and symlink escapes (`SYM_LINK_ESCAPE`); credentials encrypted in BYOK vault. |
+| **AML.T0051 (LLM Prompt Extraction)** | Adversary extracts proprietary system prompts or personas. | **Read-Only System Configuration**: Personas and skill files mounted as read-only volumes (`/etc/dsh:ro`) inaccessible to unauthorized read actions. |
+| **AML.T0040 (ML Supply Chain Compromise)** | Compromised packages or hijacked dependencies in the agent runtime. | **Unified Diff Dependencies & CI Scanners**: Pinned `pnpm.patchedDependencies`, zero runtime monkey-patching, and automated Trivy/Hadolint CI validation. |
+| **AML.T0031 (Defense Evasion via Symlinks)** | Adversary creates symlinks pointing outside workspace to escape sandbox. | **Strict Boundary Enforcement**: `config/rbac-policy.mjs` verifies target canonical paths against `isContainedWithin` boundaries. |
+
+---
+
+## 🗺️ 6. Interactive Visualizations via Archify
 
 The interactive diagrams in [`docs/diagrams/`](diagrams/README.md) provide live visual representations of these guardrails:
 
 * 🛡️ **[Zero-Trust PEP & Dynamic RBAC Pipeline](diagrams/security-pipeline.workflow.html)**:
-  * Select the **"Fail-closed Defense"** view to trace how **ASI02** (Tool Misuse) and **LLM02** (Directory Escape) are quarantined before reaching the sandbox executor.
+  * Select the **"Fail-closed Defense"** view to trace how **ASI02** (Tool Misuse), **LLM02** (Directory Escape), and **MITRE AML.T0031** are quarantined before reaching the sandbox executor.
 * 🔄 **[Declarative Workflow & Invariant 7 Loop Trap](diagrams/declarative-workflow.workflow.html)**:
-  * Select the **"Loop Trap Circuit"** view to inspect the **ASI04** 12-step hash ring trap and **ASI06** Ed25519 human approval gates.
+  * Select the **"Loop Trap Circuit"** view to inspect the **ASI04** 12-step hash ring trap, **EU AI Act Article 14** oversight, and **NIST AI RMF Manage** approval gates.
 * ⚡ **[Agent Execution & OTLP Telemetry Sequence](diagrams/agent-trace.sequence.html)**:
-  * Select the **"Full Lifecycle"** view to trace **ASI10** local distributed telemetry emission to Arize Phoenix with zero cloud data leakage.
+  * Select the **"Full Lifecycle"** view to trace **EU AI Act Article 12** and **ISO/IEC 42001 Annex A.10** distributed telemetry emission with zero cloud data leakage.
 
 ---
 
-## 🧪 6. Testing & Verifying Guardrails Locally
+## 🧪 7. Testing & Verifying Guardrails Locally
 
 Run the automated test suite to verify that all guardrails are active and fail-closed:
 
