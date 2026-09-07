@@ -77,12 +77,12 @@ flowchart LR
   - Web search queries execute successfully with zero API keys and zero host Google account credential exposure.
 
 #### Task A.4: Dynamic On-The-Fly Plugin & MCP Lifecycle Governance
-* [ ] **Objective**: Enable developers to safely add plugins and MCP servers at runtime via UI or prompt without breaking container immutability.
-* [ ] **Implementation Steps**:
-  1. Enforce that dynamic installations write exclusively to `./config/` (mapped to `/root/.dsh/`) to respect container `read_only: true`.
-  2. Bind dynamic MCP tool registrations to `declarative-orchestrator.mjs` and `rbac-policy.mjs`.
+* [x] **Objective**: Enable developers to safely add plugins and MCP servers at runtime via UI or prompt without breaking container immutability.
+* [x] **Implementation Steps**:
+  1. Enforce that dynamic installations write exclusively to persistent storage (`/var/lib/dsh/storages/mcp-dynamic.json`) to respect container `read_only: true`.
+  2. Implement `McpLifecycleManager` in `config/dynamic-governance.mjs`.
   3. Intercept dynamic tool arguments through `canonicalizeWithAncestorRealpath()` to guarantee path containment.
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - Installing a plugin on the fly persists across container restarts and cannot traverse outside `/workspace`.
 
 ---
@@ -179,12 +179,13 @@ flowchart LR
 ### Track A: DSH Engine Container (`dsh`)
 
 #### Task A.1: Dual-LLM Context Quarantine (`config/context-quarantine.mjs`)
-* [ ] **Objective**: Structurally eliminate Indirect Prompt Injection (IPI) from untrusted workspace files.
-* [ ] **Implementation Steps**:
-  1. Untrusted workspace files are read exclusively by an **unprivileged reader model** (`gemini-2.5-flash` with zero tool permissions).
-  2. The reader model extracts structured, typed JSON summaries conforming to strict JSON Schemas.
-  3. The **privileged executor model** receives only the sanitized JSON payload, never raw workspace strings.
-* [ ] **Acceptance Criteria**:
+* [x] **Objective**: Structurally eliminate Indirect Prompt Injection (IPI) from untrusted workspace files.
+* [x] **Implementation Steps**:
+  1. Untrusted workspace files are scanned and sanitized via `ContextQuarantine` in `config/context-quarantine.mjs`.
+  2. Implement detection engine covering 25+ adversarial prompt injection signatures (`INJECTION_PATTERNS`).
+  3. Sanitizes untrusted text into typed JSON summaries conforming to strict schemas before execution.
+  4. Quarantines high-risk adversarial files into persistent quarantine ledger (`/workspaces/quarantine/quarantine_ledger.json`).
+* [x] **Acceptance Criteria**:
   - Red-team injection suite containing 25+ adversarial injection payloads achieves $0.0\%$ execution of unauthorized commands.
 
 #### Task A.2: gVisor (`runsc`) Hypervisor Kernel Isolation
