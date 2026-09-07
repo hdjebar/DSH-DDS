@@ -106,7 +106,14 @@ export class IamService {
   setCurrentUser(user) {
     this.currentUser = Object.freeze({ ...user });
     if (this.ctx) {
-      this.ctx.user = this.currentUser;
+      try {
+        if (typeof this.ctx.provide === 'function') {
+          this.ctx.provide('user', this.currentUser);
+        }
+      } catch {}
+      try {
+        this.ctx.user = this.currentUser;
+      } catch {}
     }
   }
 
@@ -137,26 +144,32 @@ export function registerIamMiddleware(ctx, config = {}) {
   const iam = new IamService(ctx, config);
 
   if (typeof ctx.provide === 'function') {
-    ctx.provide('iam', iam);
+    try { ctx.provide('iam', iam); } catch {}
+    try { ctx.provide('user', iam.getCurrentUser()); } catch {}
   }
 
-  ctx.user = iam.getCurrentUser();
+  try {
+    ctx.user = iam.getCurrentUser();
+  } catch {}
 
-  // Hook into Cordis webServer if available
-  if (ctx.webServer) {
-    const middleware = (req, res, next) => {
-      const authResult = iam.authenticateRequest(req);
-      if (authResult.error) {
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: authResult.error, message: authResult.message }));
-        return;
+  const hookWebServer = (webCtx) => {
+    try {
+      if (webCtx.webServer && typeof webCtx.webServer.use === 'function') {
+        webCtx.webServer.use((req, res, next) => {
+          const authResult = iam.authenticateRequest(req);
+          if (authResult.error) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: authResult.error, message: authResult.message }));
+            return;
+          }
+          if (typeof next === 'function') next();
+        });
       }
-      if (typeof next === 'function') next();
-    };
+    } catch {}
+  };
 
-    if (typeof ctx.webServer.use === 'function') {
-      ctx.webServer.use(middleware);
-    }
+  if (typeof ctx.inject === 'function') {
+    ctx.inject(['webServer'], (webCtx) => hookWebServer(webCtx));
   }
 
   return iam;

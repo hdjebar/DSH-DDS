@@ -478,6 +478,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/package.json"
   },
   "dsh": {
     "profile": {
+      "patchReload": "startup",
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",

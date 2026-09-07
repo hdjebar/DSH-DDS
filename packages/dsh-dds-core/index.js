@@ -33,8 +33,8 @@ export function apply(ctx, config = {}) {
   const userPartition = new UserPartitionManager(config);
   const byokVault = new ByokVault(config);
   if (typeof ctx.provide === 'function') {
-    ctx.provide('userPartition', userPartition);
-    ctx.provide('byokVault', byokVault);
+    try { ctx.provide('userPartition', userPartition); } catch {}
+    try { ctx.provide('byokVault', byokVault); } catch {}
   }
 
   // 3. WebServer Gateway & Lifecycle Supervisor
