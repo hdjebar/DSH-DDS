@@ -1820,3 +1820,5 @@ export async function runAgentWorkflow(personaName, targetWorkflow = 'audit', in
     return { success: false, status: 'ERROR', error: error.message };
   }
 }
+
+export { TransactionalWorktree, withTransactionalWorktree } from './worktree-staging.mjs';
