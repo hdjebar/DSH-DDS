@@ -2,6 +2,8 @@
 
 > 🏛️ **Comprehensive State-of-the-Art Whitepaper**: For theoretical foundations, NIST/OWASP compliance mapping, and the 5-Pillar SOTA AI Harness engineering specification, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
 > 
+> 🌐 **Ecosystem Comparison**: For architectural comparisons against OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI, and NeMo Guardrails, see **[Open Source Landscape & Ecosystem Comparison](ecosystem-comparison.md)**.
+> 
 > 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](globalrefactoring/README.md)** and **[ADR 0006: Global Refactoring](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)**.
 > 
 > 📐 **Interactive Archify Visualizations**: Explore verified, interactive architecture and workflow maps featuring dark/light modes, route tracing, and state inspections:

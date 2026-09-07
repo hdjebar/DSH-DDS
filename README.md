@@ -136,7 +136,18 @@ Run the automated diagnostic suite to verify container health, API credentials, 
 
 ---
 
-## 💡 Why This Exists
+## 💡 Why DSH-DDS is Unique
+
+DSH-DDS occupies a distinct sweet spot: it is an enterprise governance and reliability harness wrapped around an interactive, user-friendly agent environment.
+
+Instead of having to stitch together an agent UI, a Python orchestration library, a Docker sandbox, an egress proxy, an OpenTelemetry database, and compliance audit scripts from separate repositories, DSH-DDS delivers all of them in a single, verified, turnkey repository.
+
+> [!TIP]
+> For an in-depth architectural and functional comparison against upstream DeepSeek Harness, OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI, and NeMo Guardrails, consult the [Open Source Landscape & Ecosystem Comparison](docs/ecosystem-comparison.md).
+
+---
+
+## 🎯 Core Problems Solved (Why This Exists)
 
 1. **Keep telemetry under your control**: Cloud tracing services can receive prompts, code, and tool data. Phoenix runs locally on the Docker network and is exposed at `127.0.0.1:6006`, so traces stay on the host unless you explicitly export them. This supports data-governance controls relevant to EU AI Act, DORA, and NIS2 programs; it is not compliance by itself.
 2. **Match model cost to task complexity**: Sending every step to a premium frontier model is expensive. Personas route routine drafting and tool work to fast/flash tiers and reserve reasoning tiers for complex analysis, with the active provider and model defined in configuration.
