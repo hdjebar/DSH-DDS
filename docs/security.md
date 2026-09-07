@@ -22,16 +22,17 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | ID | Category | Severity | Finding | Status / Remediation |
 | :--- | :--- | :---: | :--- | :--- |
 | **SEC-01** | **Access Control** | **HIGH** | Unauthenticated Web UI & Telemetry Endpoints | Mitigated on host network via loopback (`127.0.0.1`). Use reverse proxy with auth for remote access. |
-| **SEC-02** | **Container Isolation** | **PASS** | Container Execution Privileges & Host Mount Segregation | Remediated in all modes: default unprivileged user `dsh:dsh` (UID 1000), `cap_drop: [ALL]`, `no-new-privileges`, `/etc/dsh:ro`, `/var/lib/dsh:rw` ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
-| **SEC-03** | **Credential Security** | **MEDIUM** | API Keys Injected via Process Environment | Stored in memory / `/proc/1/environ`. Recommend restricted-scope keys and system prompt constraints. |
+| **SEC-02** | **Container Isolation** | **PASS** | Container Execution Privileges & Host Mount Segregation | Remediated in all modes: default unprivileged user `dsh:dsh` (UID 1000), `cap_drop: [ALL]`, `no-new-privileges`, `/etc/dsh:ro`, `/var/lib/dsh:rw`, cgroup limits (`2 CPU`, `4GB RAM`, `512 PIDs`), and dev mount isolation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
+| **SEC-03** | **Credential Security** | **PASS** | API Keys Injected via Process Environment | Controlled via `chmod 0600 .env` in standard mode. In sandbox mode (`docker-compose.sandbox.yml`), all provider API keys and tokens are explicitly blanked/overridden with empty values ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
-| **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim` + signed `@deepseek-ai/dsh` npm package; eliminates unverified third-party Docker Hub images. |
+| **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim`; prebuilt with compilers stripped (`make`, `g++` purged) from runtime runner stage; dependencies pinned via `--frozen-lockfile` ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and in-line `@dsh-dds/core` PEP blocking unauthorized tools ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
 | **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via native `pnpm.patchedDependencies` and `@dsh-dds/core` Cordis plugin; zero runtime monkey-patch scripts ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
 | **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
 | **SEC-10** | **Execution Boundary** | **PASS** | Ambient Host Execution Fallback in CLI | Remediated via fail-closed in-container execution dispatch in `dsh.sh` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
 | **SEC-11** | **Web Agent Confinement** | **PASS** | Indirect Prompt Injection & Cloud Metadata SSRF | Sanitized `mcp-fetch` text conversion, exfiltration stripping, and zero-egress sandbox profile. |
+| **SEC-12** | **Threat Model Demarcation** | **PASS** | Boundary Confusion between Node PEP and Kernel Sandbox | Explicitly demarcated: `loader.mjs` is an internal engine PEP shim; process containment is enforced by Linux kernel cgroups, namespaces, Landlock LSM, and read-only rootfs ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 
 ---
 
@@ -49,21 +50,24 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 2. [SEC-02] Process Privileges & Host Configuration Mount (Remediated)
 * **Threat Model & Prior Vulnerability**:
   - Prior architectures executed as `root` (UID 0) and mounted `./config` as read-write, risking host file clobbering and container escape.
-* **Hardened Architecture & Remediation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md))**:
+* **Hardened Architecture & Remediation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
   - **Non-Root Service Execution**: Both `dsh` and `phoenix` run as dedicated service account `dsh:dsh` (UID/GID 1000).
   - **Kernel Privilege Stripping**: `cap_drop: [ALL]` drops all Linux capabilities; `security_opt: [no-new-privileges:true]` blocks privilege escalation.
+  - **Resource Cgroups**: Standard mode enforces `cpus: '2.0'`, `memory: 4096M`, and `pids: 512` to prevent host exhaustion. Sandbox mode tightens this to `cpus: '2.0'`, `memory: 2048M`, and `pids: 150`.
   - **Linux FHS Segregation**: `./config` is mounted strictly read-only at `/etc/dsh:ro`. Stateful data is mounted to `/var/lib/dsh:rw`, and profiles use sticky `mode=1777` tmpfs.
-  - **Sandbox Hardening**: For evaluation of untrusted agent workflows, launch with the sandbox override for read-only root filesystems and zero network egress:
+  - **Production Immutability**: Development live mounts (`@dsh-dds/core` and `entrypoint.sh`) are segregated into `docker-compose.dev.yml`; standard mode runs purely from immutable container images.
+  - **Sandbox Hardening**: For evaluation of untrusted agent workflows, launch with the sandbox override for read-only root filesystems, credential blanking, and isolated named volume session state:
     ```bash
     docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
     ```
 
 ### 3. [SEC-03] Credential Security in Container Environment
 * **Threat Model**:
-  - Sensitive frontier keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`) are injected into the container as environment variables.
+  - Sensitive frontier keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`) are injected into the container as environment variables in standard mode.
   - Any shell tool or subprocess executed within the container can read `/proc/1/environ` or run `printenv`.
-* **Hardening Guideline**:
+* **Hardening Guideline & Remediation ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
   - The turnkey installer enforces `chmod 0600 $DSH_INSTALL/.env` to prevent unauthorized local file reads.
+  - In **Sandbox Mode** (`docker-compose.sandbox.yml`), all provider API keys and tokens are explicitly blanked out (`OPENROUTER_API_KEY=`, `GEMINI_API_KEY=`, etc.), preventing credential theft or unauthorized API consumption by untrusted evaluated code.
   - Avoid sharing execution logs or terminal sessions that output environment variables.
   - Configure spending quotas and rate limits on provider dashboards (OpenRouter FinOps / Google AI Studio).
 
@@ -112,7 +116,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`)
 * **Governance Standard**:
   - Enterprise compliance frameworks (EU AI Act, SOC 2, ISO 27001) require verifiable audit trails of autonomous agent decisions.
-  - Every authorization check is appended as a structured JSON Lines record to `/root/.dsh/sessions/audit_grc.jsonl`:
+  - Every authorization check is appended as a structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted to the host at `./config/audit/audit_grc.jsonl` across all run modes, including sandbox):
     ```json
     {
       "timestamp": "2026-09-03T01:32:22.185Z",
@@ -151,16 +155,20 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 
 ### Sandbox Protections Matrix
 
-| Control | Standard Mode (`docker-compose.yml`) | Sandbox Mode (`sandbox.yml`) |
-| :--- | :--- | :--- |
-| **Root Filesystem** | Writable | **Read-Only (`read_only: true`)** |
-| **Linux Capabilities** | Default Docker capabilities | **All Dropped (`cap_drop: ALL`)** |
-| **Privilege Escalation** | Allowed | **Blocked (`no-new-privileges: true`)** |
-| **Host Config Mount** | Read-Write (`./config:/root/.dsh`) | **Read-Only (`./config:/opt/dsh-config:ro`)** |
-| **Workspace Mount** | Read-Write (`./workspaces`) | **Read-Only (`./workspaces:ro`)** |
-| **Container Networking** | Bridge (Internet egress active) | **Zero-Egress Internal (`internal: true`)** |
-| **Resource Constraints** | Unlimited | **Strict Limits (2 CPUs, 2GB RAM, 150 PIDs)** |
-| **Configuration State** | Persisted on host | **Disposable `tmpfs` (reset on boot)** |
+| Control | Standard Mode (`docker-compose.yml`) | Sandbox Mode (`sandbox.yml`) | Development Mode (`docker-compose.dev.yml`) |
+| :--- | :--- | :--- | :--- |
+| **Root Filesystem** | Writable | **Read-Only (`read_only: true`)** | Writable |
+| **Linux Capabilities** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** |
+| **Privilege Escalation** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** |
+| **Host Config Mount** | **Read-Only (`./config:/etc/dsh:ro`)** | **Read-Only (`./config:/opt/dsh-config:ro`)** | **Read-Only (`./config:/etc/dsh:ro`)** |
+| **Workspace Mount** | Read-Write (`./workspaces`) | **Read-Only (`./workspaces:ro`)** | Read-Write (`./workspaces`) |
+| **GRC Audit Retention** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** | **Persisted (`./config/audit:/var/lib/dsh/audit:rw`)** |
+| **Session & State Storage** | Persisted on host (`./config/sessions`, `./config/storages`) | **Isolated Named Volume (`sandbox-session-state:/var/lib/dsh-state:rw`)** | Persisted on host |
+| **Container Networking** | Bridge (Host DNS / Internet) | **Zero-Direct Egress (`dsh-internal` bridge through `egress-filter` Envoy sidecar)** | Bridge |
+| **Resource Constraints** | **Limits (`2.0 CPUs`, `4GB RAM`, `512 PIDs`)** | **Strict Limits (`2.0 CPUs`, `2GB RAM`, `150 PIDs`)** | Inherits standard limits |
+| **Provider Credentials** | Injected via `.env` | **Explicitly Blanked (`dummy / empty`)** | Injected via `.env` |
+| **Developer Code Mounts** | **None (Immutable Image)** | **None (Immutable Image)** | **Live Mounts (`@dsh-dds/core`, `entrypoint.sh`)** |
+| **Compilers in Image** | **Purged (`make`, `g++` stripped)** | **Purged (`make`, `g++` stripped)** | Purged in runner stage |
 
 To destroy all transient sandbox session data:
 ```bash

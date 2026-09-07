@@ -91,7 +91,7 @@
       "dot": "emerald",
       "title": "Zero-Leakage Observability",
       "items": [
-        "Structured GRC decision trail in audit_grc.jsonl",
+        "Structured GRC audit trail persisted to ./config/audit",
         "Correlated 128-bit OTel parent-child span emission to Phoenix"
       ]
     }

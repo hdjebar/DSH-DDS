@@ -15,7 +15,7 @@ All diagrams in this directory are authored as typed JSON Intermediate Represent
 
 | Diagram Type | Title & Artifact | Specification (IR) | Focus & Highlights |
 | :--- | :--- | :--- | :--- |
-| **`architecture`** | **[System Runtime Architecture](system-runtime.architecture.html)** | [`system-runtime.architecture.json`](system-runtime.architecture.json) | Non-root container sandbox (UID 1000), `@dsh-dds/core` Gateway, in-line PEP, BYOK Vault, Envoy egress proxy (ADR 0007), and local Arize Phoenix trace storage. |
+| **`architecture`** | **[System Runtime Architecture](system-runtime.architecture.html)** | [`system-runtime.architecture.json`](system-runtime.architecture.json) | Non-root container sandbox (UID 1000, 2 CPU/4GB limits), `@dsh-dds/core` Gateway, in-line PEP, BYOK Vault, Envoy egress proxy sidecar (ADR 0007 / [ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)), persistent GRC audit (`./config/audit`), and local Arize Phoenix trace storage. |
 | **`workflow`** | **[Zero-Trust PEP & RBAC Pipeline](security-pipeline.workflow.html)** | [`security-pipeline.workflow.json`](security-pipeline.workflow.json) | Real-time tool interception, canonical path resolution, symlink traversal detection (F-02), fail-closed quarantine traps, and immutable GRC audit logging. |
 | **`workflow`** | **[Declarative Workflow & Loop Trap](declarative-workflow.workflow.html)** | [`declarative-workflow.workflow.json`](declarative-workflow.workflow.json) | Deterministic step hashing, Invariant 7 loop trap ring buffer (`LOOP_DETECTED`), ACM approval gate (`./dsh.sh approve`), and 15 typed capability adapters. |
 | **`sequence`** | **[Agent Execution & OTLP Telemetry](agent-trace.sequence.html)** | [`agent-trace.sequence.json`](agent-trace.sequence.json) | User request lifecycle, AES-256-GCM BYOK key decryption, Gemini thought signature preservation, governed tool dispatch, and local Phoenix OTLP waterfall. |
@@ -32,17 +32,22 @@ flowchart TD
     subgraph Host ["💻 Host Environment (127.0.0.1)"]
         BROWSER["🌐 User Browser\n(Web UI :3080 / Phoenix :6006)"]
         VOL_CFG["📁 ./config (Mounted to /etc/dsh :ro)"]
-        VOL_STATE["📁 ./config/state (Mounted to /var/lib/dsh :rw)"]
+        VOL_AUDIT["📁 ./config/audit (Mounted to /var/lib/dsh/audit :rw)"]
+        VOL_STATE["📁 ./config/{sessions,storages,cache}\n(Mounted to /var/lib/dsh/... :rw)"]
+        VOL_DEV["📁 docker-compose.dev.yml\n(Optional Live Development Mounts)"]
     end
 
-    subgraph DSH_Sandbox ["🐳 DSH Container (UID 1000:1000, cap_drop: ALL)"]
+    subgraph DSH_Sandbox ["🐳 DSH Container (UID 1000:1000, cap_drop: ALL, 2 CPU / 4GB)"]
         GW["🛡️ WebServer Gateway\n(@dsh-dds/core Origin Normalizer)"]
         KERNEL["⚡ DSH Microkernel\n(Cordis IoC Engine)"]
         VAULT["🔐 BYOK Vault\n(AES-256-GCM Keystore)"]
         PEP["🛡️ In-Line PEP Interceptor\n(Dynamic Tool & Path RBAC)"]
-        ENVOY["🔒 Envoy Egress Proxy\n(v1.31 Loopback :10000 | ADR 0007)"]
         MCPS["🔌 MCP Tool Suite\n(Fetch, SQLite, GitHub, Context7)"]
         OTEL["📡 OTel Exporter\n(TraceContext Client)"]
+    end
+
+    subgraph Egress_Sidecar ["🔒 Egress Filter Sidecar (ADR 0007 / ADR 0008)"]
+        ENVOY["🔒 Envoy Proxy v1.31\n(Tier 1 API Allowlist + Tier 2 Read-Only)"]
     end
 
     subgraph Phoenix_Sandbox ["📊 Phoenix Container (UID 1000, 127.0.0.1:6006)"]
@@ -83,7 +88,7 @@ flowchart TD
 
     DENIED --> SOC["Quarantine Trap\n(Halt Step & Alert SOC)"]
     SANDBOX --> RESULT(["Sanitized Execution Result"])
-    SANDBOX --> AUDIT[("GRC Audit Ledger\naudit_grc.jsonl")]
+    SANDBOX --> AUDIT[("GRC Audit Ledger\n./config/audit/audit_grc.jsonl")]
     AUDIT --> PHOENIX["Phoenix Tracer\n(128-bit OTel Waterfall)"]
 ```
 

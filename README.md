@@ -280,6 +280,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📜 **[ADR 0005: Remediation of Audit v3 Findings](docs/adr/0005-remediation-of-audit-v3-findings.md)** — Architecture Decision Record on symlink ancestor canonicalization, truthful capability adapters, clean-room installer parity, and multi-state GRC auditing.
 * 📜 **[ADR 0006: Global Refactoring (Non-Root & Cordis Plugin)](docs/adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)** — Architecture Decision Record on non-root UID 1000 confinement, Linux FHS segregation, native pnpm patches, `@dsh-dds/core` plugin, and image slimming.
 * 📜 **[ADR 0007: Rejection of In-Container Antigravity CLI](docs/adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md)** — Architecture Decision Record on rejecting host credential mounts and adopting credential-isolated search.
+* 📜 **[ADR 0008: Container Sandbox Hardening & Supply Chain](docs/adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)** — Architecture Decision Record on sandbox credential isolation, GRC audit retention, dev mount isolation, cgroup caps, and compiler purging.
 
 ### 🔬 Theory & Research
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.

@@ -32,7 +32,7 @@
     { "id": "dsh_kernel", "type": "backend", "label": "DSH Microkernel", "sublabel": "Cordis IoC (Node 24 UID 1000)", "pos": [480, 300], "size": [160, 60] },
     { "id": "byok_vault", "type": "security", "label": "BYOK Keystore", "sublabel": "AES-256-GCM Vault", "pos": [480, 150], "size": [160, 60], "tag": "Partitioned" },
     { "id": "pep_interceptor", "type": "security", "label": "In-Line PEP", "sublabel": "Dynamic Tool & Path RBAC", "pos": [710, 300], "size": [160, 60], "tag": "Fail-Closed" },
-    { "id": "envoy_proxy", "type": "security", "label": "Envoy Egress Proxy", "sublabel": "v1.31 Loopback :10000", "pos": [940, 300], "size": [160, 60], "tag": "ADR 0007" },
+    { "id": "envoy_proxy", "type": "security", "label": "Envoy Egress Proxy", "sublabel": "v1.31 Sidecar :10000", "pos": [940, 300], "size": [160, 60], "tag": "ADR 0008" },
     { "id": "external_llm", "type": "cloud", "label": "LLM Gateways", "sublabel": "Gemini & OpenRouter", "pos": [1170, 300], "size": [150, 60] },
     { "id": "mcp_servers", "type": "backend", "label": "MCP Tool Suite", "sublabel": "Fetch / SQLite / GitHub", "pos": [710, 450], "size": [160, 60] },
     { "id": "otel_exporter", "type": "messagebus", "label": "OTel Exporter", "sublabel": "TraceContext Client", "pos": [480, 450], "size": [160, 60] },
@@ -57,29 +57,29 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "Dual-Network Ingress",
+      "title": "Container Hardening & Non-Root",
       "items": [
         "User browser binds strictly to 127.0.0.1:3080",
-        "Gateway normalizes Docker bridge and origin headers",
-        "Non-root UID 1000 with dropped Linux capabilities"
+        "Non-root UID 1000 with dropped Linux capabilities (cap_drop: ALL)",
+        "Strict cgroup resource limits (2.0 CPUs, 4GB RAM, 512 PIDs)"
       ]
     },
     {
       "dot": "rose",
-      "title": "Zero-Trust Enforcement",
+      "title": "Zero-Trust Enforcement & Egress",
       "items": [
         "In-Line PEP verifies path containment and symlink escape",
         "BYOK Vault encrypts keys with AES-256-GCM per user",
-        "Envoy proxy enforces DNS caching and egress lockdown"
+        "Envoy sidecar enforces DNS caching and egress lockdown (ADR 0008)"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Air-Gapped Telemetry",
+      "title": "Air-Gapped Telemetry & Audit",
       "items": [
-        "Phoenix runs 100% on-premise on loopback :6006",
-        "Every prompt, token, and cost span recorded in SQLite",
-        "Zero telemetry leakage to public cloud services"
+        "Arize Phoenix runs 100% on-premise on loopback :6006",
+        "GRC audit trail in ./config/audit persists across container lifecycles",
+        "Dedicated sandbox-session-state named volume for untrusted code"
       ]
     }
   ]

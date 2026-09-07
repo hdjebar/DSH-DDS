@@ -154,5 +154,5 @@ DeepSeek Harness implements a multi-tier defense-in-depth model that replaces re
 
 ### D. Non-Repudiable GRC Audit Trails & OTel Trace Correlation
 * Enterprise governance requires verifiable traceability for autonomous decisions.
-* Every authorization check, adaptive case management gate (`GATED`), and workflow completion is appended to `/root/.dsh/sessions/audit_grc.jsonl`.
+* Every authorization check, adaptive case management gate (`GATED`), and workflow completion is appended to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted to host `./config/audit`).
 * Audit records embed 128-bit trace and span correlation IDs, enabling cryptographic auditing and forensic reconstruction within Arize Phoenix.

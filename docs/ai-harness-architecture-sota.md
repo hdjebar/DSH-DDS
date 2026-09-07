@@ -170,8 +170,8 @@ An enterprise AI Harness must guarantee full visibility and legal auditability:
      - **Model Inference Egress (Cloud APIs vs. Air-Gapped)**: When configured with public cloud model APIs (OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompt context and tool parameters necessarily transit over TLS to the selected provider.
      - **True 100% Air-Gapped Sovereignty**: For regulated, defense, or high-compliance workloads (GDPR Art. 9, HIPAA), DSH-DDS routes seamlessly to local on-premise inference engines (Ollama, vLLM, llama.cpp, LocalAI) or private VPC endpoints, establishing absolute zero data egress across both the control plane and inference plane.
 2. **Immutable Non-Repudiable GRC Ledger (`audit_grc.jsonl`)**:
-   * *Reference*: [ADR 0002: Out-of-Band GRC Observability](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md).
-   * *Standard*: Every authorization check, gate suspension, and workflow outcome appends a structured JSON Lines record to `/root/.dsh/sessions/audit_grc.jsonl`:
+   * *Reference*: [ADR 0002: Out-of-Band GRC Observability](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md), [ADR 0008: Sandbox Hardening](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md).
+   * *Standard*: Every authorization check, gate suspension, and workflow outcome appends a structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted on the host at `./config/audit/audit_grc.jsonl`):
      ```json
      {
        "timestamp": "2026-09-03T14:10:22.185Z",

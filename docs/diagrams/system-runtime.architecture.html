@@ -4989,8 +4989,8 @@
         <text data-detail="fine" x="790" y="352" class="t-security" font-size="7" text-anchor="middle">Fail-Closed</text>
         </g>
 
-        <g id="node-envoy_proxy" data-node-id="envoy_proxy" data-node-label="Envoy Egress Proxy" tabindex="0" role="button" aria-label="Focus Envoy Egress Proxy, v1.31 Loopback :10000, Architecture component" aria-pressed="false" data-node-kind="security" data-node-sublabel="v1.31 Loopback :10000" data-node-tag="ADR 0007" data-node-context="Architecture component">
-          <title>Envoy Egress Proxy · v1.31 Loopback :10000 · Architecture component · ADR 0007</title>
+        <g id="node-envoy_proxy" data-node-id="envoy_proxy" data-node-label="Envoy Egress Proxy" tabindex="0" role="button" aria-label="Focus Envoy Egress Proxy, v1.31 Sidecar :10000, Architecture component" aria-pressed="false" data-node-kind="security" data-node-sublabel="v1.31 Sidecar :10000" data-node-tag="ADR 0008" data-node-context="Architecture component">
+          <title>Envoy Egress Proxy · v1.31 Sidecar :10000 · Architecture component · ADR 0008</title>
           <rect x="940" y="300" width="160" height="60" rx="6" class="c-mask"/>
           <rect x="940" y="300" width="160" height="60" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(946 306) scale(0.6875)">
@@ -4998,8 +4998,8 @@
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-detail-anchor x="1020" y="328" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Envoy Egress Proxy</text>
-        <text data-detail="context" x="1020" y="344" class="t-muted" font-size="9" text-anchor="middle">v1.31 Loopback :10000</text>
-        <text data-detail="fine" x="1020" y="352" class="t-security" font-size="7" text-anchor="middle">ADR 0007</text>
+        <text data-detail="context" x="1020" y="344" class="t-muted" font-size="9" text-anchor="middle">v1.31 Sidecar :10000</text>
+        <text data-detail="fine" x="1020" y="352" class="t-security" font-size="7" text-anchor="middle">ADR 0008</text>
         </g>
 
         <g id="node-external_llm" data-node-id="external_llm" data-node-label="LLM Gateways" tabindex="0" role="button" aria-label="Focus LLM Gateways, Gemini &amp; OpenRouter, Architecture component" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Gemini &amp; OpenRouter" data-node-context="Architecture component">
@@ -5307,36 +5307,36 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Dual-Network Ingress</h3>
+          <h3>Container Hardening &amp; Non-Root</h3>
         </div>
         <ul>
           <li>&bull; User browser binds strictly to 127.0.0.1:3080</li>
-          <li>&bull; Gateway normalizes Docker bridge and origin headers</li>
-          <li>&bull; Non-root UID 1000 with dropped Linux capabilities</li>
+          <li>&bull; Non-root UID 1000 with dropped Linux capabilities (cap_drop: ALL)</li>
+          <li>&bull; Strict cgroup resource limits (2.0 CPUs, 4GB RAM, 512 PIDs)</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>Zero-Trust Enforcement</h3>
+          <h3>Zero-Trust Enforcement &amp; Egress</h3>
         </div>
         <ul>
           <li>&bull; In-Line PEP verifies path containment and symlink escape</li>
           <li>&bull; BYOK Vault encrypts keys with AES-256-GCM per user</li>
-          <li>&bull; Envoy proxy enforces DNS caching and egress lockdown</li>
+          <li>&bull; Envoy sidecar enforces DNS caching and egress lockdown (ADR 0008)</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Air-Gapped Telemetry</h3>
+          <h3>Air-Gapped Telemetry &amp; Audit</h3>
         </div>
         <ul>
-          <li>&bull; Phoenix runs 100% on-premise on loopback :6006</li>
-          <li>&bull; Every prompt, token, and cost span recorded in SQLite</li>
-          <li>&bull; Zero telemetry leakage to public cloud services</li>
+          <li>&bull; Arize Phoenix runs 100% on-premise on loopback :6006</li>
+          <li>&bull; GRC audit trail in ./config/audit persists across container lifecycles</li>
+          <li>&bull; Dedicated sandbox-session-state named volume for untrusted code</li>
         </ul>
       </div>
     </div>
