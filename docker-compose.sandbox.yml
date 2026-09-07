@@ -10,6 +10,7 @@ services:
   dsh:
     read_only: true
     user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    runtime: "${DSH_SANDBOX_RUNTIME:-runc}"
     security_opt: !override
       - no-new-privileges:true
     cap_drop: !override
