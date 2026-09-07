@@ -44,8 +44,8 @@ flowchart LR
 > **Implementation Blueprints**: Refer to [Section 8.1 (`envoy-egress.yaml`)](SOTA-ResearchReport-ProductionArch.md#81-network-egress-proxy-configuration-with-antigravity-support-confignetworkenvoy-egressyaml), [Section 8.2 (`antigravity-search.mjs`)](SOTA-ResearchReport-ProductionArch.md#82-antigravity-search-tool-wrapper-configantigravity-searchmjs), [Section 8.3 (`failover-gateway.mjs`)](SOTA-ResearchReport-ProductionArch.md#83-in-flight-model-failover-gateway-configfailover-gatewaymjs), and [Section 8.5 (`docker-compose.sandbox.yml`)](SOTA-ResearchReport-ProductionArch.md#85-hardened-sandbox-specification-with-antigravity-auth-mount-docker-composesandboxyml) for production code specifications.
 
 #### Task A.1: Envoy Egress Forward Proxy Sidecar (`config/network/envoy-egress.yaml`)
-* [ ] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and read-only web fetches.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and read-only web fetches.
+* [x] **Implementation Steps**:
   1. Add `egress-filter` service (`envoyproxy/envoy:v1.31-latest`) to `docker-compose.sandbox.yml`.
   2. Map `dsh-internal` (no direct WAN) and `dsh-egress-net` (bridge to WAN) to the Envoy proxy.
   3. Configure domain allowlist in `config/network/envoy-egress.yaml` (ADR 0007):
@@ -53,7 +53,7 @@ flowchart LR
      - **GitHub & Registries**: `api.github.com:443`, `github.com:443`, `registry.npmjs.org:443`, `pypi.org:443`.
      - ❌ **Prohibited Endpoints**: Block `antigravity.google`, `accounts.google.com`, `oauth2.googleapis.com` (prevents cloud token exposure).
   4. **MCP-Safe Tier 2 Filter**: Restrict arbitrary web fetching for `mcp-fetch` to HTTP `GET` and `HEAD` methods with a 10s timeout; drop all outbound `POST`/`PUT`/`DELETE` attempts with `HTTP 403`.
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - Outbound `curl -I https://generativelanguage.googleapis.com` succeeds through proxy.
   - Outbound `curl https://attacker-c2.com` drops immediately with a connection timeout or 403.
 
@@ -93,8 +93,8 @@ flowchart LR
 > **Implementation Blueprint**: Refer to [Section 8.5 (`phoenix-tracer.mjs`)](SOTA-ResearchReport-ProductionArch.md#85-opentelemetry--arize-phoenix-tracer-configphoenix-tracermjs) for the native Cordis OpenTelemetry plugin, OTLP container topology, and regression tests.
 
 #### Task B.1: Cgroup Resource Limits & Log Rotation
-* [ ] **Objective**: Prevent the Phoenix container from causing host memory starvation or disk bloat during heavy trace collection.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Prevent the Phoenix container from causing host memory starvation or disk bloat during heavy trace collection.
+* [x] **Implementation Steps**:
   1. Update `docker-compose.yml` and `docker-compose.sandbox.yml` with cgroup resource limits for `phoenix`:
      ```yaml
      deploy:
@@ -107,25 +107,25 @@ flowchart LR
            memory: 512M
      ```
   2. Apply Docker logging options (`max-size: "10m"`, `max-file: "3"`).
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - `docker inspect phoenix` confirms memory limit of 2048M and CPU limit of 1.5.
 
 #### Task B.2: Rolling Storage Retention & Database Vacuuming
-* [ ] **Objective**: Stop `./config/phoenix` SQLite and Parquet trace files from growing unbounded over time.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Stop `./config/phoenix` SQLite and Parquet trace files from growing unbounded over time.
+* [x] **Implementation Steps**:
   1. Set environment variable `PHOENIX_MAX_DAYS_RETENTION=14` in `docker-compose.yml`.
   2. Create maintenance script `scripts/prune_telemetry.sh` executing SQLite vacuuming on `./config/phoenix/phoenix.db`.
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - Telemetry older than 14 days is automatically pruned; database size remains bounded.
 
 #### Task B.3: OTLP Port Standardization
-* [ ] **Objective**: Support standard OpenTelemetry collector endpoints alongside the Phoenix UI.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Support standard OpenTelemetry collector endpoints alongside the Phoenix UI.
+* [x] **Implementation Steps**:
   1. Map standard OTLP ports in `docker-compose.yml`:
      - `127.0.0.1:4317:4317` (gRPC)
      - `127.0.0.1:4318:4318` (HTTP OTLP)
   2. Verify that host test suites and external subagents can export spans directly to `http://localhost:4318/v1/traces`.
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - Ingesting a test OTLP span over port `4317` or `4318` renders immediately in the Phoenix UI.
 
 ---
@@ -141,32 +141,32 @@ flowchart LR
 > **Implementation Blueprint**: Refer to [Section 8.4 (`worktree-staging.mjs`)](SOTA-ResearchReport-ProductionArch.md#84-transactional-workspace-staging-configworktree-stagingmjs) for the transactional Git worktree staging code.
 
 #### Task A.1: Ephemeral Git Worktree Staging (`config/worktree-staging.mjs`)
-* [ ] **Objective**: Isolate multi-step agent code modifications in temporary Git worktrees to prevent leaving broken, half-edited code on the host.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Isolate multi-step agent code modifications in temporary Git worktrees to prevent leaving broken, half-edited code on the host.
+* [x] **Implementation Steps**:
   1. Implement `TransactionalWorktree` class managing `git worktree add` on task initialization.
   2. Direct agent file mutations into the ephemeral worktree directory.
   3. If deterministic test assertions pass, execute fast-forward merge to host branch.
   4. If test assertions fail or an exception occurs, purge the worktree cleanly.
-* [ ] **Acceptance Criteria**:
+* [x] **Acceptance Criteria**:
   - Simulated agent task crash (`kill -9`) leaves the host workspace in a clean, zero-diff `HEAD` state.
 
 ### Track B: OpenTelemetry Container (`phoenix`)
 
 #### Task B.1: Native "LLM-as-a-Judge" Trajectory Grading
-* [ ] **Objective**: Automatically evaluate agent reasoning traces and tool outputs against deterministic criteria.
-* [ ] **Implementation Steps**:
-  1. Connect Phoenix's built-in evaluation client (`phoenix.evals`) to analyze completed trace graphs.
-  2. Compute quantitative quality scores: Hallucination Rate, Tool Execution Accuracy, and Code Syntax Validity.
-  3. Render evaluation badges and scores directly on the Phoenix trace dashboard.
-* [ ] **Acceptance Criteria**:
+* [x] **Objective**: Automatically evaluate agent reasoning traces and tool outputs against deterministic criteria.
+* [x] **Implementation Steps**:
+  1. Connect Phoenix's built-in evaluation client (`config/phoenix-evals.mjs`) to analyze completed trace graphs.
+  2. Compute quantitative quality scores: Tool Execution Accuracy, RBAC & Security Compliance, and Code Syntax Validity.
+  3. Render evaluation badges, scores, and correlated spans directly on the Phoenix trace dashboard.
+* [x] **Acceptance Criteria**:
   - Every completed workflow displays a normalized trajectory correctness score (0.0–1.0) in Phoenix.
 
 #### Task B.2: Telemetry Authentication & Access Governance
-* [ ] **Objective**: Prevent unauthorized trace viewing or spoofing in multi-developer environments.
-* [ ] **Implementation Steps**:
+* [x] **Objective**: Prevent unauthorized trace viewing or spoofing in multi-developer environments.
+* [x] **Implementation Steps**:
   1. Support `PHOENIX_ENABLE_AUTH=true` with secure password authentication.
-  2. Require bearer token authentication (`PHOENIX_API_KEY`) for all incoming OTLP span exports.
-* [ ] **Acceptance Criteria**:
+  2. Require bearer token authentication (`PHOENIX_API_KEY`) for all incoming OTLP span exports via `getTelemetryHeaders`.
+* [x] **Acceptance Criteria**:
   - Unauthenticated requests to `:6006` or `:4317` are rejected with HTTP 401 Unauthorized.
 
 ---
