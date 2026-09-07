@@ -3,6 +3,29 @@
 All notable changes to the **DeepSeek Harness (DSH-DDS)** project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-09-07
+
+### Level 4.0 High-Assurance Sovereign AI Harness & Global Architectural Refactoring
+* **Milestone 1 — Zero-Trust Egress, Failover & Dynamic Governance**:
+  - **Envoy Egress Proxy Sidecar (`config/network/envoy-egress.yaml`)**: Confined outbound sandbox networking through a zero-trust forward proxy. Implemented Tier 1 trusted domain allowlisting (Gemini, OpenRouter, GitHub, npm, PyPI), blocked Google Cloud/OAuth auth endpoints, and restricted general web fetch to read-only `GET`/`HEAD` methods (403 on mutation).
+  - **In-Flight Failover Gateway (`config/failover-gateway.mjs`)**: Automatic in-process Cordis failover across Gemini 2.5 Flash and OpenRouter backup models on upstream HTTP 429/503 errors within $<1.5\text{ s}$ with session context preservation.
+  - **Credential-Isolated Web Search (ADR 0007)**: Formally rejected in-container Antigravity (`agy`) CLI and host Google OAuth credential mounts (`~/.config/antigravity`, `~/.gemini`). Standardized on zero-credential search via `@dsh-dds/core/web-search.js`.
+  - **Dynamic MCP Lifecycle Governance (`config/dynamic-governance.mjs`)**: Enabled safe runtime registration and unregistration of MCP servers and tools with strict path traversal containment (`canonicalizeWithAncestorRealpath`) and persistent storage in `/var/lib/dsh/storages/mcp-dynamic.json`.
+  - **Arize Phoenix Resource Hardening**: Implemented cgroup limits (`cpus: 1.5`, `memory: 2048M`), standardized OTLP ports (`4317` gRPC and `4318` HTTP), and automated 14-day rolling retention pruning (`scripts/prune_telemetry.sh`).
+* **Milestone 2 — Transactional Workspace Staging & Automated Evaluation**:
+  - **Ephemeral Git Worktree Staging (`config/worktree-staging.mjs`)**: Isolated multi-step agent workspace mutations into ephemeral Git worktrees with automatic fast-forward merge on test pass and zero-diff rollback on test failure or task crash.
+  - **LLM-as-a-Judge Trajectory Evaluator (`config/phoenix-evals.mjs`)**: Automated quantitative trajectory evaluation across Tool Execution Accuracy (40%), RBAC Compliance (35%), and Code Syntax Validity (25%), streaming correlated evaluation spans into Arize Phoenix.
+  - **Telemetry Authentication Governance**: Integrated `PHOENIX_ENABLE_AUTH` support and bearer token authentication (`getTelemetryHeaders`) across all OTLP trace exports.
+* **Milestone 3 — Level 4.0 High-Assurance Sovereign Harness**:
+  - **Dual-LLM Context Quarantine (`config/context-quarantine.mjs`)**: Structural defense against Indirect Prompt Injection (IPI), scanning workspace files against 25+ adversarial injection signatures and recording high-risk threats to a persistent quarantine ledger.
+  - **gVisor (`runsc`) Hypervisor Kernel Isolation**: Configured `runtime: "${DSH_SANDBOX_RUNTIME:-runc}"` in `docker-compose.sandbox.yml` to intercept guest syscalls in gVisor's virtualized Sentry kernel on supported Linux hosts while defaulting safely to `runc`.
+  - **Telemetry Cold-Storage Export & Sync (`scripts/export_telemetry.sh`)**: Created tamper-evident archive exporter bundling Parquet partitions, SQLite snapshots, and trace logs into timestamped archives with SHA-256 manifest validation (`manifest.sha256`).
+* **Global Refactoring Across 9 Pillars**:
+  - Migrated to unprivileged `dsh:dsh` (UID/GID 1000) execution with Linux FHS directory segregation (`/app`, `/etc/dsh`, `/var/lib/dsh`, `/workspaces`).
+  - Implemented first-class `@dsh-dds/core` Cordis plugin replacing all legacy monkey-patch scripts.
+  - Implemented single-source installer build pipeline (`scripts/build_installer.mjs`) with zero heredoc drift.
+  - Comprehensive test suite expanded to **143 / 143 passing tests (100%)** across 18 test suites.
+
 ---
 
 ## [1.10.0] - 2026-09-03
