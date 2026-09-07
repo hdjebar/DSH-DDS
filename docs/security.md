@@ -117,14 +117,15 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - All compatibility shims (`pi-ai` thought-signature preservation and `dsh-bash-local` Landlock auto-workdir creation) are compiled directly into the Docker image layers at build time (`RUN`).
   - `docker/entrypoint.sh` is strictly read-only regarding application code; zero dynamic string mutations or regex patchers execute at container boot.
 
-### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`)
-* **Governance Standard**:
-  - Enterprise compliance frameworks (EU AI Act, SOC 2, ISO 27001) require verifiable audit trails of autonomous agent decisions.
-  - Every authorization check is appended as a structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted to the host at `./config/audit/audit_grc.jsonl` across all run modes, including sandbox):
+### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`) & Arize Phoenix Observability
+* **Governance Standard & Non-Repudiation**:
+  - Enterprise compliance frameworks (EU AI Act Arts. 12 & 14, NIST AI RMF, ISO/IEC 42001, SOC 2 Type II) mandate verifiable, non-repudiable audit logs of all autonomous agent actions.
+  - Every authorization check evaluated by the Policy Enforcement Point (PEP) produces a structured JSON Lines record capturing both `GRANTED` and `DENIED` decisions along with the evaluation reason:
     ```json
     {
       "timestamp": "2026-09-03T01:32:22.185Z",
       "event_type": "GRC_AUTHORIZATION_DECISION",
+      "trace_id": "4b6f12c8a9014e3db856c70129a0e412",
       "persona": "data-analyst",
       "workflow": "analyze_pipeline",
       "step_index": 1,
@@ -136,6 +137,70 @@ This document serves as both the **Security Architecture Guide** and the **Secur
       "reason": "Policy validated"
     }
     ```
+
+* **Persistence Guarantees (`audit_grc.jsonl`)**:
+  - **Host Persistence**: Stored on the host at `./config/audit/audit_grc.jsonl`.
+  - **Container Mount**: Mounted read-write at `/var/lib/dsh/audit:rw` in both `docker-compose.yml` and `docker-compose.sandbox.yml`, surviving container teardown, image rebuilds, and ephemeral session wipes (`docker compose down -v`).
+  - **Synchronous Disk Flush**: Written synchronously via `fs.appendFileSync` in `config/rbac-policy.mjs` (`logGrcAuditEvent`) before the intercepted action is allowed to proceed.
+  - **Restricted File Permissions**: Files are created with `0600` permissions (read/write only by the `dsh` UID 1000 process) and parent directories with `0700`.
+
+* **Dual-Layer Architecture: Cold Compliance Ledger vs. Hot Observability Waterfall**:
+  To decouple legal compliance from developer observability, DSH-DDS implements a dual-path telemetry architecture:
+
+  ```
+                    ┌────────────────────────────────────────────────────────┐
+                    │              Autonomous Agent Workflow                 │
+                    └──────────────────────────┬─────────────────────────────┘
+                                               │
+                                     Step Execution / Tool Call
+                                               │
+                                               ▼
+                    ┌────────────────────────────────────────────────────────┐
+                    │         In-Line Policy Enforcement Point (PEP)         │
+                    │             (packages/dsh-dds-core)                    │
+                    └─────────────┬────────────────────────────┬─────────────┘
+                                  │                            │
+                  (1) Synchronous │            (2) Asynchronous│ Non-blocking
+                      Append      │                OTel Trace  │ HTTP POST /v1/traces
+                                  ▼                            ▼
+                   ┌───────────────────────────┐ ┌───────────────────────────┐
+                   │    audit_grc.jsonl        │ │       Arize Phoenix       │
+                   │  (./config/audit/...)     │ │    (http://localhost:6006)│
+                   ├───────────────────────────┤ ├───────────────────────────┤
+                   │ • Cold, permanent ledger  │ │ • Hot, visual OTel traces │
+                   │ • Non-repudiable record   │ │ • Parent-child waterfalls │
+                   │ • Zero network/DB needed  │ │ • Token & model FinOps    │
+                   │ • SIEM / auditor parsing  │ │ • Real-time latency graph │
+                   └───────────────────────────┘ └───────────────────────────┘
+  ```
+
+* **Why Arize Phoenix (`:6006`)?**:
+  1. **100% Local Data Sovereignty (Zero Data Egress)**:
+     - Commercial agent observability platforms (such as LangSmith, Datadog, or AgentOps) transmit complete multi-turn conversation transcripts, system instructions, and tool outputs to external third-party cloud servers.
+     - Arize Phoenix runs completely within a local container (`image: arizephoenix/phoenix:version-20.5.0`) bound strictly to loopback (`127.0.0.1:6006`). Zero prompt traces, completion tokens, or audit logs leave the host, ensuring compliance with GDPR Art. 9, HIPAA, and proprietary source code policies.
+  2. **W3C OpenTelemetry Native & OpenInference Standard**:
+     - Operates as a standard OpenTelemetry (OTel) receiver over standard endpoints (`:4317` gRPC / `:4318` HTTP), eliminating proprietary SDK lock-in.
+  3. **Cryptographic Trace Correlation via `trace_id`**:
+     - Every audit entry written to `audit_grc.jsonl` embeds a 128-bit W3C `trace_id`.
+     - When a policy violation occurs (`DENIED`), an operator can query the `trace_id` in Arize Phoenix to inspect the exact prompt waterfall, intermediate thought signatures, latency, and context leading to the attempted unauthorized action.
+  4. **Zero External Database Dependencies**:
+     - Self-contained with an embedded SQLite/Parquet backend in a single container. Unlike Jaeger or Langfuse, it requires no auxiliary PostgreSQL, ClickHouse, Redis, or Elasticsearch clusters.
+  5. **FinOps & Token Cost Tracking (OWASP LLM10 Defense)**:
+     - Continuously calculates exact token consumption and costs across 420+ models (OpenRouter, DeepSeek, Google AI Studio) in real time, defending against runaway reasoning loops or prompt-injection-driven spend anomalies.
+  6. **Automated Trajectory & Safety Evaluation**:
+     - Integrates with `TrajectoryEvaluator` to compute continuous safety and compliance scores (0.0 to 1.0) and emit evaluation spans directly into the Phoenix trace waterfall.
+
+* **Audit Ledger vs. Phoenix Observability Comparison**:
+
+| Dimension | `audit_grc.jsonl` | Arize Phoenix (`:6006`) |
+| :--- | :--- | :--- |
+| **Architectural Role** | Cold compliance ledger & CI assertions | Hot interactive distributed tracing & debugging |
+| **Storage Backend** | Plaintext JSON Lines on host filesystem (`./config/audit`) | Embedded SQLite/Parquet in named volume |
+| **Execution Path** | Synchronous, blocking, fail-closed append | Asynchronous, non-blocking fire-and-forget OTel stream |
+| **Primary Audience** | Legal auditors, SIEM pipelines, security automation | Developers, prompt engineers, DevOps operators |
+| **Consumption Interface** | CLI tools (`jq`, `grep`), log aggregators | Visual web dashboard (`http://localhost:6006`) |
+| **Correlation Key** | W3C `trace_id` (128-bit hex) | W3C `traceId` / `spanId` hierarchy |
+
 
 ### 11. [SEC-11] Web Browsing Agents & External Data Ingestion Risks
 * **Threat Model**:
