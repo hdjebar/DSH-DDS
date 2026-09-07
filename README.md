@@ -74,7 +74,7 @@ nano .env
 
 ### ⚙️ Environment Configuration (`.env` Reference)
 
-The environment file [`.env`](file://.env) configures network ports, LLM provider credentials, MCP integrations, and governance secrets:
+The environment file [`.env`](.env.example) configures network ports, LLM provider credentials, MCP integrations, and governance secrets:
 
 | Variable | Requirement | Default | Purpose & Notes |
 | :--- | :---: | :---: | :--- |

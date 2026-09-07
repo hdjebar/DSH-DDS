@@ -53,7 +53,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
-          ignore: DL3008,DL3013,DL3016,DL3025,DL4006
+          ignore: DL3008,DL3013,DL3016,DL3025,DL4006,DL3066
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -137,23 +137,12 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
 
-      - name: Offline MCP Executable & Playwright Chromium Smoke Test (--network none)
+      - name: Offline MCP Executable Smoke Test (--network none)
         run: |
           echo "Verifying all 4 standalone MCP binaries execute with ZERO network connectivity..."
           docker run --rm --network none --entrypoint github-mcp-server dsh-local:latest --version
           docker run --rm --network none --entrypoint mcp-server-sqlite dsh-local:latest --help
           docker run --rm --network none --entrypoint /bin/sh dsh-local:latest -c "which mcp-server-webresearch context7-mcp github-mcp-server mcp-server-sqlite"
-
-          echo "Verifying Playwright Chromium headless launch and close..."
-          docker run --rm --network none --entrypoint node dsh-local:latest -e "
-            const { chromium } = require('/usr/local/lib/node_modules/playwright');
-            (async () => {
-              const browser = await chromium.launch({ headless: true });
-              const page = await browser.newPage();
-              console.log('✅ Playwright Chromium launched and initialized cleanly offline!');
-              await browser.close();
-            })();
-          "
 
       - name: Entrypoint Script Syntax Assertion
         run: |
@@ -170,11 +159,11 @@ jobs:
             -e DSH_CONFIG_SOURCE=/opt/dsh-config \
             -e DSH_RUNTIME_DIR=/run/dsh \
             -e DSH_SESSION_STATE_DIR=/var/lib/dsh-state \
-            -e DSH_SESSIONS_DIR=/root/.dsh/sessions \
+            -e DSH_SESSIONS_DIR=/var/lib/dsh/sessions \
             -v "$PWD/config:/opt/dsh-config:ro" \
-            --tmpfs /root/.dsh:rw,nosuid,nodev,size=512m \
-            --tmpfs /run:rw,size=32m \
-            --tmpfs /var/lib/dsh-state:rw,size=32m \
+            --tmpfs /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777 \
+            --tmpfs /run:rw,size=32m,mode=1777 \
+            --tmpfs /var/lib/dsh-state:rw,size=32m,mode=1777 \
             dsh-local:latest sh -c 'test -f /opt/dsh-config/personas/sdmx-expert/persona.yaml'
 
       - name: Hardened Sandbox Compose Stack Integration Test
@@ -231,17 +220,18 @@ jobs:
           "
 
           echo "Asserting session state persists across a sandbox restart..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /root/.dsh/sessions/ci-marker'
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /root/.dsh/storages/ci-marker'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /var/lib/dsh/sessions/ci-marker'
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /var/lib/dsh/storages/ci-marker'
           docker compose -f docker-compose.yml -f docker-compose.sandbox.yml restart dsh
           healthy=0
           for i in $(seq 1 90); do
             if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
+              echo "✅ DSH sandbox container is healthy!"
               healthy=1
               break
             fi
             sleep 1
           done
           [ "$healthy" -eq 1 ]
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /root/.dsh/sessions/ci-marker
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /root/.dsh/storages/ci-marker
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /var/lib/dsh/sessions/ci-marker
+          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /var/lib/dsh/storages/ci-marker

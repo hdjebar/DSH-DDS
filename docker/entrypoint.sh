@@ -13,15 +13,11 @@ prepare_sandbox_home() {
   mkdir -p "$DSH_HOME" "$RUNTIME_DIR" "$state_dir/sessions" "$state_dir/storages"
 
   if [ -d "$config_source" ]; then
-    tar -C "$config_source" \
-      --exclude='node_modules' \
-      --exclude='*/node_modules' \
-      --exclude='*node_modules*' \
-      --exclude='*.pnpm*' \
-      --exclude='./sessions' \
-      --exclude='./storages' \
-      --exclude='./phoenix' \
-      -cf - . | tar --no-same-owner -C "$DSH_HOME" -xf -
+    (cd "$config_source" && find . -mindepth 1 \
+      -not -path '*/node_modules*' \
+      -not -path './sessions*' \
+      -not -path './storages*' \
+      -not -path './phoenix*' | tar -cf - -T -) | tar --no-same-owner -C "$DSH_HOME" -xf -
   fi
 
   mkdir -p "$DSH_HOME/profiles/web" "$DSH_HOME/profiles/node_modules" "$DSH_HOME/patch"
