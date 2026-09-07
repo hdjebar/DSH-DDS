@@ -129,21 +129,24 @@ export function registerGatewayMiddleware(ctx, config = {}) {
     kind: 'exact',
     path: '/dsh-dds/api/vault/keys',
     handler: async (req, res) => {
-      let vault;
       try {
-        vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
+        const vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
+        if (vault) {
+          void vault.userStateBase;
+        }
+        const user = req.user || (typeof ctx.get === 'function' ? ctx.get('iam')?.getCurrentUser() : null) || { id: 'default' };
+        await handleVaultApiRequest(req, res, vault, user);
       } catch (err) {
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({
-          success: false,
-          error: 'VAULT_UNAVAILABLE',
-          message: err.message
-        }));
-        return;
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            error: 'VAULT_UNAVAILABLE',
+            message: err.message
+          }));
+        }
       }
-      const user = req.user || (typeof ctx.get === 'function' ? ctx.get('iam')?.getCurrentUser() : null) || { id: 'default' };
-      await handleVaultApiRequest(req, res, vault, user);
     }
   });
 }

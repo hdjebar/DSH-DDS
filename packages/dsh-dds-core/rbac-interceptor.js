@@ -28,7 +28,7 @@ async function getRbacEngine() {
   }
 }
 
-export const TOOL_ACTION_MAP = {
+export const TOOL_ACTION_MAP = Object.assign(Object.create(null), {
   bash: 'run_shell',
   sh: 'run_shell',
   shell: 'run_shell',
@@ -58,7 +58,17 @@ export const TOOL_ACTION_MAP = {
   inspect_sqlite: 'inspect_sqlite',
   tabular: 'inspect_tabular',
   inspect_tabular: 'inspect_tabular'
-};
+});
+
+export const KNOWN_POLICY_VERBS = new Set([
+  'write_report', 'apply_fix_or_patch', 'save_artifact',
+  'create_file', 'contain_threat', 'modify_file', 'escalate_to_soc',
+  'run_shell', 'fetch_sources', 'inspect_sqlite', 'read_catalog',
+  'forensic_investigation', 'inspect_tabular', 'read_file',
+  'validate_sdmx_schema', 'run_llm_query', 'parse_intent',
+  'evaluate_incident', 'probe_services', 'verify_endpoint',
+  'fetch_sdmx_dataflows'
+]);
 
 export function registerRbacInterceptor(ctx, config = {}) {
   if (config.enableToolRbac === false) return;
@@ -75,43 +85,53 @@ export function registerRbacInterceptor(ctx, config = {}) {
       throw new Error('[Zero-Trust RBAC Violation] Missing authenticated user identity context');
     }
 
-    const resolvedAction = TOOL_ACTION_MAP[actionContext.action]
-      || actionContext.action
-      || TOOL_ACTION_MAP[actionContext.toolName]
-      || null;
+    const resolvedAction = (actionContext.toolName && TOOL_ACTION_MAP[actionContext.toolName])
+      ?? (actionContext.action && TOOL_ACTION_MAP[actionContext.action])
+      ?? (KNOWN_POLICY_VERBS.has(actionContext.action) ? actionContext.action : null);
 
     if (!resolvedAction) {
-      throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || 'unknown'}' is an unmapped or unauthorized tool`);
+      throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || actionContext.action || 'unknown'}' is an unmapped or unauthorized tool`);
     }
+
+    const isShellAction = resolvedAction === 'run_shell';
+    const targetPath = actionContext.target || actionContext.path || (isShellAction ? (actionContext.workdir || actionContext.cwd || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases')) : null);
 
     const step = {
       name: actionContext.toolName || 'tool-execute',
       action: resolvedAction,
-      target: actionContext.target || actionContext.path || actionContext.command
+      target: targetPath,
+      command: actionContext.command,
+      workdir: actionContext.workdir || actionContext.cwd
     };
+
+    const resolveEngine = async () => (config.getRbacEngine ? await config.getRbacEngine() : (config.rbacEngine || await getRbacEngine()));
 
     // Multi-tenant scoped workspace boundary evaluation
     if (step.target && typeof step.target === 'string') {
       const tenantCheck = partitionManager.validatePathAccess(step.target, user);
       if (!tenantCheck.allowed) {
-        const engine = await getRbacEngine();
-        if (engine && typeof engine.logGrcAuditEvent === 'function') {
-          engine.logGrcAuditEvent({
-            persona: actionContext.persona?.name || 'default',
-            workflow: actionContext.workflow || 'agent-session',
-            action: step.action,
-            target: step.target,
-            decision: 'DENIED',
-            role: user.roles?.[0] || 'user',
-            reason: tenantCheck.reason
-          });
-        }
+        try {
+          const engine = await resolveEngine();
+          if (engine && typeof engine.logGrcAuditEvent === 'function') {
+            engine.logGrcAuditEvent({
+              persona: actionContext.persona?.name || 'default',
+              workflow: actionContext.workflow || 'agent-session',
+              action: step.action,
+              target: step.target,
+              decision: 'DENIED',
+              role: user.roles?.[0] || 'user',
+              reason: tenantCheck.reason
+            });
+          }
+        } catch {}
         throw new Error(`[Zero-Trust RBAC Violation] ${tenantCheck.reason}`);
       }
     }
 
-    const engine = await getRbacEngine();
-    if (!engine || typeof engine.enforceRbacPolicy !== 'function') return;
+    const engine = await resolveEngine();
+    if (!engine || typeof engine.enforceRbacPolicy !== 'function') {
+      throw new Error('[Zero-Trust RBAC Violation] Policy engine unavailable');
+    }
 
     const readRoots = ['/workspaces', '/var/lib/dsh'];
     const writeRoots = ['/workspaces/cases', '/var/lib/dsh/sessions', '/var/lib/dsh/storages'];

@@ -59,6 +59,14 @@ A thorough audit of the DeepSeek Harness (DSH-DDS) container, compose layer, and
 - Eliminated shell interpolation in `dsh.sh` approval check using `execFileSync` with argument arrays.
 - Inverted `install_dsh.sh` ref verification: fails closed on unresolvable git tags unless `DSH_ALLOW_REF_FALLBACK=1`.
 
+### 6. Second-Pass Audit Hardening (Fail-Closed PEP, Precedence, Shell Separation, Proxy Guards, and Sandbox TMPFS)
+- **PEP Engine Fail-Closed**: If `config/persona.mjs` or `/etc/dsh/persona.mjs` cannot be resolved or is missing `enforceRbacPolicy`, the interceptor strictly throws `[Zero-Trust RBAC Violation] Policy engine unavailable` rather than returning silently.
+- **`TOOL_ACTION_MAP` Precedence & Prototype Immunity**: `TOOL_ACTION_MAP` is created with a `null` prototype (`Object.assign(Object.create(null), { ... })`) to prevent prototype pollution lookups (`constructor`, `toString`). The action resolution order prioritizes explicit `toolName` before generic `action`, and validates raw actions against `KNOWN_POLICY_VERBS`.
+- **Shell Command vs Path Separation**: For `run_shell` actions, `actionContext.workdir` or `actionContext.cwd` is checked against workspace path allowlists (`step.target`), while `step.command` is evaluated against `filesystem.deny` patterns, preventing commands from failing path validation or evading blacklist tokens.
+- **Lazy Vault Proxy Error Guard**: `registerGatewayMiddleware` wraps vault retrieval and `handleVaultApiRequest` in `try/catch` and touches `vault.userStateBase` inside the guard, returning HTTP 500 JSON `{ success: false, error: 'VAULT_UNAVAILABLE', message: ... }` when the master key is missing.
+- **Sandbox `/run` Tmpfs Confinement**: Hardened `/run` mount in `docker-compose.sandbox.yml` from world-writable `mode=1777` to non-root `mode=0770,uid=1000,gid=1000`.
+- **Web Search Domain & Protocol Hardening**: In `packages/dsh-dds-core/web-search.js`, search requests strictly require `https:` protocol and `duckduckgo.com` domain for both initial requests and 3xx redirects, blocking SSRF attempts, and enforcing a 512 KB maximum body size limit.
+
 ---
 
 ## Consequences

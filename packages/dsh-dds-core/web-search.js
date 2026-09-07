@@ -5,7 +5,6 @@
  * when third-party keyless quotas are exhausted or anonymous IP access is blocked.
  */
 
-import http from 'node:http';
 import https from 'node:https';
 
 export function parseDuckDuckGoHtml(html, maxResults = 5) {
@@ -25,7 +24,7 @@ export function parseDuckDuckGoHtml(html, maxResults = 5) {
   return results;
 }
 
-function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, redirectCount = 0) {
+export function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, redirectCount = 0) {
   return new Promise((resolve, reject) => {
     if (redirectCount > 3) {
       return reject(new Error('DuckDuckGo search exceeded maximum redirect limit (3)'));
@@ -38,8 +37,14 @@ function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, redirectCo
       return reject(new Error(`Invalid search URL: ${targetUrl}`));
     }
 
-    const client = parsed.protocol === 'http:' ? http : https;
-    const req = client.get(
+    if (parsed.protocol !== 'https:') {
+      return reject(new Error(`Insecure search protocol rejected: ${parsed.protocol}`));
+    }
+    if (parsed.hostname !== 'duckduckgo.com' && !parsed.hostname.endsWith('.duckduckgo.com')) {
+      return reject(new Error(`External search host rejected: ${parsed.hostname}`));
+    }
+
+    const req = https.get(
       targetUrl,
       {
         headers: {
@@ -51,15 +56,35 @@ function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, redirectCo
       },
       (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          const nextUrl = new URL(res.headers.location, targetUrl).toString();
+          let nextParsed;
+          try {
+            nextParsed = new URL(res.headers.location, targetUrl);
+          } catch (e) {
+            res.resume();
+            return reject(new Error(`Invalid redirect URL: ${res.headers.location}`));
+          }
+          if (nextParsed.protocol !== 'https:' || (nextParsed.hostname !== 'duckduckgo.com' && !nextParsed.hostname.endsWith('.duckduckgo.com'))) {
+            res.resume();
+            return reject(new Error(`Insecure or external redirect rejected: ${nextParsed.origin}`));
+          }
           res.resume();
-          return fetchSearchUrl(nextUrl, maxResults, timeoutMs, redirectCount + 1).then(resolve, reject);
+          return fetchSearchUrl(nextParsed.toString(), maxResults, timeoutMs, redirectCount + 1).then(resolve, reject);
         }
         if (res.statusCode && res.statusCode >= 400) {
           return reject(new Error(`DuckDuckGo returned HTTP ${res.statusCode}`));
         }
         let data = '';
-        res.on('data', (chunk) => { data += chunk; });
+        let totalBytes = 0;
+        const MAX_BYTES = 512 * 1024; // 512 KB
+        res.on('data', (chunk) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_BYTES) {
+            req.destroy();
+            reject(new Error('DuckDuckGo search response exceeded 512 KB limit'));
+            return;
+          }
+          data += chunk;
+        });
         res.on('end', () => {
           try {
             const parsedResults = parseDuckDuckGoHtml(data, maxResults);

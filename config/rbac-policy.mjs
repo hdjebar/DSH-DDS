@@ -265,7 +265,7 @@ export function enforceRbacPolicy(personaMeta, step) {
   }
 
   // PR-002: Strict validation of resource scalar types
-  const resourceFields = ['target', 'destination', 'scope', 'source', 'concrete_target', 'schema', 'path', 'file'];
+  const resourceFields = ['target', 'destination', 'scope', 'source', 'concrete_target', 'schema', 'path', 'file', 'workdir', 'cwd', 'command'];
   for (const field of resourceFields) {
     if (field in step && step[field] !== undefined && step[field] !== null) {
       const val = step[field];
@@ -314,6 +314,8 @@ export function enforceRbacPolicy(personaMeta, step) {
       rawTargets.push(step.scope || step.target || 'config/personas');
     } else if (rawAction === 'fetch_sources') {
       rawTargets.push(step.target || step.source || step.scope || (process.env.DSH_WORKSPACE_ROOT || '/workspaces'));
+    } else if (rawAction === 'run_shell') {
+      rawTargets.push(step.target || step.workdir || step.cwd || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases'));
     }
   }
 
@@ -359,6 +361,23 @@ export function enforceRbacPolicy(personaMeta, step) {
       violation: `Read action '${rawAction}' requires a concrete target, but none was provided or resolvable`,
       code: 'RBAC_TARGET_REQUIRED'
     };
+  }
+
+  // Command string check against denied patterns
+  if (step.command && typeof step.command === 'string') {
+    const deniedPatterns = filesystem?.deny || [];
+    for (const pattern of deniedPatterns) {
+      if (!pattern) continue;
+      const cleanPattern = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
+      if (cleanPattern && (step.command === cleanPattern || step.command.includes(cleanPattern))) {
+        return {
+          allowed: false,
+          role,
+          violation: `Command '${step.command}' contains denied token '${pattern}'`,
+          code: 'RBAC_DENY_VIOLATION'
+        };
+      }
+    }
   }
 
   for (const target of targetsToCheck) {

@@ -12,7 +12,10 @@ import {
   registerRbacInterceptor,
   registerSessionEventsShim,
   registerBashWorkdirShim,
-  DEFAULT_OPERATOR
+  DEFAULT_OPERATOR,
+  TOOL_ACTION_MAP,
+  KNOWN_POLICY_VERBS,
+  fetchSearchUrl
 } from '../packages/dsh-dds-core/index.js';
 import { isTrustedGatewayIp, isSameOriginOrLoopback } from '../packages/dsh-dds-core/gateway.js';
 import { TRANSLATION_DICTIONARY } from '../packages/dsh-dds-core/localization.js';
@@ -389,6 +392,196 @@ test('Web Search Fallback: registerWebSearchFallback intercepts engine failure a
   assert.ok(Array.isArray(res.sources), 'Fallback search must return sources array');
   assert.equal(res.truncated, false);
 });
+
+test('Core RBAC Interceptor: TOOL_ACTION_MAP precedence and prototype isolation', async () => {
+  // Prototype isolation
+  assert.equal(Object.getPrototypeOf(TOOL_ACTION_MAP), null, 'TOOL_ACTION_MAP must have null prototype');
+  assert.equal(TOOL_ACTION_MAP['constructor'], undefined);
+  assert.equal(TOOL_ACTION_MAP['toString'], undefined);
+  assert.ok(KNOWN_POLICY_VERBS.has('run_shell'));
+
+  let beforeHook = null;
+  const mockCtx = {
+    user: DEFAULT_OPERATOR,
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+  registerRbacInterceptor(mockCtx, { enableToolRbac: true });
+
+  // 1. Precedence: toolName 'bash' beats generic action 'execute' -> maps to run_shell
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'bash',
+      action: 'execute',
+      workdir: '/workspaces/cases',
+      command: 'npm --version',
+      persona: {
+        name: 'test-operator',
+        rbac: {
+          role: 'operator',
+          permissions: {
+            filesystem: {
+              read: ['/workspaces'],
+              write: ['/workspaces/cases'],
+              deny: []
+            }
+          }
+        }
+      }
+    });
+  });
+
+  // 2. Prototype pollution injection attempts fail closed
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'constructor',
+        action: 'pollute'
+      });
+    },
+    /Zero-Trust RBAC Violation.*unmapped or unauthorized tool/
+  );
+
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'unknown_tool',
+        action: 'toString'
+      });
+    },
+    /Zero-Trust RBAC Violation.*unmapped or unauthorized tool/
+  );
+
+  // 3. Known policy verb without toolName succeeds resolution
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      action: 'validate_sdmx_schema',
+      target: '/workspaces/cases/schema.xml',
+      persona: {
+        name: 'test-operator',
+        rbac: {
+          role: 'operator',
+          permissions: {
+            filesystem: {
+              read: ['/workspaces/cases'],
+              write: [],
+              deny: []
+            }
+          }
+        }
+      }
+    });
+  });
+});
+
+test('Core RBAC Interceptor: shell command is separated from target path and checked against deny rules', async () => {
+  let beforeHook = null;
+  const mockCtx = {
+    user: DEFAULT_OPERATOR,
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+  registerRbacInterceptor(mockCtx, { enableToolRbac: true });
+
+  const personaWithDeny = {
+    name: 'test-developer',
+    rbac: {
+      role: 'developer',
+      permissions: {
+        filesystem: {
+          read: ['/workspaces'],
+          write: ['/workspaces/cases'],
+          deny: ['reset.sh', 'rm -rf /']
+        }
+      }
+    }
+  };
+
+  // 1. Non-path command string inside allowed workdir must NOT fail write allowlist checks
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'bash',
+      command: 'npm test -- --coverage',
+      workdir: '/workspaces/cases',
+      persona: personaWithDeny
+    });
+  });
+
+  // 2. Shell command containing denied token must be rejected with RBAC_DENY_VIOLATION
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'bash',
+        command: 'bash reset.sh --force',
+        workdir: '/workspaces/cases',
+        persona: personaWithDeny
+      });
+    },
+    /Command '.*' contains denied token 'reset.sh'/
+  );
+
+  // 3. Shell command targeting denied pattern rm -rf /
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'bash',
+        command: 'rm -rf / --no-preserve-root',
+        workdir: '/workspaces/cases',
+        persona: personaWithDeny
+      });
+    },
+    /Command '.*' contains denied token 'rm -rf \/'/
+  );
+});
+
+test('Core RBAC Interceptor: fails closed when policy engine is unavailable', async () => {
+  let beforeHook = null;
+  const mockCtx = {
+    user: DEFAULT_OPERATOR,
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+
+  // Explicitly supply a null/broken policy engine
+  registerRbacInterceptor(mockCtx, {
+    enableToolRbac: true,
+    getRbacEngine: async () => null
+  });
+
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'read_file',
+        target: '/workspaces/cases/test.txt'
+      });
+    },
+    /Zero-Trust RBAC Violation.*Policy engine unavailable/
+  );
+});
+
+test('Web Search Fallback: enforces HTTPS and duckduckgo.com domain restrictions', async () => {
+  // Reject plain HTTP
+  await assert.rejects(
+    () => fetchSearchUrl('http://html.duckduckgo.com/html/?q=test'),
+    /Insecure search protocol rejected: http:/
+  );
+
+  // Reject external / non-duckduckgo hosts
+  await assert.rejects(
+    () => fetchSearchUrl('https://evil.attacker.com/steal?q=test'),
+    /External search host rejected: evil.attacker.com/
+  );
+
+  // Reject internal loopback / metadata IP SSRF attempts
+  await assert.rejects(
+    () => fetchSearchUrl('https://169.254.169.254/latest/meta-data'),
+    /External search host rejected: 169.254.169.254/
+  );
+});
+
 
 
 

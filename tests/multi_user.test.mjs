@@ -14,7 +14,8 @@ import {
   encryptSecret,
   decryptSecret,
   handleVaultApiRequest,
-  registerRbacInterceptor
+  registerRbacInterceptor,
+  registerGatewayMiddleware
 } from '../packages/dsh-dds-core/index.js';
 import { EventEmitter } from 'node:events';
 
@@ -292,3 +293,61 @@ test('BYOK Vault HTTP REST API: supports GET, POST, DELETE with JSON payloads', 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('BYOK Vault Gateway Endpoint: returns 500 JSON when master key is missing with lazy Proxy', async () => {
+  const routes = new Map();
+  const mockWebServer = {
+    server: {
+      prependListener() {}
+    },
+    register(route) {
+      routes.set(route.path, route);
+      return () => routes.delete(route.path);
+    }
+  };
+
+  // Simulate lazy proxy that throws on access when master key is missing
+  let _vault = null;
+  const lazyVault = new Proxy({}, {
+    get(target, prop) {
+      if (!_vault) {
+        throw new Error('VAULT_MASTER_KEY_MISSING: set DSH_VAULT_MASTER_KEY (>=32 chars) before using the BYOK vault.');
+      }
+      return _vault[prop];
+    }
+  });
+
+  const mockCtx = {
+    webServer: mockWebServer,
+    get(name) {
+      if (name === 'byokVault') return lazyVault;
+      return null;
+    }
+  };
+
+  registerGatewayMiddleware(mockCtx);
+  assert.ok(routes.has('/dsh-dds/api/vault/keys'), 'Must register /dsh-dds/api/vault/keys endpoint');
+
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/dsh-dds/api/vault/keys';
+  req.headers = {};
+
+  let resStatus = 0;
+  let resBody = '';
+  const res = {
+    headers: {},
+    setHeader(k, v) { this.headers[k] = v; },
+    set statusCode(code) { resStatus = code; },
+    get statusCode() { return resStatus; },
+    end(data) { resBody = data; }
+  };
+
+  await routes.get('/dsh-dds/api/vault/keys').handler(req, res);
+  assert.equal(resStatus, 500, 'Must return HTTP 500 on vault error');
+  const json = JSON.parse(resBody);
+  assert.equal(json.success, false);
+  assert.equal(json.error, 'VAULT_UNAVAILABLE');
+  assert.match(json.message, /VAULT_MASTER_KEY_MISSING/);
+});
+
