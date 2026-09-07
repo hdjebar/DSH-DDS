@@ -76,8 +76,13 @@ jobs:
           node --check config/persona.mjs
           node --check config/doctor.mjs
           node --check config/sync_models.mjs
-          node --check config/patch_translations.mjs
-          node --check config/patch-pi-ai.mjs
+          node --check config/declarative-orchestrator.mjs
+          node --check config/context-quarantine.mjs
+          node --check config/dynamic-governance.mjs
+          node --check config/failover-gateway.mjs
+          node --check config/phoenix-evals.mjs
+          node --check config/rbac-policy.mjs
+          node --check config/worktree-staging.mjs
 
       - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |
