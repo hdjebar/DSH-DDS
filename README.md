@@ -387,6 +387,9 @@ tar -xzvf dsh_backup_*.tar.gz
 docker compose up -d --build
 ```
 
+### 4. Upstream Upgrades & Component Evolution
+To upgrade DeepSeek Harness, the Cordis microkernel, plugins, or pre-baked MCP servers safely without breaking existing workflows, consult the [Upstream Upgrades & Component Evolution Guide](docs/upgrades.md).
+
 ---
 
 ## 🤝 Contributing & Changelog

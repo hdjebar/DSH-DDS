@@ -123,6 +123,9 @@ docker compose pull
 ./dsh.sh doctor
 ```
 
+> [!TIP]
+> For a comprehensive breakdown of how DSH-DDS safely manages version upgrades for **DeepSeek Harness**, the **Cordis Microkernel**, **Plugins**, and **MCP Tools** (including rollback playbooks and zero-drift CI gates), see the in-depth [Upstream Upgrades & Component Evolution Guide](upgrades.md).
+
 ---
 
 ## ⚙️ Environment Variables & Security Hardening (`.env`)
