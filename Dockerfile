@@ -33,8 +33,8 @@ COPY --from=ghcr.io/github/github-mcp-server:v1.11.0@sha256:fbec75de11c255213fa0
 # ── Create unprivileged service user dsh (UID/GID 1000) ────────────
 RUN usermod -l dsh -d /home/dsh -m node \
     && groupmod -n dsh node \
-    && mkdir -p /home/dsh/.local/bin /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools \
-    && chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools
+    && mkdir -p /home/dsh/.local/bin /var/lib/dsh /var/lib/dsh-state /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools \
+    && chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /app /run/dsh /var/log/dsh /etc/dsh /opt/uv-tools
 
 # Install official DeepSeek Harness engine and minimal runtime dependencies (no build compilers, no GUI bloat)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -60,7 +60,7 @@ ENV NODE_PATH="/usr/local/lib/node_modules:/app/prebuilt-profiles/web/node_modul
 # Setup directories, shebang for internals exposure, and global CLI link
 RUN mkdir -p /home/dsh/.mnemon/runtime /var/lib/dsh/profiles/web /var/lib/dsh/profiles/node_modules \
     /var/lib/dsh/storages /var/lib/dsh/sessions /var/lib/dsh/patch /var/lib/dsh/cache /run/dsh /workspaces \
-    /opt/dsh-config /var/lib/dsh-state /var/log/dsh /app /etc/dsh \
+    /opt/dsh-config /var/lib/dsh-state/sessions /var/lib/dsh-state/storages /var/log/dsh /app /etc/dsh \
     && chmod 0750 /var/log/dsh \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh \
     && ln -sf ../lib/node_modules/@deepseek-ai/dsh/node_modules/.bin/cordis /usr/local/bin/cordis \
@@ -134,7 +134,7 @@ RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
 # Universal Runtime Compatibility & Sandboxing Loader (Zero Disk Patches)
 ENV NODE_OPTIONS="--import /app/packages/dsh-dds-core/loader.mjs"
 
-RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /app /run/dsh /var/log/dsh /etc/dsh
+RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /app /run/dsh /var/log/dsh /etc/dsh
 
 EXPOSE 3080
 

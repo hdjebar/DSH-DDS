@@ -100,8 +100,8 @@ test('Sandbox Compose: credential blanking, audit retention, named volume state,
 
   // Hardened tmpfs modes
   for (const t of dsh.tmpfs) {
-    if (t.startsWith('/tmp:')) {
-      assert.ok(t.includes('mode=1777'), '/tmp must have mode=1777');
+    if (t.startsWith('/tmp:') || t.startsWith('/run:')) {
+      assert.ok(t.includes('mode=1777'), `${t} must have mode=1777`);
     } else if (t.startsWith('/var/log/dsh:')) {
       assert.ok(t.includes('mode=0750'), '/var/log/dsh must have mode=0750');
     } else {

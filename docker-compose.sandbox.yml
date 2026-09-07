@@ -32,14 +32,14 @@ services:
       - sandbox-session-state:/var/lib/dsh-state:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
-      - /run:rw,size=32m,mode=0770
-      - /home/dsh/.cache:rw,size=128m,mode=0770
-      - /home/dsh/.mnemon:rw,size=32m,mode=0770
-      - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=0770
-      - /root/.dsh:rw,nosuid,nodev,size=64m,mode=0770
-      - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=0750
-      - /workspaces/cases:rw,size=64m,mode=0770
-      - /artifacts:rw,size=64m,mode=0770
+      - /run:rw,size=32m,mode=1777
+      - /home/dsh/.cache:rw,size=128m,mode=0770,uid=1000,gid=1000
+      - /home/dsh/.mnemon:rw,size=32m,mode=0770,uid=1000,gid=1000
+      - /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=0770,uid=1000,gid=1000
+      - /root/.dsh:rw,nosuid,nodev,size=64m,mode=0770,uid=1000,gid=1000
+      - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=0750,uid=1000,gid=1000
+      - /workspaces/cases:rw,size=64m,mode=0770,uid=1000,gid=1000
+      - /artifacts:rw,size=64m,mode=0770,uid=1000,gid=1000
     environment:
       - DSH_SANDBOX=1
       - DSH_CONFIG_SOURCE=/opt/dsh-config
