@@ -268,7 +268,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📜 **[ADR 0004: In-Container Boundaries & Strict Containment](docs/adr/0004-in-container-boundaries-and-strict-directory-containment.md)** — Architecture Decision Record on in-container execution boundaries, strict directory containment, and acyclic policy architecture.
 * 📜 **[ADR 0005: Remediation of Audit v3 Findings](docs/adr/0005-remediation-of-audit-v3-findings.md)** — Architecture Decision Record on symlink ancestor canonicalization, truthful capability adapters, clean-room installer parity, and multi-state GRC auditing.
 * 📜 **[ADR 0006: Global Refactoring (Non-Root & Cordis Plugin)](docs/adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)** — Architecture Decision Record on non-root UID 1000 confinement, Linux FHS segregation, native pnpm patches, `@dsh-dds/core` plugin, and image slimming.
-* 📜 **[ADR 0007: Outbound Egress Proxy Isolation](docs/adr/0007-outbound-egress-proxy-isolation.md)** — Architecture Decision Record on Envoy loopback proxy, egress filtering, and strict DNS cache timeouts.
+* 📜 **[ADR 0007: Rejection of In-Container Antigravity CLI](docs/adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md)** — Architecture Decision Record on rejecting host credential mounts and adopting credential-isolated search.
 
 ### 🔬 Theory & Research
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
