@@ -18,6 +18,7 @@ import {
   validateSlug,
   enforceRbacPolicy,
   logGrcAuditEvent,
+  logGrcAuditEventBestEffort,
   getGrcAuditLogPath,
   isContainedWithin
 } from './rbac-policy.mjs';
@@ -31,6 +32,7 @@ export {
   validateSlug,
   enforceRbacPolicy,
   logGrcAuditEvent,
+  logGrcAuditEventBestEffort,
   getGrcAuditLogPath,
   isContainedWithin
 };

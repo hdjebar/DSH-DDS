@@ -20,6 +20,7 @@ import {
   validateSlug,
   enforceRbacPolicy,
   logGrcAuditEvent,
+  logGrcAuditEventBestEffort,
   resolvePath
 } from './rbac-policy.mjs';
 
@@ -1143,7 +1144,10 @@ export class DeclarativeWorkflowEngine {
 
     // 1. Zero Trust RBAC Authorization Check (Fail-Closed)
     const rbacCheck = enforceRbacPolicy(this.meta, normalizedStep);
-    logGrcAuditEvent({
+    // Fail-closed only when the step would otherwise proceed; a denial must surface as
+    // the policy violation, not as an audit-sink error.
+    const recordDecision = rbacCheck.allowed ? logGrcAuditEvent : logGrcAuditEventBestEffort;
+    recordDecision({
       persona: this.meta.name,
       workflow: workflowName,
       step_name: normalizedStep.name || rawAction,
@@ -1174,7 +1178,7 @@ export class DeclarativeWorkflowEngine {
     // 3. Approval Gate Checking (ACM Suspension) - F-05: Log GATED state explicitly
     if (normalizedStep.approval_required || normalizedStep.approval) {
       if (!currentContext.approved) {
-        logGrcAuditEvent({
+        logGrcAuditEventBestEffort({
           persona: this.meta.name,
           workflow: workflowName,
           step_name: normalizedStep.name || rawAction,
@@ -1267,7 +1271,7 @@ export class DeclarativeWorkflowEngine {
         const loopErr = new Error(`[Agent Loop Trap] Deterministic circular step detected: action '${rawAction}' on target '${stepTarget}' executed repeatedly without divergence (LOOP_DETECTED)`);
         loopErr.code = 'LOOP_DETECTED';
 
-        logGrcAuditEvent({
+        logGrcAuditEventBestEffort({
           persona: this.meta.name,
           workflow: workflowName,
           step_name: normalizedStep.name || rawAction,

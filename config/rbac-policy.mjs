@@ -602,6 +602,26 @@ export async function emitGrcSpanToPhoenix(event) {
   }
 }
 
+/**
+ * Best-effort variant of logGrcAuditEvent for call sites whose outcome is ALREADY a
+ * refusal, suspension, or recovery (DENIED / GATED / LOOP_DETECTED).
+ *
+ * logGrcAuditEvent is deliberately fail-closed so a GRANT cannot execute unrecorded.
+ * Applying that to a path that already refuses is counterproductive: the audit error
+ * would replace the policy violation the caller needs to see, and would turn a
+ * resumable approval gate or a recoverable loop trap into a hard failure. Here the
+ * original outcome wins, but the write failure is still reported loudly on stderr so
+ * it cannot pass unnoticed.
+ */
+export function logGrcAuditEventBestEffort(event, traceId = null) {
+  try {
+    return logGrcAuditEvent(event, traceId);
+  } catch (err) {
+    console.error(`\u26a0\ufe0f  GRC_AUDIT_WRITE_FAILED (non-blocking, decision was '${event?.decision || 'unknown'}'): ${err.message}`);
+    return null;
+  }
+}
+
 export function logGrcAuditEvent(event, traceId = null) {
   const auditEntry = {
     timestamp: new Date().toISOString(),

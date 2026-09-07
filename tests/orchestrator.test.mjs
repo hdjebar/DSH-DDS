@@ -1667,3 +1667,63 @@ test('Hardening Regression: resumeWorkflow in container sandbox (DSH_SANDBOX=1) 
 test.after(() => {
   fs.rmSync(testIsolatedDir, { recursive: true, force: true });
 });
+
+test('Audit sink failure must not mask the policy violation or break resumable outcomes', async () => {
+  const fsMod = await import('node:fs');
+  const osMod = await import('node:os');
+  const pathMod = await import('node:path');
+  const { enforceRbacPolicy, logGrcAuditEvent, logGrcAuditEventBestEffort } =
+    await import('../config/rbac-policy.mjs');
+
+  // Both sinks beneath a regular file, so every write fails fast with ENOTDIR.
+  const tmp = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'dsh-mask-'));
+  const blocker = pathMod.join(tmp, 'blocker');
+  fsMod.writeFileSync(blocker, 'not a directory');
+  const prevAudit = process.env.DSH_AUDIT_LOG_FILE;
+  const prevSessions = process.env.DSH_SESSIONS_DIR;
+  process.env.DSH_AUDIT_LOG_FILE = pathMod.join(blocker, 'audit_grc.jsonl');
+  process.env.DSH_SESSIONS_DIR = pathMod.join(blocker, 'sessions');
+
+  const prevError = console.error;
+  const errors = [];
+  console.error = (...args) => errors.push(args.join(' '));
+
+  try {
+    const meta = {
+      name: 'mask-probe',
+      rbac: { role: 'probe', permissions: { filesystem: { read: ['/workspaces'], write: ['/workspaces/cases'], deny: [] } } }
+    };
+    const denied = enforceRbacPolicy(meta, { name: 's', action: 'write_report', target: '/root/escape' });
+    assert.equal(denied.allowed, false);
+
+    // A GRANT that cannot be recorded must still fail closed.
+    assert.throws(
+      () => logGrcAuditEvent({ decision: 'GRANTED', reason: 'ok' }),
+      /GRC_AUDIT_WRITE_FAILED/,
+      'an unrecordable grant must not execute'
+    );
+
+    // A decision that already refuses, gates, or recovers must keep its own outcome:
+    // the audit error must not replace the violation the caller needs to see, and must
+    // not turn a resumable approval gate into a hard failure.
+    assert.doesNotThrow(
+      () => logGrcAuditEventBestEffort({ decision: 'DENIED', reason: denied.violation }),
+      'a denial must surface as the policy violation, not as an audit-sink error'
+    );
+    assert.doesNotThrow(
+      () => logGrcAuditEventBestEffort({ decision: 'GATED', reason: 'awaiting approval' }),
+      'a gated step must stay resumable when the audit sink is unavailable'
+    );
+
+    // ...but the failure is never silent.
+    assert.equal(errors.length, 2, 'each best-effort write failure must be reported');
+    for (const line of errors) assert.match(line, /GRC_AUDIT_WRITE_FAILED/);
+  } finally {
+    console.error = prevError;
+    if (prevAudit === undefined) delete process.env.DSH_AUDIT_LOG_FILE;
+    else process.env.DSH_AUDIT_LOG_FILE = prevAudit;
+    if (prevSessions === undefined) delete process.env.DSH_SESSIONS_DIR;
+    else process.env.DSH_SESSIONS_DIR = prevSessions;
+    fsMod.rmSync(tmp, { recursive: true, force: true });
+  }
+});

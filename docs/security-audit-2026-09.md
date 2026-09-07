@@ -9,8 +9,8 @@ rather than collapsed into a list of resolved items.
 | | |
 | :--- | :--- |
 | **Baseline** | `b6ee34a` |
-| **Passes** | 4 (findings → remediation → re-audit → remediation) |
-| **Test suite** | 166 passing at close (145 at baseline, plus 21 regression tests added) |
+| **Passes** | 5 (findings → remediation → re-audit → remediation → self-review) |
+| **Test suite** | 167 passing at close (145 at baseline, plus 22 regression tests added) |
 | **Method** | Source review plus behavioural probes: each finding below marked *verified* was reproduced by executing the affected code path, not inferred from reading. |
 | **Not covered** | No Docker daemon was available. Every `Dockerfile`, `entrypoint.sh`, and compose change is reviewed statically only. |
 
@@ -48,6 +48,12 @@ Severity is the risk at the time of discovery. "Pass" is the audit pass that fou
 | D-04 | 4 | Med | The installer fetched and extracted the release archive with no checksum and swallowed `tar` failures. | Verified against the published `SHA256SUMS`, fails closed unless `DSH_ALLOW_UNVERIFIED_ARCHIVE=1`; extraction errors fatal. |
 | D-05 | 4 | Med | `logGrcAuditEvent` swallowed both sink failures in bare `catch {}` while the docs claimed a "fail-closed append". | Throws `GRC_AUDIT_WRITE_FAILED` when every sink fails, so an unrecordable decision cannot execute. |
 | D-06 | 4 | Low | Doc inaccuracies: non-existent Phoenix tag `version-20.5.0`; Phoenix storage described as a named volume (it is a bind mount); retention asymmetry (14-day spans vs. "permanent ledger") unstated. | Corrected in `security.md`. |
+
+### Found in pass 5 (self-review of the pass-4 remediation)
+
+| ID | Pass | Sev | Finding | Resolution |
+| :--- | :---: | :---: | :--- | :--- |
+| E-01 | 5 | Med | The D-05 fail-closed append applied to *every* call site, including three in `declarative-orchestrator.mjs` whose outcome was already a refusal. A failing audit sink therefore replaced `Zero Trust RBAC Policy Violation [RBAC_WRITE_UNAUTHORIZED]` with `GRC_AUDIT_WRITE_FAILED`, and converted a resumable approval gate (`GATED`) and a recoverable loop trap (`LOOP_DETECTED`) into hard failures. *(verified)* | `logGrcAuditEventBestEffort` added for paths that already deny, gate, or recover: the original outcome wins and the write failure is reported on stderr. `logGrcAuditEvent` stays fail-closed for grants. |
 
 ### Accepted with documented limits
 
@@ -89,7 +95,7 @@ Severity is the risk at the time of discovery. "Pass" is the audit pass that fou
 
 ## 3. What the passes suggest about the codebase
 
-Two of the four passes found that a remediation had introduced a new defect, and in one case
+Three of the five passes found that a remediation had introduced a new defect, and in one case
 (B-01) the fix inverted the property it was meant to guarantee. Three observations follow:
 
 - **Fail-closed is a property of the whole path, not of one function.** A-04 made the policy
@@ -99,6 +105,10 @@ Two of the four passes found that a remediation had introduced a new defect, and
 - **Tests that construct their own inputs cannot detect an input-shape mismatch.** The PEP
   suite passed throughout while A-03 and B-02 made the enforcement point deny-everything,
   because every test supplied a policy verb the map already knew.
+- **Fail-closed is not uniformly correct.** E-01: applying it to paths that already
+  refuse, suspend, or recover destroyed information and turned graceful outcomes into
+  hard failures. The property belongs on the path where a *grant* would otherwise
+  execute unrecorded, not on every call site that happens to write a record.
 - **Documentation drifted ahead of the code more than once.** D-01 and D-02 were both docs
   asserting guarantees the code did not provide, in the section auditors are most likely to
   read. Claims about persistence, correlation, and fail-closed behaviour should carry a test
