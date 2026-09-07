@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DeepSeek Harness Runtime Architecture",
+    "output": "system-runtime.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "agent-dispatch",
+        "label": "Agent Dispatch Path",
+        "focus": ["browser", "gateway", "dsh_kernel", "pep_interceptor", "envoy_proxy", "external_llm"],
+        "note": "Trace an agent query from user browser through the gateway, PEP interceptor, and Envoy egress proxy to external LLMs."
+      },
+      {
+        "id": "security-governance",
+        "label": "Zero-Trust Security & BYOK",
+        "focus": ["byok_vault", "gateway", "pep_interceptor", "envoy_proxy"],
+        "note": "Isolate the AES-256-GCM BYOK vault, in-line policy enforcement point, and Envoy egress proxy."
+      },
+      {
+        "id": "telemetry-loop",
+        "label": "Local Observability Waterfall",
+        "focus": ["dsh_kernel", "otel_exporter", "phoenix", "browser"],
+        "note": "Observe OTLP trace emission and local Arize Phoenix trace storage with 0% data leakage."
+      }
+    ]
+  },
+  "components": [
+    { "id": "browser", "type": "external", "label": "User Browser", "sublabel": "Web UI :3080 / OTel :6006", "pos": [40, 300], "size": [140, 60] },
+    { "id": "gateway", "type": "security", "label": "WebServer Gateway", "sublabel": "@dsh-dds/core (Origin Filter)", "pos": [250, 300], "size": [160, 60] },
+    { "id": "dsh_kernel", "type": "backend", "label": "DSH Microkernel", "sublabel": "Cordis IoC (Node 24 UID 1000)", "pos": [480, 300], "size": [160, 60] },
+    { "id": "byok_vault", "type": "security", "label": "BYOK Keystore", "sublabel": "AES-256-GCM Vault", "pos": [480, 150], "size": [160, 60], "tag": "Partitioned" },
+    { "id": "pep_interceptor", "type": "security", "label": "In-Line PEP", "sublabel": "Dynamic Tool & Path RBAC", "pos": [710, 300], "size": [160, 60], "tag": "Fail-Closed" },
+    { "id": "envoy_proxy", "type": "security", "label": "Envoy Egress Proxy", "sublabel": "v1.31 Loopback :10000", "pos": [940, 300], "size": [160, 60], "tag": "ADR 0007" },
+    { "id": "external_llm", "type": "cloud", "label": "LLM Gateways", "sublabel": "Gemini & OpenRouter", "pos": [1170, 300], "size": [150, 60] },
+    { "id": "mcp_servers", "type": "backend", "label": "MCP Tool Suite", "sublabel": "Fetch / SQLite / GitHub", "pos": [710, 450], "size": [160, 60] },
+    { "id": "otel_exporter", "type": "messagebus", "label": "OTel Exporter", "sublabel": "TraceContext Client", "pos": [480, 450], "size": [160, 60] },
+    { "id": "phoenix", "type": "database", "label": "Arize Phoenix", "sublabel": "Collector & SQLite :6006", "pos": [250, 450], "size": [160, 60], "tag": "100% Local" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "DSH Container Sandbox (UID 1000:1000, cap_drop: ALL)", "wraps": ["gateway", "dsh_kernel", "byok_vault", "pep_interceptor", "otel_exporter"] },
+    { "kind": "security-group", "label": "Local Host Boundary (127.0.0.1)", "wraps": ["browser", "phoenix"] }
+  ],
+  "connections": [
+    { "id": "browser-to-gateway", "from": "browser", "to": "gateway", "label": "HTTP :3080", "variant": "emphasis" },
+    { "id": "gateway-to-kernel", "from": "gateway", "to": "dsh_kernel", "label": "normalize" },
+    { "id": "kernel-vault-lookup", "from": "dsh_kernel", "to": "byok_vault", "label": "keys", "variant": "security", "fromSide": "top", "toSide": "bottom", "labelDy": -45 },
+    { "id": "kernel-to-pep", "from": "dsh_kernel", "to": "pep_interceptor", "label": "tool exec", "variant": "emphasis" },
+    { "id": "pep-to-envoy", "from": "pep_interceptor", "to": "envoy_proxy", "label": "egress", "variant": "security" },
+    { "id": "envoy-to-llm", "from": "envoy_proxy", "to": "external_llm", "label": "mTLS / API", "variant": "emphasis" },
+    { "id": "pep-to-mcp", "from": "pep_interceptor", "to": "mcp_servers", "label": "sandboxed", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 45 },
+    { "id": "kernel-to-otel", "from": "dsh_kernel", "to": "otel_exporter", "label": "spans", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 45 },
+    { "id": "otel-to-phoenix", "from": "otel_exporter", "to": "phoenix", "label": "OTLP :6006", "variant": "emphasis", "fromSide": "left", "toSide": "right" },
+    { "id": "browser-to-phoenix", "from": "browser", "to": "phoenix", "label": "UI :6006", "variant": "dashed", "fromSide": "bottom", "toSide": "left" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Dual-Network Ingress",
+      "items": [
+        "User browser binds strictly to 127.0.0.1:3080",
+        "Gateway normalizes Docker bridge and origin headers",
+        "Non-root UID 1000 with dropped Linux capabilities"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Zero-Trust Enforcement",
+      "items": [
+        "In-Line PEP verifies path containment and symlink escape",
+        "BYOK Vault encrypts keys with AES-256-GCM per user",
+        "Envoy proxy enforces DNS caching and egress lockdown"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Air-Gapped Telemetry",
+      "items": [
+        "Phoenix runs 100% on-premise on loopback :6006",
+        "Every prompt, token, and cost span recorded in SQLite",
+        "Zero telemetry leakage to public cloud services"
+      ]
+    }
+  ]
+}

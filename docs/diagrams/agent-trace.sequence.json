@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Agent Execution & OTLP Telemetry Sequence",
+    "output": "agent-trace.sequence.html",
+    "viewBox": [820, 780],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-lifecycle",
+        "label": "Complete Request Lifecycle",
+        "focus": ["user", "gateway", "kernel", "vault", "llm", "pep", "phoenix"],
+        "note": "Follow an end-to-end persona execution from ingress to inference, tool containment, and trace capture."
+      },
+      {
+        "id": "model-bridge",
+        "label": "BYOK Key & Model Inference",
+        "focus": ["kernel", "vault", "llm"],
+        "note": "Examine per-user key resolution and Google Gemini thought signature preservation."
+      },
+      {
+        "id": "governance-telemetry",
+        "label": "In-Line PEP & Phoenix Tracing",
+        "focus": ["kernel", "pep", "phoenix"],
+        "note": "Isolate policy enforcement and local OTLP trace emission without cloud data leakage."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "User", "sublabel": "Browser / CLI" },
+    { "id": "gateway", "type": "security", "label": "Gateway", "sublabel": "@dsh-dds/core" },
+    { "id": "kernel", "type": "backend", "label": "Kernel", "sublabel": "Cordis IoC" },
+    { "id": "vault", "type": "security", "label": "BYOK Vault", "sublabel": "AES-256-GCM" },
+    { "id": "llm", "type": "cloud", "label": "LLM Bridge", "sublabel": "Gemini & DeepSeek" },
+    { "id": "pep", "type": "security", "label": "In-Line PEP", "sublabel": "RBAC Filter" },
+    { "id": "phoenix", "type": "database", "label": "Arize Phoenix", "sublabel": "OTLP :6006" }
+  ],
+  "segments": [
+    { "from": 150, "to": 310, "label": "Authentication & Key Lookup" },
+    { "from": 325, "to": 530, "label": "Inference & Governed Tool Execution" },
+    { "from": 545, "to": 700, "label": "Telemetry Emission & User Response" }
+  ],
+  "messages": [
+    { "id": "req-chat", "from": "user", "to": "gateway", "y": 180, "label": "POST /api/chat", "variant": "emphasis" },
+    { "id": "dispatch-session", "from": "gateway", "to": "kernel", "y": 215, "label": "session dispatch", "variant": "default" },
+    { "id": "vault-lookup", "from": "kernel", "to": "vault", "y": 250, "label": "get decrypted key", "variant": "security" },
+    { "id": "vault-return", "from": "vault", "to": "kernel", "y": 285, "label": "api credential", "variant": "return" },
+    { "id": "llm-prompt", "from": "kernel", "to": "llm", "y": 345, "label": "prompt + thought signature", "variant": "emphasis" },
+    { "id": "llm-tool-call", "from": "llm", "to": "kernel", "y": 385, "label": "tool_call (mcp-fetch)", "variant": "return" },
+    { "id": "pep-check", "from": "kernel", "to": "pep", "y": 425, "label": "verify tool RBAC", "variant": "security" },
+    { "id": "pep-allow", "from": "pep", "to": "kernel", "y": 460, "label": "allow execution", "variant": "return" },
+    { "id": "llm-synth", "from": "kernel", "to": "llm", "y": 495, "label": "synthesize findings", "variant": "emphasis" },
+    { "id": "llm-reply", "from": "llm", "to": "kernel", "y": 535, "label": "agent response", "variant": "return" },
+    { "id": "otel-export", "from": "kernel", "to": "phoenix", "y": 585, "label": "export OTLP spans", "variant": "dashed" },
+    { "id": "otel-ack", "from": "phoenix", "to": "kernel", "y": 620, "label": "200 OTLP ack", "variant": "return" },
+    { "id": "reply-gw", "from": "kernel", "to": "gateway", "y": 655, "label": "stream response", "variant": "return" },
+    { "id": "reply-user", "from": "gateway", "to": "user", "y": 690, "label": "complete answer", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "gateway", "from": 180, "to": 695, "type": "security" },
+    { "participant": "kernel", "from": 215, "to": 660, "type": "backend" },
+    { "participant": "vault", "from": 245, "to": 290, "type": "security" },
+    { "participant": "llm", "from": 340, "to": 390, "type": "cloud" },
+    { "participant": "pep", "from": 420, "to": 465, "type": "security" },
+    { "participant": "llm", "from": 490, "to": 540, "type": "cloud" },
+    { "participant": "phoenix", "from": 580, "to": 625, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Turnkey Ingress & Vault",
+      "items": [
+        "WebServer gateway authenticates session token and extracts user ID",
+        "BYOK Vault decrypts API keys in memory using AES-256-GCM"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Thought Signature & PEP",
+      "items": [
+        "pi-ai thought signature bridge preserves multi-turn Gemini reasoning",
+        "In-Line PEP verifies tool path containment and directory boundaries"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Local Arize Phoenix",
+      "items": [
+        "100% on-premise OpenTelemetry trace waterfall and cost tracking",
+        "Zero token or prompt leakage to external cloud services"
+      ]
+    }
+  ]
+}

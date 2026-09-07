@@ -3,10 +3,16 @@
 > 🏛️ **Comprehensive State-of-the-Art Whitepaper**: For theoretical foundations, NIST/OWASP compliance mapping, and the 5-Pillar SOTA AI Harness engineering specification, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
 > 
 > 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](globalrefactoring/README.md)** and **[ADR 0006: Global Refactoring](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)**.
+> 
+> 📐 **Interactive Archify Visualizations**: Explore verified, interactive architecture and workflow maps featuring dark/light modes, route tracing, and state inspections:
+> * 🗺️ **[System Runtime Architecture](diagrams/system-runtime.architecture.html)** (`system-runtime.architecture.json`) — Dual-container topology, kernel isolation, and Envoy egress proxy.
+> * 🛡️ **[Zero-Trust PEP & RBAC Pipeline](diagrams/security-pipeline.workflow.html)** (`security-pipeline.workflow.json`) — In-line tool interceptor, symlink escape trap, and GRC audit ledger.
+> * 🔄 **[Declarative Workflow & Loop Trap](diagrams/declarative-workflow.workflow.html)** (`declarative-workflow.workflow.json`) — Invariant 7 hash ring, ACM approval gate, and checkpoint sync.
+> * ⚡ **[Agent Execution & OTLP Telemetry](diagrams/agent-trace.sequence.html)** (`agent-trace.sequence.json`) — End-to-end request lifecycle, BYOK vault, and local Arize Phoenix waterfall.
 
 ```mermaid
 flowchart TD
-    subgraph Host ["💻 Host Environment (macOS / Linux / Windows)"]
+    subgraph Host ["💻 Host Environment (127.0.0.1)"]
         ENV[".env Configuration\n(Keys, Ports, Tokens)"]
         VOL_ETC["📁 ./config (Mounted to /etc/dsh :ro)"]
         VOL_STATE["📁 ./config/{sessions,storages,audit,cache}\n(Mounted to /var/lib/dsh/... :rw)"]
@@ -26,6 +32,10 @@ flowchart TD
             RESTART["🔄 Lifecycle Supervisor\n(/dsh-dds/lifecycle/restart & /dsh-dds/health)"]
             CATALOG["⚡ In-Process ModelCatalogService\n(/dsh-dds/api/models/sync & OTel Init)"]
             I18N["🌐 Web UI Localization Tap\n(In-Memory HTML tapIndex)"]
+        end
+
+        subgraph Egress_Proxy ["🔒 Hardened Egress Isolation (ADR 0007)"]
+            ENVOY["🛡️ Envoy Proxy v1.31 (127.0.0.1:10000)\n(Strict DNS Caching & Egress Lockdown)"]
         end
 
         subgraph Plugins ["🧩 Pre-Packaged Plugin Suite (10 Plugins)"]
@@ -75,8 +85,11 @@ flowchart TD
     CORE --> Plugins
     CORE --> MCP_Servers
     CORE --> LLM_Bridges
-    LLM_Bridges --> API_GEMINI
-    LLM_Bridges --> API_OPENROUTER
+    
+    %% Governed Egress
+    PEP -->|Restricted Egress| ENVOY
+    ENVOY --> API_GEMINI
+    ENVOY --> API_OPENROUTER
     MCP_GH --> API_GITHUB
     
     CORE -->|OTLP Traces| OTEL_EXPORTER
@@ -119,3 +132,21 @@ flowchart TD
 * **Acyclic Policy Engine ([rbac-policy.mjs](../config/rbac-policy.mjs))**: Single source of truth for Zero Trust RBAC policy enforcement, canonical path resolution (`resolvePath`), strict directory containment (`isContainedWithin`), symlink ancestor canonicalization (`canonicalizeWithAncestorRealpath`), and escape detection (`checkSymlinkEscape`).
 * **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: Records structured decision lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel parent-child span correlation (`AgentPhoenixTracer`).
 * **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and non-root execution.
+
+### 5. Archify Verifiable Architecture Visualizations (`docs/diagrams/`)
+The repository includes deterministic, interactive visual maps compiled via **[Archify](https://github.com/tt-a1i/archify)** (`@tt-a1i/archify-dsh`). All diagrams are validated against typed JSON schemas with 100% showcase quality:
+
+1. **[System Runtime Architecture](diagrams/system-runtime.architecture.html)** (`docs/diagrams/system-runtime.architecture.json`):
+   - Maps the dual-container topology, non-root user confinement (`1000:1000`), `@dsh-dds/core` Gateway, BYOK Vault, Envoy v1.31 egress proxy (ADR 0007), and Arize Phoenix storage.
+2. **[Zero-Trust PEP & Dynamic RBAC Pipeline](diagrams/security-pipeline.workflow.html)** (`docs/diagrams/security-pipeline.workflow.json`):
+   - Details the in-line interceptor lifecycle, persona read/write allowlists, ancestor canonicalization symlink escape detection (F-02), and immutable GRC audit logging.
+3. **[Declarative Workflow & Invariant 7 Loop Trap](diagrams/declarative-workflow.workflow.html)** (`docs/diagrams/declarative-workflow.workflow.json`):
+   - Shows the 12-step hash ring buffer detecting and preventing infinite tool/model invocation loops (`LOOP_DETECTED`), coupled with asymmetric Ed25519 ACM human approval gates.
+4. **[Agent Execution & OTLP Telemetry Sequence](diagrams/agent-trace.sequence.html)** (`docs/diagrams/agent-trace.sequence.json`):
+   - Sequences end-to-end prompt processing, AES-256-GCM BYOK credential decryption, Google Gemini thought signature preservation, and zero-leakage local Phoenix telemetry emission.
+
+To recompile or validate diagrams:
+```bash
+npm run diagrams:build
+```
+

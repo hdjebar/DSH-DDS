@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Declarative Workflow & Invariant 7 Loop Trap",
+    "output": "declarative-workflow.workflow.html",
+    "quality_profile": "showcase",
+    "viewBox": [760, 900],
+    "views": [
+      {
+        "id": "governed-execution",
+        "label": "Governed Execution Path",
+        "focus": ["step_in", "sig_hash", "loop_check", "acm_gate", "adapter_exec", "completed"],
+        "note": "Follow declarative step execution through signature verification, approval signing, and adapter dispatch."
+      },
+      {
+        "id": "loop-trap-circuit",
+        "label": "Invariant 7 Loop Trap",
+        "focus": ["sig_hash", "loop_check", "loop_detected"],
+        "note": "Inspect deterministic 12-step hash ring detection halting infinite repetition."
+      },
+      {
+        "id": "checkpoint-telemetry",
+        "label": "Checkpoint & Phoenix OTel",
+        "focus": ["adapter_exec", "checkpoint", "phoenix"],
+        "note": "Observe atomic state checkpointing and distributed trace emission to local Phoenix."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "orchestrator", "label": "Workflow Engine" },
+    { "id": "loop_trap", "label": "Loop Trap (Invariant 7)" },
+    { "id": "governance", "label": "ACM Approval Gate" },
+    { "id": "adapters", "label": "Capability Adapters" },
+    { "id": "exceptions", "label": "Exception Traps", "variant": "exception" },
+    { "id": "telemetry", "label": "Observability & State" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "Intake & Hash", "fromCol": 0, "toCol": 1 },
+    { "id": "governance_phase", "label": "Approval Gate", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "execution", "label": "Execution & Trace", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "engine_group", "label": "Intake & signature", "lane": "orchestrator", "fromCol": 0, "toCol": 1, "variant": "default" },
+    { "id": "safety_group", "label": "Loop verification", "lane": "loop_trap", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "adapter_group", "label": "Capability execution", "lane": "adapters", "fromCol": 4, "toCol": 5, "variant": "dashed" },
+    { "id": "trap_group", "label": "Exception traps", "lane": "exceptions", "fromCol": 2, "toCol": 3, "variant": "security" }
+  ],
+  "mainPath": ["step_in", "sig_hash", "loop_check", "acm_gate", "adapter_exec", "completed"],
+  "nodes": [
+    { "id": "step_in", "lane": "orchestrator", "col": 0, "type": "frontend", "label": "Workflow Step", "sublabel": "declarative recipe" },
+    { "id": "sig_hash", "lane": "orchestrator", "col": 1, "type": "security", "label": "Step Signature", "sublabel": "SHA-256 hash", "tag": "Deterministic" },
+    { "id": "loop_check", "lane": "loop_trap", "col": 2, "type": "security", "label": "Loop Trap Ring", "sublabel": "12-step ring buffer", "tag": "Invariant 7" },
+    { "id": "acm_gate", "lane": "governance", "col": 3, "type": "security", "label": "ACM Gate", "sublabel": "durable checkpoint", "tag": "Ed25519 Sign" },
+    { "id": "adapter_exec", "lane": "adapters", "col": 4, "type": "backend", "label": "Adapter Exec", "sublabel": "15 capabilities", "tag": "Transactional" },
+    { "id": "completed", "lane": "orchestrator", "col": 5, "type": "backend", "label": "Step Complete", "sublabel": "state advance" },
+    { "id": "loop_detected", "lane": "exceptions", "col": 2, "type": "security", "label": "Loop Trap", "sublabel": "LOOP_DETECTED" },
+    { "id": "rejected", "lane": "exceptions", "col": 3, "type": "security", "label": "Gate Rejected", "sublabel": "invalid signature" },
+    { "id": "checkpoint", "lane": "telemetry", "col": 4, "type": "database", "label": "State Sync", "sublabel": "checkpoint.json" },
+    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix OTel", "sublabel": "waterfall spans" }
+  ],
+  "edges": [
+    { "id": "step-to-hash", "from": "step_in", "to": "sig_hash", "variant": "default" },
+    { "id": "hash-to-ring", "from": "sig_hash", "to": "loop_check", "label": "verify ring", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 20 },
+    { "id": "ring-to-gate", "from": "loop_check", "to": "acm_gate", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "gate-to-adapter", "from": "acm_gate", "to": "adapter_exec", "label": "approved", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 20 },
+    { "id": "adapter-to-done", "from": "adapter_exec", "to": "completed", "label": "advance", "variant": "emphasis", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right", "width": 1.2 },
+    { "id": "ring-to-loop-err", "from": "loop_check", "to": "loop_detected", "label": "3 repeats", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
+    { "id": "gate-to-rej", "from": "acm_gate", "to": "rejected", "label": "denied", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
+    { "id": "adapter-to-ckpt", "from": "adapter_exec", "to": "checkpoint", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "ckpt-to-phx", "from": "checkpoint", "to": "phoenix", "label": "spans", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Deterministic Loop Trap",
+      "items": [
+        "Hashes action, target, and arguments into a canonical signature",
+        "Records last 12 step signatures in an in-memory ring buffer",
+        "Halts with LOOP_DETECTED on 3 occurrences within the window"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Asymmetric Approval Gate",
+      "items": [
+        "Pauses workflow before high-risk mutations or deployments",
+        "Persists state to .dsh_step_checkpoint.json with sha256 digest",
+        "Resumes strictly upon verification of host Ed25519 signature"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Transactional Capabilities",
+      "items": [
+        "15 typed capability adapters with real cryptographic execution",
+        "Rollback on failure with immutable GRC audit logging",
+        "Arize Phoenix OpenTelemetry tracing on every transition"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Zero-Trust PEP & Dynamic RBAC Pipeline",
+    "output": "security-pipeline.workflow.html",
+    "quality_profile": "showcase",
+    "viewBox": [720, 900],
+    "views": [
+      {
+        "id": "authorized-execution",
+        "label": "Authorized Execution Path",
+        "focus": ["caller", "pep_gate", "rbac_eval", "path_eval", "sandbox", "result"],
+        "note": "Follow an authorized agent tool call through policy checks into the non-root execution sandbox."
+      },
+      {
+        "id": "fail-closed-defense",
+        "label": "Containment Trap & Escape Defense",
+        "focus": ["path_eval", "blocked", "quarantine"],
+        "note": "Inspect how path traversal and symlink escapes immediately halt workflow execution."
+      },
+      {
+        "id": "compliance-audit",
+        "label": "GRC Audit & OTel Telemetry",
+        "focus": ["sandbox", "audit", "phoenix"],
+        "note": "Verify immutable GRC audit logging and parent-child span emission to Phoenix."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "agent", "label": "Agent Execution Context" },
+    { "id": "pep", "label": "Policy Interceptor" },
+    { "id": "policy", "label": "RBAC Engine" },
+    { "id": "sandbox_lane", "label": "Sandbox Executor" },
+    { "id": "exceptions", "label": "Incident Handling", "variant": "exception" },
+    { "id": "telemetry", "label": "Observability" }
+  ],
+  "phases": [
+    { "id": "dispatch", "label": "Dispatch", "fromCol": 0, "toCol": 1 },
+    { "id": "policy_phase", "label": "RBAC Policy", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "execution", "label": "Execution", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "policy_group", "label": "Policy verification", "lane": "policy", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "sandbox_group", "label": "Execution isolation", "lane": "sandbox_lane", "fromCol": 4, "toCol": 5, "variant": "dashed" },
+    { "id": "incident_group", "label": "Fail-closed quarantine", "lane": "exceptions", "fromCol": 2, "toCol": 3, "variant": "security" }
+  ],
+  "mainPath": ["caller", "pep_gate", "rbac_eval", "path_eval", "sandbox", "result"],
+  "nodes": [
+    { "id": "caller", "lane": "agent", "col": 0, "type": "frontend", "label": "Tool Request", "sublabel": "action + params" },
+    { "id": "pep_gate", "lane": "pep", "col": 1, "type": "security", "label": "PEP Gate", "sublabel": "in-line hook", "tag": "Intercept" },
+    { "id": "rbac_eval", "lane": "policy", "col": 2, "type": "security", "label": "RBAC Matrix", "sublabel": "allowlist check" },
+    { "id": "path_eval", "lane": "policy", "col": 3, "type": "security", "label": "Path Boundary", "sublabel": "symlink check", "tag": "Fail-Closed" },
+    { "id": "sandbox", "lane": "sandbox_lane", "col": 4, "type": "backend", "label": "Sandbox Run", "sublabel": "UID 1000 dropped", "tag": "Isolated" },
+    { "id": "blocked", "lane": "exceptions", "col": 2, "type": "security", "label": "Access Denied", "sublabel": "RBAC violation" },
+    { "id": "quarantine", "lane": "exceptions", "col": 3, "type": "security", "label": "SOC Alert", "sublabel": "halt workflow" },
+    { "id": "result", "lane": "agent", "col": 5, "type": "backend", "label": "Clean Output", "sublabel": "tool result" },
+    { "id": "audit", "lane": "telemetry", "col": 4, "type": "database", "label": "GRC Ledger", "sublabel": "audit_grc.jsonl" },
+    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix Trace", "sublabel": "OTel waterfall" }
+  ],
+  "edges": [
+    { "id": "req-to-pep", "from": "caller", "to": "pep_gate", "label": "intercept", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "id": "pep-to-rbac", "from": "pep_gate", "to": "rbac_eval", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "rbac-to-path", "from": "rbac_eval", "to": "path_eval", "variant": "default" },
+    { "id": "path-to-sandbox", "from": "path_eval", "to": "sandbox", "variant": "emphasis", "fromSide": "bottom", "toSide": "left", "route": "drop" },
+    { "id": "sandbox-to-result", "from": "sandbox", "to": "result", "label": "result", "variant": "emphasis", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right", "width": 1.2 },
+    { "id": "path-to-blocked", "from": "path_eval", "to": "blocked", "label": "denied", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
+    { "id": "blocked-to-quarantine", "from": "blocked", "to": "quarantine", "variant": "dashed", "role": "branch" },
+    { "id": "sandbox-to-audit", "from": "sandbox", "to": "audit", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "audit-to-phoenix", "from": "audit", "to": "phoenix", "label": "spans", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "In-Line Interception",
+      "items": [
+        "Cordis hook intercepts tool execution before process dispatch",
+        "Validates persona identity and action category (read, write, exec)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Canonical Path Containment",
+      "items": [
+        "Resolves real path with ancestor canonicalization",
+        "Traps directory traversal (..) and symlink escapes (F-02)",
+        "Strictly enforces read and write boundary allowlists"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Zero-Leakage Observability",
+      "items": [
+        "Structured GRC decision trail in audit_grc.jsonl",
+        "Correlated 128-bit OTel parent-child span emission to Phoenix"
+      ]
+    }
+  ]
+}

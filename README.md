@@ -257,6 +257,7 @@ Comprehensive guides organized by audience and operational goal:
 * 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
 
 ### 🏛️ Architecture & Security Reference
+* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — **Interactive Visual Architecture**: Standalone, verified HTML/SVG diagrams ([System Topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [Loop Trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP Sequence](docs/diagrams/agent-trace.sequence.html)).
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — **Comprehensive Whitepaper**: The 5 architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, and comparative benchmarks.
 * 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
 * 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 11 plugins (1 core + 10 community) and 4 MCP servers.
@@ -267,6 +268,7 @@ Comprehensive guides organized by audience and operational goal:
 * 📜 **[ADR 0004: In-Container Boundaries & Strict Containment](docs/adr/0004-in-container-boundaries-and-strict-directory-containment.md)** — Architecture Decision Record on in-container execution boundaries, strict directory containment, and acyclic policy architecture.
 * 📜 **[ADR 0005: Remediation of Audit v3 Findings](docs/adr/0005-remediation-of-audit-v3-findings.md)** — Architecture Decision Record on symlink ancestor canonicalization, truthful capability adapters, clean-room installer parity, and multi-state GRC auditing.
 * 📜 **[ADR 0006: Global Refactoring (Non-Root & Cordis Plugin)](docs/adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)** — Architecture Decision Record on non-root UID 1000 confinement, Linux FHS segregation, native pnpm patches, `@dsh-dds/core` plugin, and image slimming.
+* 📜 **[ADR 0007: Outbound Egress Proxy Isolation](docs/adr/0007-outbound-egress-proxy-isolation.md)** — Architecture Decision Record on Envoy loopback proxy, egress filtering, and strict DNS cache timeouts.
 
 ### 🔬 Theory & Research
 * 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
