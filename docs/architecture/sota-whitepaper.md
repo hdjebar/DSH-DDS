@@ -317,19 +317,19 @@ The **DSH-DDS** architecture inherently supports trajectory auditing:
 12. **Wang, L., Ma, C., Feng, X., Zhang, Z., Yang, H., Chen, J., Tang, J., Chen, X., Lin, Y., Zhao, W. X., Wei, Z., & Wen, J. R.** (2024). *A Survey on Large Language Model based Autonomous Agents*. Frontiers of Computer Science, 18(6), 186345. [arXiv:2308.11432](https://arxiv.org/abs/2308.11432).
 13. **Google Cybersecurity Action Team**. (2023). *Secure AI Framework (SAIF): A Guide to Applying Cybersecurity Best Practices to AI*. Google Security Whitepapers.
 14. **International Organization for Standardization**. (2023). *ISO/IEC 42001:2023: Information technology — Artificial intelligence — Management system*. ISO Standard Publications.
-15. **Breath of Code**. (2026). *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*. Medium Technical Dissections. [https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a](https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a).
+15. **Breath of Code**. (2026). *Why "Everything is a Plugin" is Harder Than It Sounds: Lessons from DeepSeek Harness*. Medium Technical Dissections. [https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a](https://breathofcode.medium.com/why-everything-is-a-plugin-is-harder-than-it-sounds-lessons-from-deepseek-harness-c7e94d044d3a)
 
 ---
 
 ## 🔗 Internal Repository Cross-References
 
-* 🏛️ **System Architecture & Container Topology**: [docs/architecture.md](architecture.md)
-* 🎭 **Persona Manifest & Multi-Model Matrix Specification**: [docs/personas.md](personas.md)
-* 🔒 **Security Model, Threat Vectors & Hardening**: [docs/security.md](security.md)
-* 🔬 **Theoretical Foundations & Research Notes**: [docs/research-notes-ai-personas.md](research-notes-ai-personas.md)
+* 🏛️ **System Architecture & Container Topology**: [system-overview.md](system-overview.md)
+* 🎭 **Persona Manifest & Multi-Model Matrix Specification**: [../reference/personas.md](../reference/personas.md)
+* 🔒 **Security Model, Threat Vectors & Hardening**: [security-model.md](security-model.md)
+* 🔬 **Theoretical Foundations & Research Notes**: [research-notes.md](research-notes.md)
 * 📜 **Architecture Decision Records (ADRs)**:
-  - [ADR 0001: Build-Time Immutability & Zero Trust RBAC](adr/0001-build-time-immutability-and-rbac.md)
-  - [ADR 0002: Out-of-Band GRC Observability & Deterministic Sandbox](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md)
-  - [ADR 0003: Authoritative Declarative Orchestrator](adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)
-  - [ADR 0004: In-Container Boundaries & Strict Containment](adr/0004-in-container-boundaries-and-strict-directory-containment.md)
-  - [ADR 0005: Remediation of Audit v3 Findings](adr/0005-remediation-of-audit-v3-findings.md)
+  - [ADR 0001: Build-Time Immutability & Zero Trust RBAC](../adr/0001-build-time-immutability-and-rbac.md)
+  - [ADR 0002: Out-of-Band GRC Observability & Deterministic Sandbox](../adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md)
+  - [ADR 0003: Authoritative Declarative Orchestrator](../adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)
+  - [ADR 0004: In-Container Boundaries & Strict Containment](../adr/0004-in-container-boundaries-and-strict-directory-containment.md)
+  - [ADR 0005: Remediation of Audit v3 Findings](../adr/0005-remediation-of-audit-v3-findings.md)

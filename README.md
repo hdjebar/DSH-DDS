@@ -39,7 +39,7 @@ flowchart LR
 
 DSH-DDS is a self-hosted environment for governed AI agents, combining multi-provider model routing, declarative workflows, MCP tools, human approval gates, sandboxed execution and local observability in one reproducible Docker stack.
 
-**→ [Get running in about 10 minutes](#-quick-start)** · **[Read the whitepaper](docs/ai-harness-architecture-sota.md)** · **[Inspect the threat model](#️-threat-model--security-boundaries)**
+**→ [Get running in about 10 minutes](#-quick-start)** · **[Read the whitepaper](docs/architecture/sota-whitepaper.md)** · **[Inspect the threat model](#️-threat-model--security-boundaries)**
 
 ---
 
@@ -75,9 +75,9 @@ Four properties, each verifiable in this repository:
 
 | Property | What it means | Where it lives |
 | :--- | :--- | :--- |
-| **Local telemetry invariant** | All spans, trajectories and GRC audit records remain on the host. Unlike SaaS agent observability platforms, zero trace data or prompt history is exported. | [`docs/security.md`](docs/security.md) |
+| **Local telemetry invariant** | All spans, trajectories and GRC audit records remain on the host. Unlike SaaS agent observability platforms, zero trace data or prompt history is exported. | [`docs/architecture/security-model.md`](docs/architecture/security-model.md) |
 | **Kernel-level confinement** | Landlock LSM, `cap_drop: ALL`, read-only root filesystem, `no-new-privileges`, non-root execution (UID 1000), and filtered egress through a hardened Envoy sidecar on an internal-only bridge. | [`docker-compose.sandbox.yml`](docker-compose.sandbox.yml) · [Threat model](#️-threat-model--security-boundaries) |
-| **Non-repudiable audit trail** | `audit_grc.jsonl` on a privileged isolated path (mode `0600`), recording timestamp, persona, role, action, decision and reason. Append-only, surviving sandbox teardown. Aligned to EU AI Act Article 12 record-keeping. | [`docs/guardrails.md`](docs/guardrails.md) · [ADR 0002](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md) |
+| **Non-repudiable audit trail** | `audit_grc.jsonl` on a privileged isolated path (mode `0600`), recording timestamp, persona, role, action, decision and reason. Append-only, surviving sandbox teardown. Aligned to EU AI Act Article 12 record-keeping. | [`docs/architecture/guardrails-owasp.md`](docs/architecture/guardrails-owasp.md) · [ADR 0002](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md) |
 | **Fail-closed RBAC** | Per-persona filesystem and MCP permissions enforced at an in-line Policy Enforcement Point, with explicit deny lists and symlink ancestor canonicalisation. | [ADR 0003](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md) · [ADR 0005](docs/adr/0005-remediation-of-audit-v3-findings.md) |
 
 > [!IMPORTANT]
@@ -155,7 +155,7 @@ An enterprise governance and reliability harness wrapped around an interactive, 
 Instead of stitching together an agent UI, a Python orchestration library, a Docker sandbox, an egress proxy, an OpenTelemetry database and compliance audit scripts from separate repositories, DSH-DDS delivers all of them in a single verified turnkey repository.
 
 > [!TIP]
-> For an in-depth architectural and functional comparison against upstream DeepSeek Harness, OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI and NeMo Guardrails, see the [Open Source Landscape & Ecosystem Comparison](docs/ecosystem-comparison.md).
+> For an in-depth architectural and functional comparison against upstream DeepSeek Harness, OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI and NeMo Guardrails, see the [Open Source Landscape & Ecosystem Comparison](docs/architecture/ecosystem-analysis.md).
 
 ---
 
@@ -246,36 +246,39 @@ node --test tests/*.test.mjs
 | **`github`** | `github-mcp-server` (`v1.11.0`) | Repository operations, PRs, issue tracking |
 | **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, tabular analysis |
 
-Full specification: [Plugins & MCP Reference](docs/plugins.md).
+Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 
 ---
 
 ## 📚 Documentation Suite (Diátaxis Organization)
 
-### 🚀 Getting started & evaluation
-* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — interactive chat, trace inspection, persona distillation.
-* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — diagnostic matrix, Gemini 400 thought signatures, port debugging.
+### 🚀 Getting started & evaluation (Tutorials)
+* 🧪 **[End-to-End Test Scenario](docs/getting-started/testing-scenario.md)** — interactive chat, trace inspection, persona distillation.
+* ❓ **[Troubleshooting & Diagnostics](docs/getting-started/troubleshooting.md)** — diagnostic matrix, Gemini 400 thought signatures, port debugging.
 
-### 🛠️ Daily operations & customization
-* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — daily operations, headless scripting, `./dsh.sh` reference.
-* 🎭 **[AI Agent Personas Guide](docs/personas.md)** — multi-model task matrix, session recording, automated persona distillation.
-* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — teaching skills, MCP servers and local model routing via chat.
+### 🛠️ Daily operations & runbooks (How-To Guides)
+* 🕹️ **[Standard Operations & CLI Manual](docs/guides/standard-operations.md)** — daily operations, headless scripting, `./dsh.sh` reference.
+* 🎨 **[Prompt-Driven Customization](docs/guides/customization.md)** — teaching skills, MCP servers and local model routing via chat.
+* 🔄 **[Upstream Upgrades & Evolution](docs/guides/upgrades.md)** — Cordis microkernel, plugins and pnpm patch evolution.
+* 🧠 **[GitNexus & Archify Workflow Guide](docs/guides/gitnexus-archify.md)** — coordinated code intelligence, AST knowledge graph, blast radius analysis, and interactive diagram compilation.
 
-### 🏛️ Architecture & security reference
-* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — self-contained interactive diagrams with dark/light modes, route tracing and state inspection: [system topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [loop trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP sequence](docs/diagrams/agent-trace.sequence.html). *These are HTML — view them via GitHub Pages or clone and open locally; GitHub's file viewer shows source rather than rendering them.*
-* 🧠 **[GitNexus & Archify Workflow Guide](docs/gitnexus-archify-workflow.md)** — coordinated code intelligence, AST knowledge graph, blast radius analysis, and interactive diagram compilation.
-* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — whitepaper: five architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, comparative benchmarks.
-* 🏛️ **[System Architecture](docs/architecture.md)** — dual-container topology, kernel proxy, OTel trace pipelines.
-* 🛡️ **[AI Guardrails & OWASP Agentic Security](docs/guardrails.md)** — four deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, OWASP LLM/ASI alignment.
-* 🔒 **[Security & Sandbox Guide](docs/security.md)** — filesystem boundaries, Zero Trust persona RBAC, network isolation.
+### 🏛️ Architecture & security specifications (Explanations)
+* 🏛️ **[System Architecture Overview](docs/architecture/system-overview.md)** — dual-container topology, kernel proxy, OTel trace pipelines.
+* 🏛️ **[SOTA AI Harness Architecture](docs/architecture/sota-whitepaper.md)** — whitepaper: five architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, comparative benchmarks.
+* 🔒 **[Security & Sandbox Guide](docs/architecture/security-model.md)** — filesystem boundaries, Zero Trust persona RBAC, network isolation.
+* 🛡️ **[AI Guardrails & OWASP Agentic Security](docs/architecture/guardrails-owasp.md)** — four deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, OWASP LLM/ASI alignment.
+* 🌐 **[Ecosystem Landscape & Comparison](docs/architecture/ecosystem-analysis.md)** — comparative analysis against LangGraph, OpenHands, SWE-agent, AutoGen, and CrewAI.
+* 🔬 **[AI Personas Research Note](docs/architecture/research-notes.md)** — theoretical foundations, academic literature, framework comparisons.
+
+### 📚 Technical reference & catalogs
+* 🎭 **[AI Agent Personas Guide](docs/reference/personas.md)** — multi-model task matrix, session recording, automated persona distillation.
+* 🔌 **[Plugins & MCP Reference](docs/reference/plugins.md)** — active plugins catalog and pre-configured MCP tool suite.
 * 📜 **[Architecture Decision Records (ADR 0001–0008)](docs/adr/)** — build-time immutability and RBAC, out-of-band GRC, declarative orchestration and capability adapters, in-container containment, audit v3 remediation, non-root refactoring, rejection of in-container Antigravity CLI, sandbox hardening and supply-chain remediation.
-
-### 🔬 Theory & research
-* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — theoretical foundations, academic literature, framework comparisons.
-* 🚀 **[Future Development Hub](docs/future-development/README.md)** — [engineering roadmap](docs/future-development/ROADMAP.md) (v1.11.0, v1.12.0, v2.0.0) and [SOTA research report](docs/future-development/SOTA-ResearchReport-ProductionArch.md).
+* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — self-contained interactive diagrams with dark/light modes, route tracing and state inspection: [system topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [loop trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP sequence](docs/diagrams/agent-trace.sequence.html).
 
 ### 📋 Agile engineering & roadmap
 * 📋 **[Agile Kanban Work Hub](docs/work/README.md)** — interactive Kanban board tracking backlog epics, active sprints, and verified delivery milestones (`todo/`, `in-progress/`, `done/`).
+* 🚀 **[Future Development Hub](docs/future-development/README.md)** — [engineering roadmap](docs/future-development/ROADMAP.md) (v1.11.0, v1.12.0, v2.0.0) and [SOTA research report](docs/future-development/SOTA-ResearchReport-ProductionArch.md).
 
 ---
 
@@ -376,7 +379,7 @@ nano .env
    ./dsh.sh persona run sdmx-expert "List top statistical indicators from STATEC"
    ```
 2. **Inspect the live trace in Phoenix** — open [http://localhost:6006](http://localhost:6006) to examine prompt spans, tool call latencies and token costs.
-3. **Follow the guided walkthrough** — [End-to-End Testing Scenario](docs/testing-scenario.md).
+3. **Follow the guided walkthrough** — [End-to-End Testing Scenario](docs/getting-started/testing-scenario.md).
 
 ---
 
@@ -452,7 +455,7 @@ docker compose up -d --build
 
 ### 4. Upstream upgrades & component evolution
 
-To upgrade DeepSeek Harness, the Cordis microkernel, plugins or pre-baked MCP servers without breaking existing workflows, see the [Upstream Upgrades & Component Evolution Guide](docs/upgrades.md).
+To upgrade DeepSeek Harness, the Cordis microkernel, plugins or pre-baked MCP servers without breaking existing workflows, see the [Upstream Upgrades & Component Evolution Guide](docs/guides/upgrades.md).
 
 ---
 

@@ -60,7 +60,7 @@ A task or epic can move from `in-progress/` to `done/` only when:
 ---
 
 ## 🔗 Related Documentation
-* [System Architecture Overview](../architecture.md)
+* [System Architecture Overview](../architecture/system-overview.md)
 * [Architecture Decision Records (ADRs)](../adr/)
-* [AI Guardrails & OWASP Architecture](../guardrails.md)
+* [AI Guardrails & OWASP Architecture](../architecture/guardrails-owasp.md)
 * [Archify Interactive Architecture Suite](../diagrams/README.md)
