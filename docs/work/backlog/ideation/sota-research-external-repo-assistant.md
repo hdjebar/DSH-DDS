@@ -130,6 +130,71 @@ flowchart TD
 
 ---
 
+### 2.2 Repository Exploration & Comprehension Tooling Taxonomy
+
+When an engineer or AI assistant encounters an unfamiliar repository, effective exploration requires different tooling paradigms across the abstraction spectrum:
+
+```mermaid
+flowchart TD
+    subgraph Tier_1 ["⚡ Tier 1: Instant Web Browsing (Zero Install)"]
+        T1_GH["🌐 github1s.com / github.dev\n(Browser VS Code without cloning)"]
+        T1_GD["📊 GitDiagram.com\n(Automatic module flowcharts)"]
+    end
+
+    subgraph Tier_2 ["📦 Tier 2: LLM Context Ingestion (Digest RAG)"]
+        T2_GI["📄 Gitingest (gitingest.com)\n(Single-file token-optimized markdown)"]
+        T2_RM["📦 Repomix (npx repomix)\n(Local gitignore-aware context packer)"]
+        T2_AM["🗺️ Aider Repo Map\n(Compact ctags tree in system prompt)"]
+    end
+
+    subgraph Tier_3 ["🕸️ Tier 3: Graph-Augmented AST (G-RAG)"]
+        T3_GN["🕸️ GitNexus AST Graph\n(2,613 nodes, PageRank flow discovery)"]
+        T3_SG["🔍 Sourcegraph / Cody\n(Multi-repo jump-to-definition)"]
+        T3_QL["🛡️ CodeQL\n(Relational AST Datalog database)"]
+    end
+
+    subgraph Tier_4 ["🔌 Tier 4: Agentic Protocol & Visual Modeling"]
+        T4_MCP["🔌 GitHub MCP Server\n(Structured JSON-RPC issues/PRs/files)"]
+        T4_ARCH["📐 Archify Visual Engine\n(Compiled interactive C4 & trace HTML)"]
+    end
+```
+
+#### The Four Exploration Paradigms:
+
+1. **Tier 1: Instant Browser-Based Inspection (Human Rapid Scans)**:
+   * **`github1s.com` / `github.dev` (Press `.`)**: Instantly boots a web-based VS Code instance loaded with the repo's head commit. Allows file tree expansion, quick regex searches, and side-by-side file comparisons without `git clone`.
+   * **`gitdiagram.com`**: Automatically parses GitHub repositories into high-level visual entity-relationship diagrams for rapid visual orientation.
+
+2. **Tier 2: LLM Digest & Context Ingestion (Prompt-Level RAG)**:
+   * **`Gitingest` (`gitingest.com`)**: Solves the "how do I paste an entire repo into an LLM?" problem by digesting public GitHub repos into a single, token-optimized Markdown file complete with directory hierarchy and stripped binary assets.
+   * **`Repomix` (`npx repomix`)**: Enterprise CLI equivalent running locally on the host; bundles local or remote repositories with `.gitignore` compliance, security secret redaction, and exact token counting.
+   * **`Aider Repo Map`**: Extracts symbols and function signatures using Tree-sitter ctags, constructing a dense structural graph injected directly into the LLM context window.
+
+3. **Tier 3: Graph-Augmented AST Intelligence (G-RAG)**:
+   * **`GitNexus`**: Replaces naive text search with deterministic code graphs. Maps 2,613 nodes, 3,551 edges, and 77 execution flows in `DSH-DDS`. Essential for answering: *"What will break if I rename this method?"* (blast radius) and *"Which processes execute this pipeline?"*.
+   * **`Sourcegraph` / `Cody`**: Multi-repo enterprise code graph engine supporting semantic search and cross-repository symbol definitions.
+
+4. **Tier 4: Agentic Protocols & Verifiable Visual Modeling**:
+   * **`@modelcontextprotocol/server-github` (GitHub MCP Server)**: Standardizes how AI agents query repositories, fetch file contents, inspect commits, and manage pull requests over JSON-RPC. *(Pre-configured inside DSH-DDS)*.
+   * **`Archify`**: Translates AST facts and runtime architectures into self-contained, publication-ready interactive HTML applications (`docs/visual-architecture/`) featuring pan/zoom, dark/light themes, and trace animations.
+
+#### Exploration Tooling Taxonomy Matrix:
+
+| Exploration Tool | Execution Boundary | Air-Gap / Offline Capable | Exploration Depth | Token Efficiency | Visual Architecture Output |
+| :--- | :---: | :---: | :--- | :---: | :---: |
+| **`github1s` / `.`** | Cloud Browser | ❌ Requires Internet | File tree + Lexical text search | N/A (Human only) | ❌ None |
+| **`GitDiagram`** | Cloud Service | ❌ Requires Internet | High-level module boxes | N/A (Human only) | ⚠️ Basic static flowchart |
+| **`Gitingest`** | Cloud Web / API | ❌ Requires Internet | Full repo text dump | ⚠️ Medium (Linear text) | ❌ None |
+| **`Repomix`** | Host CLI | ✅ 100% Offline | Multi-file text bundle | ⚠️ Medium (Linear text) | ❌ None |
+| **`GitHub MCP Server`**| Host or Container | ⚠️ Depends on GitHub API | API-level files, PRs, issues | ✅ High (Targeted fetches) | ❌ None |
+| **`GitNexus`** | Host CLI / MCP | ✅ 100% Offline | **Deep AST graph (callers, callees, flows)** | ✅ Extreme (Exact symbol nodes) | ⚠️ Terminal ASCII graphs |
+| **`Archify`** | Host Compiler | ✅ 100% Offline | **Visual runtime & workflow models** | ✅ Extreme (Typed JSON IR) | ✅ **Full Interactive HTML/SVG** |
+
+#### The DSH-DDS Synthesis:
+Rather than choosing between static text dumps and heavy cloud services, the **DSH-DDS External Assistant** unifies **Tier 2 (Repomix context packing)**, **Tier 3 (GitNexus AST G-RAG)**, and **Tier 4 (Archify visual blueprints + GitHub MCP)** into a single, cohesive, 100% host-resident developer experience.
+
+---
+
 ## 3. Formal Separation of Concerns: The Dual-Ring Architectural Model
 
 In high-assurance security engineering (NIST SP 800-218, ISO/IEC 42001, OWASP Top 10 for Agentic AI), a fundamental axiom governs controller-worker architectures:

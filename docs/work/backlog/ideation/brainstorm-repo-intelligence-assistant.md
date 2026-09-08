@@ -86,7 +86,7 @@ While **GitHub** provides repository AI assistants across its commercial cloud s
 * **Visual Governance**: GitHub has no visual modeling compiler; DSH-DDS compiles verifiable, interactive HTML blueprints via **Archify**.
 * **Zero Container Footprint**: Like GitHub's host-side Copilot Agent, our assistant operates strictly on the host/IDE tier, preserving the unprivileged isolation of the `DSH-DDS` runtime.
 
-*(See the complete comparative analysis in the **[SOTA Research Report](sota-research-external-repo-assistant.md#21-deep-dive-githubs-ai-assistant-ecosystem--architectural-comparison)**).*
+*(See the complete comparative analysis and exploration taxonomy in the **[SOTA Research Report](sota-research-external-repo-assistant.md#21-deep-dive-githubs-ai-assistant-ecosystem--architectural-comparison)** and **[Repository Exploration Tooling Taxonomy](sota-research-external-repo-assistant.md#22-repository-exploration--comprehension-tooling-taxonomy)**).*
 
 ---
 
