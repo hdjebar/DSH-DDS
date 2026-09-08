@@ -8,11 +8,11 @@
 > 
 > 🔒 **Sandbox Hardening & Supply Chain**: For credential isolation, GRC audit retention, and production cgroup limits, see **[ADR 0008: Container Sandbox Hardening](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)**.
 > 
-> 📐 **Interactive Archify Visualizations**: Explore verified, interactive architecture and workflow maps featuring dark/light modes, route tracing, and state inspections:
-> * 🗺️ **[System Runtime Architecture](../diagrams/system-runtime.architecture.html)** (`../diagrams/system-runtime.architecture.json`) — Dual-container topology, kernel isolation, and Envoy egress proxy.
-> * 🛡️ **[Zero-Trust PEP & RBAC Pipeline](../diagrams/security-pipeline.workflow.html)** (`../diagrams/security-pipeline.workflow.json`) — In-line tool interceptor, symlink escape trap, and GRC audit ledger.
-> * 🔄 **[Declarative Workflow & Loop Trap](../diagrams/declarative-workflow.workflow.html)** (`../diagrams/declarative-workflow.workflow.json`) — Invariant 7 hash ring, ACM approval gate, and checkpoint sync.
-> * ⚡ **[Agent Execution & OTLP Telemetry](../diagrams/agent-trace.sequence.html)** (`../diagrams/agent-trace.sequence.json`) — End-to-end request lifecycle, BYOK vault, and local Arize Phoenix waterfall.
+> 🗺️ **Visual Architecture Journey**: Explore verified, interactive architecture and workflow maps featuring dark/light modes, route tracing, and state inspections:
+> * 🏛️ **[System Runtime Architecture](../visual-architecture/system-runtime.architecture.html)** (`../visual-architecture/system-runtime.architecture.json`) — Dual-container topology, kernel isolation, and Envoy egress proxy.
+> * 🛡️ **[Zero-Trust PEP & RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)** (`../visual-architecture/security-pipeline.workflow.json`) — In-line tool interceptor, symlink escape trap, and GRC audit ledger.
+> * 🔄 **[Declarative Workflow & Loop Trap](../visual-architecture/declarative-workflow.workflow.html)** (`../visual-architecture/declarative-workflow.workflow.json`) — Invariant 7 hash ring, ACM approval gate, and checkpoint sync.
+> * ⚡ **[Agent Execution & OTLP Telemetry](../visual-architecture/agent-trace.sequence.html)** (`../visual-architecture/agent-trace.sequence.json`) — End-to-end request lifecycle, BYOK vault, and local Arize Phoenix waterfall.
 
 ```mermaid
 flowchart TD
@@ -143,21 +143,21 @@ flowchart TD
 * **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: Records structured decision lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel parent-child span correlation (`AgentPhoenixTracer`), persisted to `./config/audit` across both standard and sandbox executions.
 * **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and non-root execution.
 
-### 5. Archify Verifiable Architecture Visualizations (`docs/diagrams/`)
+### 5. Archify Verifiable Architecture Visualizations (`docs/visual-architecture/`)
 The repository includes deterministic, interactive visual maps compiled via **[Archify](https://github.com/tt-a1i/archify)** (`@tt-a1i/archify-dsh`). All diagrams are validated against typed JSON schemas with 100% showcase quality:
 
-1. **[System Runtime Architecture](../diagrams/system-runtime.architecture.html)** (`docs/diagrams/system-runtime.architecture.json`):
+1. **[System Runtime Architecture](../visual-architecture/system-runtime.architecture.html)** (`docs/visual-architecture/system-runtime.architecture.json`):
    - Maps the dual-container topology, non-root user confinement (`1000:1000`), `@dsh-dds/core` Gateway, BYOK Vault, Envoy v1.31 egress proxy sidecar ([ADR 0007](../adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md), [ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)), and Arize Phoenix storage.
-2. **[Zero-Trust PEP & Dynamic RBAC Pipeline](../diagrams/security-pipeline.workflow.html)** (`docs/diagrams/security-pipeline.workflow.json`):
+2. **[Zero-Trust PEP & Dynamic RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)** (`docs/visual-architecture/security-pipeline.workflow.json`):
    - Details the in-line interceptor lifecycle, persona read/write allowlists, ancestor canonicalization symlink escape detection (F-02), and immutable GRC audit logging.
-3. **[Declarative Workflow & Invariant 7 Loop Trap](../diagrams/declarative-workflow.workflow.html)** (`docs/diagrams/declarative-workflow.workflow.json`):
+3. **[Declarative Workflow & Invariant 7 Loop Trap](../visual-architecture/declarative-workflow.workflow.html)** (`docs/visual-architecture/declarative-workflow.workflow.json`):
    - Shows the 12-step hash ring buffer detecting and preventing infinite tool/model invocation loops (`LOOP_DETECTED`), coupled with asymmetric Ed25519 ACM human approval gates.
-4. **[Agent Execution & OTLP Telemetry Sequence](../diagrams/agent-trace.sequence.html)** (`docs/diagrams/agent-trace.sequence.json`):
+4. **[Agent Execution & OTLP Telemetry Sequence](../visual-architecture/agent-trace.sequence.html)** (`docs/visual-architecture/agent-trace.sequence.json`):
    - Sequences end-to-end prompt processing, AES-256-GCM BYOK credential decryption, Google Gemini thought signature preservation, and zero-leakage local Phoenix telemetry emission.
 
-To recompile or validate diagrams:
+To recompile or validate visual architecture artifacts:
 ```bash
-npm run diagrams:build
+npm run visual-architecture:build
 ```
 
 

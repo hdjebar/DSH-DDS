@@ -9,7 +9,8 @@
     "build:installer": "node scripts/build_installer.mjs",
     "verify:installer": "node scripts/build_installer.mjs --check",
     "archify": "node node_modules/@tt-a1i/archify-dsh/skills/archify/bin/archify.mjs",
-    "diagrams:build": "node scripts/build_diagrams.mjs"
+    "diagrams:build": "node scripts/build_diagrams.mjs",
+    "visual-architecture:build": "node scripts/build_diagrams.mjs"
   },
   "dependencies": {
     "yaml": "2.7.0"

@@ -3,7 +3,7 @@
 > 🏛️ **Related SOTA Specifications**:
 > * **[SOTA AI Harness Architecture](sota-whitepaper.md)** — Theoretical foundations, 5-Pillar SOTA harness engineering, and NIST AI RMF / EU AI Act alignment.
 > * **[System Architecture](system-overview.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
-> * **[Archify Interactive Diagrams](../diagrams/README.md)** — Self-contained, verified visual architecture and workflow maps.
+> * **[Visual Architecture Journey](../visual-architecture/README.md)** — Self-contained, verified visual architecture and workflow maps.
 
 In **DeepSeek Harness (`DSH-DDS`)**, AI guardrails are not prompt-level "suggestions", soft system instructions, or third-party cloud proxies—they are **deterministic, fail-closed software boundaries** enforced across four decoupled layers.
 
@@ -330,13 +330,13 @@ MITRE ATLAS documents real-world adversary tactics, techniques, and procedures (
 
 ## 🗺️ 6. Interactive Visualizations via Archify
 
-The interactive diagrams in [`docs/diagrams/`](../diagrams/README.md) provide live visual representations of these guardrails:
+The interactive diagrams in [`docs/visual-architecture/`](../visual-architecture/README.md) provide live visual representations of these guardrails:
 
-* 🛡️ **[Zero-Trust PEP & Dynamic RBAC Pipeline](../diagrams/security-pipeline.workflow.html)**:
+* 🛡️ **[Zero-Trust PEP & Dynamic RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)**:
   * Select the **"Fail-closed Defense"** view to trace how **ASI02** (Tool Misuse), **LLM02** (Directory Escape), and **MITRE AML.T0031** are quarantined before reaching the sandbox executor.
-* 🔄 **[Declarative Workflow & Invariant 7 Loop Trap](../diagrams/declarative-workflow.workflow.html)**:
+* 🔄 **[Declarative Workflow & Invariant 7 Loop Trap](../visual-architecture/declarative-workflow.workflow.html)**:
   * Select the **"Loop Trap Circuit"** view to inspect the **ASI04** 12-step hash ring trap, **EU AI Act Article 14** oversight, and **NIST AI RMF Manage** approval gates.
-* ⚡ **[Agent Execution & OTLP Telemetry Sequence](../diagrams/agent-trace.sequence.html)**:
+* ⚡ **[Agent Execution & OTLP Telemetry Sequence](../visual-architecture/agent-trace.sequence.html)**:
   * Select the **"Full Lifecycle"** view to trace **EU AI Act Article 12** and **ISO/IEC 42001 Annex A.10** distributed telemetry emission with zero cloud data leakage.
 
 ---
@@ -346,7 +346,7 @@ The interactive diagrams in [`docs/diagrams/`](../diagrams/README.md) provide li
 Run the automated test suite to verify that all guardrails are active and fail-closed:
 
 ```bash
-# Run all 153 security and policy enforcement tests:
+# Run all security and policy enforcement tests:
 npm test
 
 # Verify specific guardrail suites:
@@ -355,5 +355,5 @@ node --test tests/loop_trap.test.mjs
 node --test tests/declarative-orchestrator.test.mjs
 
 # Recompile interactive Archify diagrams:
-npm run diagrams:build
+npm run visual-architecture:build
 ```

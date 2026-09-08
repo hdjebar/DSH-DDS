@@ -35,11 +35,18 @@ flowchart LR
     class PEP,AUDIT,ENVOY gov
 ```
 
-*Interactive versions of the full topology, the Zero-Trust RBAC pipeline, the declarative workflow loop trap and the OTLP trace sequence are in the [Archify suite](docs/diagrams/README.md).*
+> 🗺️ **Journey the Architecture by Visualising It**
+> Explore the runtime topology, zero-trust PEP, and telemetry waterfalls through self-contained, publication-ready **interactive HTML web apps** featuring pan/zoom, dark/light modes, story chapters, and trace motion:
+> * 🏛️ **[Runtime Architecture & Isolation](docs/visual-architecture/system-runtime.architecture.html)** (`open docs/visual-architecture/system-runtime.architecture.html`)
+> * 🛡️ **[Zero-Trust PEP & Dynamic RBAC](docs/visual-architecture/security-pipeline.workflow.html)** (`open docs/visual-architecture/security-pipeline.workflow.html`)
+> * 🔄 **[Declarative Workflow & Loop Trap](docs/visual-architecture/declarative-workflow.workflow.html)** (`open docs/visual-architecture/declarative-workflow.workflow.html`)
+> * ⚡ **[Agent Execution & OTLP Telemetry Sequence](docs/visual-architecture/agent-trace.sequence.html)** (`open docs/visual-architecture/agent-trace.sequence.html`)
+>
+> *Compiled deterministically via Archify (`@tt-a1i/archify-dsh`). Full index and build instructions: **[Visual Architecture Suite](docs/visual-architecture/README.md)**.*
 
 DSH-DDS is a self-hosted environment for governed AI agents, combining multi-provider model routing, declarative workflows, MCP tools, human approval gates, sandboxed execution and local observability in one reproducible Docker stack.
 
-**→ [Get running in about 10 minutes](#-quick-start)** · **[Read the whitepaper](docs/architecture/sota-whitepaper.md)** · **[Inspect the threat model](#️-threat-model--security-boundaries)**
+**→ [Get running in about 10 minutes](#-quick-start)** · **[Journey the Architecture](docs/visual-architecture/README.md)** · **[Read the whitepaper](docs/architecture/sota-whitepaper.md)** · **[Inspect the threat model](#️-threat-model--security-boundaries)**
 
 ---
 
@@ -274,7 +281,7 @@ Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 * 🎭 **[AI Agent Personas Guide](docs/reference/personas.md)** — multi-model task matrix, session recording, automated persona distillation.
 * 🔌 **[Plugins & MCP Reference](docs/reference/plugins.md)** — active plugins catalog and pre-configured MCP tool suite.
 * 📜 **[Architecture Decision Records (ADR 0001–0008)](docs/adr/)** — build-time immutability and RBAC, out-of-band GRC, declarative orchestration and capability adapters, in-container containment, audit v3 remediation, non-root refactoring, rejection of in-container Antigravity CLI, sandbox hardening and supply-chain remediation.
-* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — self-contained interactive diagrams with dark/light modes, route tracing and state inspection: [system topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [loop trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP sequence](docs/diagrams/agent-trace.sequence.html).
+* 🗺️ **[Visual Architecture Journey](docs/visual-architecture/README.md)** — explore the architecture interactively: standalone HTML web apps with dark/light toggles, route tracing, and deep state inspection: [System Runtime Topology](docs/visual-architecture/system-runtime.architecture.html), [Zero-Trust PEP Pipeline](docs/visual-architecture/security-pipeline.workflow.html), [Declarative Loop Trap](docs/visual-architecture/declarative-workflow.workflow.html), and [Agent Trace Sequence](docs/visual-architecture/agent-trace.sequence.html).
 
 ### 📋 Agile engineering & roadmap
 * 📋 **[Agile Kanban Work Hub](docs/work/README.md)** — interactive Kanban board tracking backlog epics, active sprints, and verified delivery milestones (`todo/`, `in-progress/`, `done/`).

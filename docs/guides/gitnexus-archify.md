@@ -102,7 +102,7 @@ npx gitnexus impact user-partition.js
 * Alerts the developer if a critical boundary is breached.
 
 ### Step 3: Synthesis into Archify JSON IR (Agent)
-Using verified graph facts from GitNexus, the agent authors or updates a typed Archify JSON specification (e.g., in `docs/diagrams/`):
+Using verified graph facts from GitNexus, the agent authors or updates a typed Archify JSON specification (e.g., in `docs/visual-architecture/`):
 
 ```json
 {
@@ -132,12 +132,12 @@ Compile the intermediate representation into an interactive HTML/SVG artifact:
 ```bash
 # Validate against schemas and quality constraints
 node .agents/skills/archify/bin/archify.mjs validate architecture \
-  docs/diagrams/system-runtime.architecture.json --quality standard --json
+  docs/visual-architecture/system-runtime.architecture.json --quality standard --json
 
 # Render standalone interactive HTML
 node .agents/skills/archify/bin/archify.mjs render architecture \
-  docs/diagrams/system-runtime.architecture.json \
-  docs/diagrams/system-runtime.architecture.html --quality standard
+  docs/visual-architecture/system-runtime.architecture.json \
+  docs/visual-architecture/system-runtime.architecture.html --quality standard
 ```
 
 Generated diagrams include:
@@ -172,7 +172,7 @@ npx gitnexus detect-changes
 ---
 
 ## 🔗 Related Resources
-* [Archify Diagrams Directory](file:///Users/hdjebar/dshdds-imp/docs/diagrams/README.md)
-* [System Runtime Diagram](file:///Users/hdjebar/dshdds-imp/docs/diagrams/system-runtime.architecture.html)
-* [Agent Trace Sequence Diagram](file:///Users/hdjebar/dshdds-imp/docs/diagrams/agent-trace.sequence.html)
+* [Visual Architecture Directory](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/README.md)
+* [System Runtime Diagram](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/system-runtime.architecture.html)
+* [Agent Trace Sequence Diagram](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/agent-trace.sequence.html)
 * [Agent Guidelines (AGENTS.md)](file:///Users/hdjebar/dshdds-imp/AGENTS.md)

@@ -19,26 +19,26 @@ if (!existsSync(archifyBin)) {
 const diagrams = [
   {
     type: 'architecture',
-    input: 'docs/diagrams/system-runtime.architecture.json',
-    output: 'docs/diagrams/system-runtime.architecture.html',
+    input: 'docs/visual-architecture/system-runtime.architecture.json',
+    output: 'docs/visual-architecture/system-runtime.architecture.html',
     title: 'DeepSeek Harness Runtime Architecture',
   },
   {
     type: 'workflow',
-    input: 'docs/diagrams/security-pipeline.workflow.json',
-    output: 'docs/diagrams/security-pipeline.workflow.html',
+    input: 'docs/visual-architecture/security-pipeline.workflow.json',
+    output: 'docs/visual-architecture/security-pipeline.workflow.html',
     title: 'Zero-Trust PEP & Dynamic RBAC Pipeline',
   },
   {
     type: 'workflow',
-    input: 'docs/diagrams/declarative-workflow.workflow.json',
-    output: 'docs/diagrams/declarative-workflow.workflow.html',
+    input: 'docs/visual-architecture/declarative-workflow.workflow.json',
+    output: 'docs/visual-architecture/declarative-workflow.workflow.html',
     title: 'Declarative Workflow & Invariant 7 Loop Trap',
   },
   {
     type: 'sequence',
-    input: 'docs/diagrams/agent-trace.sequence.json',
-    output: 'docs/diagrams/agent-trace.sequence.html',
+    input: 'docs/visual-architecture/agent-trace.sequence.json',
+    output: 'docs/visual-architecture/agent-trace.sequence.html',
     title: 'Agent Execution & OTLP Telemetry Sequence',
   },
 ];

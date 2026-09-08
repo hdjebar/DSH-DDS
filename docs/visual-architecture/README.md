@@ -1,17 +1,32 @@
-# 📐 Archify Architecture & Workflow Visualizations
+# 🗺️ Visual Architecture Journey: Interactive Exploration & Blueprints
 
-Interactive, verifiable system architecture, workflow, and sequence diagrams for **DeepSeek Harness (DSH-DDS)** compiled deterministically using **[Archify](https://github.com/tt-a1i/archify)** (`@tt-a1i/archify-dsh`).
+> **Journey the architecture by visualising it.** Rather than relying on static, out-of-date image exports, this directory provides self-contained, publication-ready **interactive HTML web applications** compiled deterministically using **[Archify](https://github.com/tt-a1i/archify)** (`@tt-a1i/archify-dsh`).
 
-All diagrams in this directory are authored as typed JSON Intermediate Representations (IR), validated against strict schemas, and rendered to self-contained, publication-ready HTML/SVG artifacts featuring:
-* 🌓 **Dark / Light mode** toggling with persistent visual presets
-* 🔍 **Pan, zoom, search, and focus** modes for interactive inspection
-* 🎬 **Story chapters** and guided walkthroughs
-* 📦 **Truthful export** to PNG, SVG, WebM, and canonical 1200×630 Share Cards
-* 🛡️ **Showcase quality certification** (9/9 artifact checks passed, 0 composition errors, 0 warnings)
+### 🚀 Quick Launch — Open Directly in Your Browser
+```bash
+# Explore the system runtime & dual-container boundary:
+open docs/visual-architecture/system-runtime.architecture.html
+
+# Inspect real-time PEP tool interception & zero-trust RBAC:
+open docs/visual-architecture/security-pipeline.workflow.html
+
+# Step through declarative workflows & Invariant 7 loop prevention:
+open docs/visual-architecture/declarative-workflow.workflow.html
+
+# Trace request lifecycle, Gemini thought signatures & Phoenix OTel:
+open docs/visual-architecture/agent-trace.sequence.html
+```
+
+### 🌟 Interactive Capabilities
+* 🌓 **Dark / Light Mode**: Toggle persistent visual presets with full contrast compliance.
+* 🔍 **Pan, Zoom & Search**: Dynamic canvas exploration and node isolation.
+* 🎬 **Story Chapters & Trace Motion**: Guided sequential walkthroughs of runtime execution flows.
+* 📦 **Truthful High-Res Export**: Direct export to SVG, PNG, WebM, and canonical 1200×630 share cards.
+* 🛡️ **Showcase Quality Certification**: 9/9 automated artifact checks passed with 0 composition errors.
 
 ---
 
-## 🗺️ Interactive Diagram Index
+## 🗺️ Interactive Visual Architecture Index
 
 | Diagram Type | Title & Artifact | Specification (IR) | Focus & Highlights |
 | :--- | :--- | :--- | :--- |
@@ -158,12 +173,12 @@ sequenceDiagram
 Re-compile or validate all diagrams anytime using the project scripts:
 
 ```bash
-# Build and deliver all diagrams with showcase validation:
-npm run diagrams:build
+# Build and deliver all visual architecture artifacts with showcase validation:
+npm run visual-architecture:build
 
 # Validate an individual diagram specification:
-npm run archify -- validate architecture docs/diagrams/system-runtime.architecture.json --quality showcase
+npm run archify -- validate architecture docs/visual-architecture/system-runtime.architecture.json --quality showcase
 
 # Launch local interactive preview:
-npm run archify -- preview architecture docs/diagrams/system-runtime.architecture.json
+npm run archify -- preview architecture docs/visual-architecture/system-runtime.architecture.json
 ```
