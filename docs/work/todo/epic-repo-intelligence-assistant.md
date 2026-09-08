@@ -6,6 +6,7 @@
 * **Category**: Agentic Tooling & Developer Experience
 * **Architectural Boundary**: **Strictly Outside DSH-DDS System (Host/IDE Tier)**
 * **Brainstorm Reference**: [`../backlog/ideation/brainstorm-repo-intelligence-assistant.md`](../backlog/ideation/brainstorm-repo-intelligence-assistant.md)
+* **SOTA Research Report**: [`../backlog/ideation/sota-research-external-repo-assistant.md`](../backlog/ideation/sota-research-external-repo-assistant.md)
 
 ---
 

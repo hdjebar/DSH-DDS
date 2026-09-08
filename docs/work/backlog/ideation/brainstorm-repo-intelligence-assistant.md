@@ -1,6 +1,8 @@
 # 💡 Brainstorm Brief: External Repository AI Assistant (Host & IDE Tier)
 
 > **Core Architectural Principle**: The Repository AI Assistant must reside **STRICTLY OUTSIDE** the `DSH-DDS` container runtime, operating at the **Host Developer & IDE Tier**, never as an in-container persona.
+>
+> 🔬 **Full SOTA Research Paper**: For formal comparative benchmarks, dual-ring security proofs, and OWASP threat models, see **[SOTA Research Report: External Repository AI Assistant](sota-research-external-repo-assistant.md)**.
 
 ---
 
