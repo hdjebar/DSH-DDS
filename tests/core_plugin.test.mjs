@@ -704,3 +704,56 @@ test('GRC fail-closed: an unrecordable decision throws instead of executing unlo
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('PEP In-Line Hook: tools/pre-execute waterfall intercepts real tool calls and fails closed', async () => {
+  const registeredEvents = new Map();
+  const mockCtx = {
+    user: { id: 'auditor', roles: ['admin'] },
+    on(event, fn) {
+      registeredEvents.set(event, fn);
+    }
+  };
+
+  registerRbacInterceptor(mockCtx, {
+    enableToolRbac: true,
+    getRbacEngine: async () => await import('../config/rbac-policy.mjs')
+  });
+
+  const preHook = registeredEvents.get('tools/pre-execute');
+  assert.equal(typeof preHook, 'function', 'Must register tools/pre-execute waterfall hook on ctx');
+
+  // 1. Unauthorized path read (e.g. /etc/shadow) must return { kind: 'deny' }
+  const deniedExec = {
+    name: 'read',
+    arguments: { file_path: '/etc/shadow' },
+    callId: 'call-123'
+  };
+  const denyResult = await preHook(deniedExec, async () => ({ kind: 'allow' }));
+  assert.equal(denyResult.kind, 'deny', 'Denied execution must return kind: deny');
+  assert.match(denyResult.reason, /Zero-Trust RBAC Violation.*explicitly denied/);
+
+  // 2. Authorized path read (e.g. /workspaces/cases/report.md) must call next() and return allow
+  const allowedExec = {
+    name: 'read',
+    arguments: { file_path: '/workspaces/cases/report.md' },
+    callId: 'call-456'
+  };
+  let nextCalled = false;
+  const allowResult = await preHook(allowedExec, async () => {
+    nextCalled = true;
+    return { kind: 'allow' };
+  });
+  assert.equal(nextCalled, true, 'next() continuation must be called for authorized tool');
+  assert.equal(allowResult.kind, 'allow');
+
+  // 3. Shell command escaping sandbox must return kind: deny
+  const shellExec = {
+    name: 'bash',
+    arguments: { command: 'cat /etc/passwd' },
+    callId: 'call-789'
+  };
+  const shellResult = await preHook(shellExec, async () => ({ kind: 'allow' }));
+  assert.equal(shellResult.kind, 'deny');
+  assert.match(shellResult.reason, /Zero-Trust RBAC Violation.*denied token/);
+});
+

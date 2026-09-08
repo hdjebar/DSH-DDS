@@ -121,3 +121,12 @@ test('Installer Parity: runtime scripts and profile assets are provisioned', () 
     );
   }
 });
+
+test('Installer Parity: release archive checksum verification contract (D-04)', () => {
+  const installScript = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+  assert.match(installScript, /verify_archive_checksum\(\)/, 'Must define verify_archive_checksum');
+  assert.match(installScript, /SHA256SUMS/, 'Must verify against SHA256SUMS asset');
+  assert.match(installScript, /DSH_ALLOW_UNVERIFIED_ARCHIVE/, 'Must support explicit DSH_ALLOW_UNVERIFIED_ARCHIVE bypass');
+  assert.match(installScript, /awk '\$2 ~ \/\(\^\|\\\/\)archive\\\.tar\\\.gz\$\/ { print \$1; exit }'/, 'Must extract expected hash for archive.tar.gz');
+});
+

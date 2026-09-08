@@ -9,24 +9,28 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'node:crypto';
 import { UserPartitionManager } from './user-partition.js';
+import { DEFAULT_OPERATOR } from './iam.js';
 
 let rbacEngine = null;
 
 async function getRbacEngine() {
   if (rbacEngine) return rbacEngine;
-  try {
-    const personaMod = await import('../../config/persona.mjs');
-    rbacEngine = personaMod;
-    return rbacEngine;
-  } catch {
+  const candidates = [
+    '../../config/persona.mjs',
+    '/etc/dsh/persona.mjs',
+    '/var/lib/dsh/persona.mjs',
+    '/opt/dsh-config/persona.mjs'
+  ];
+  for (const candidate of candidates) {
     try {
-      const altMod = await import('/etc/dsh/persona.mjs');
-      rbacEngine = altMod;
-      return rbacEngine;
-    } catch {
-      return null;
-    }
+      const mod = await import(candidate);
+      if (mod && typeof mod.enforceRbacPolicy === 'function') {
+        rbacEngine = mod;
+        return rbacEngine;
+      }
+    } catch {}
   }
+  return null;
 }
 
 export const TOOL_ACTION_MAP = Object.assign(Object.create(null), {
@@ -76,12 +80,28 @@ export function registerRbacInterceptor(ctx, config = {}) {
 
   const partitionManager = new UserPartitionManager(config);
 
+  const resolveUser = (explicitUser) => {
+    if (explicitUser) return explicitUser;
+    let u = null;
+    try {
+      u = typeof ctx.get === 'function' ? ctx.get('user') : ctx.user;
+    } catch {}
+    if (u) return u;
+    try {
+      const iam = typeof ctx.get === 'function' ? ctx.get('iam') : ctx.iam;
+      if (iam && typeof iam.getCurrentUser === 'function') {
+        u = iam.getCurrentUser();
+      }
+    } catch {}
+    return u;
+  };
+
   const handler = async (actionContext) => {
     if (actionContext.workdir && !fs.existsSync(actionContext.workdir)) {
       try { fs.mkdirSync(actionContext.workdir, { recursive: true }); } catch {}
     }
 
-    const user = actionContext.user || ctx.user;
+    const user = resolveUser(actionContext.user);
     if (!user) {
       throw new Error('[Zero-Trust RBAC Violation] Missing authenticated user identity context');
     }
@@ -120,8 +140,11 @@ export function registerRbacInterceptor(ctx, config = {}) {
       if (!tenantCheck.allowed) {
         try {
           const engine = await resolveEngine();
-          if (engine && typeof engine.logGrcAuditEvent === 'function') {
-            engine.logGrcAuditEvent({
+          const auditFn = (engine && typeof engine.logGrcAuditEventBestEffort === 'function')
+            ? engine.logGrcAuditEventBestEffort.bind(engine)
+            : (engine && typeof engine.logGrcAuditEvent === 'function' ? engine.logGrcAuditEvent.bind(engine) : null);
+          if (auditFn) {
+            auditFn({
               persona: actionContext.persona?.name || 'default',
               workflow: actionContext.workflow || 'agent-session',
               action: step.action,
@@ -171,8 +194,11 @@ export function registerRbacInterceptor(ctx, config = {}) {
       // The action is refused regardless; an audit-sink failure must not mask the
       // policy violation that the caller needs to see.
       try {
-        if (typeof engine.logGrcAuditEvent === 'function') {
-          engine.logGrcAuditEvent({
+        const auditFn = typeof engine.logGrcAuditEventBestEffort === 'function'
+          ? engine.logGrcAuditEventBestEffort.bind(engine)
+          : (typeof engine.logGrcAuditEvent === 'function' ? engine.logGrcAuditEvent.bind(engine) : null);
+        if (auditFn) {
+          auditFn({
             persona: personaMeta.name,
             workflow: actionContext.workflow || 'agent-session',
             action: step.action,
@@ -197,14 +223,51 @@ export function registerRbacInterceptor(ctx, config = {}) {
         reason: 'Policy check passed'
       }, traceId);
     }
+
+    return decision;
   };
 
-  // Intercept tool executions if before or event hooks exist
-  if (Reflect.has(ctx, 'before') && typeof ctx.before === 'function') {
-    ctx.before('tool-execute', handler);
-  }
+  // Authoritative Cordis Waterfall Hook for DeepSeek Harness tool execution pipeline
+  const preExecuteWaterfall = async (exec, next) => {
+    try {
+      // If called with an actionContext object directly (e.g. from unit tests)
+      if (!exec || (!exec.arguments && (exec.toolName || exec.action))) {
+        return await handler(exec);
+      }
+
+      const rawArgs = exec.arguments || {};
+      const isShell = exec.name === 'bash' || exec.name === 'sh' || exec.name === 'terminal' || exec.name === 'exec';
+      const targetPath = rawArgs.file_path || rawArgs.path || rawArgs.target || rawArgs.target_path || rawArgs.filePath
+        || (isShell ? (rawArgs.workdir || rawArgs.cwd || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases')) : null);
+
+      const actionContext = {
+        toolName: exec.name,
+        action: TOOL_ACTION_MAP[exec.name] || exec.name,
+        target: targetPath,
+        command: rawArgs.command || rawArgs.cmd,
+        workdir: rawArgs.workdir || rawArgs.cwd,
+        user: resolveUser(exec.user) || (config.authEnabled ? null : DEFAULT_OPERATOR),
+        traceId: exec.callId || exec.traceId || (exec.signal && exec.signal.traceId),
+        persona: exec.persona || exec.agent?.persona
+      };
+
+      await handler(actionContext);
+      return typeof next === 'function' ? await next() : { kind: 'allow' };
+    } catch (err) {
+      if (typeof next === 'function') {
+        return { kind: 'deny', reason: err.message };
+      }
+      throw err;
+    }
+  };
+
+  // Intercept tool executions in real time
   if (typeof ctx.on === 'function') {
-    ctx.on('before/tool-execute', handler);
-    ctx.on('tool-execute', handler);
+    ctx.on('tools/pre-execute', preExecuteWaterfall);
+    ctx.on('before/tool-execute', (ctxOrExec) => preExecuteWaterfall(ctxOrExec));
+    ctx.on('tool-execute', (ctxOrExec) => preExecuteWaterfall(ctxOrExec));
+  }
+  if (Reflect.has(ctx, 'before') && typeof ctx.before === 'function') {
+    ctx.before('tool-execute', (ctxOrExec) => preExecuteWaterfall(ctxOrExec));
   }
 }

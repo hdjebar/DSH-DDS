@@ -66,29 +66,47 @@ Severity is the risk at the time of discovery. "Pass" is the audit pass that fou
 
 ---
 
-## 2. Open items
+## 2. Resolved in live container testing & remaining items
 
-1. **The PEP has never been observed running.** Every behavioural result above was produced
-   against a hand-constructed `actionContext`. Whether `ctx.before('tool-execute')` fires in
-   this harness, and which fields it carries, is unverified — and `resolvedAction` returns
-   `null` (deny-all) if `toolName` is absent. One line at `rbac-interceptor.js`:
+1. **PEP In-Line Hook Verified & Wired to `tools/pre-execute` (Closed)**:
+   Investigation of `@deepseek-ai/dsh-tools` inside the live container revealed that Cordis
+   dispatches tool executions through an asynchronous waterfall event named `'tools/pre-execute'`
+   (`ctx.waterfall(carrier, 'tools/pre-execute', exec, ...)`), rather than `'tool-execute'`.
+   The `exec` payload carries:
+   - `exec.name`: tool name (e.g. `bash`, `read`, `write`, `edit`, `glob`, `grep`)
+   - `exec.arguments`: tool arguments object (`file_path`, `command`, `workdir`, etc.)
+   - `exec.agent`: calling agent context
+   - `exec.callId`: execution correlation ID
 
-   ```js
-   console.warn('[PEP]', JSON.stringify({ keys: Object.keys(actionContext), toolName: actionContext.toolName, action: actionContext.action }));
-   ```
+   In [`packages/dsh-dds-core/rbac-interceptor.js`](../packages/dsh-dds-core/rbac-interceptor.js),
+   `preExecuteWaterfall` now hooks `tools/pre-execute`, maps arguments and `toolName` deterministically,
+   and returns `{ kind: 'deny', reason: err.message }` on RBAC policy violation or calls `await next()`
+   on grant. Verified in the live container (`dsh-local:test`):
+   - Unauthorized file reads (`read /etc/shadow`) are intercepted in real time and return `kind: 'deny'`.
+   - Authorized workspace reads (`read /workspaces/cases/report.md`) proceed with `kind: 'allow'`.
+   - Escaping shell commands (`bash cat /etc/passwd`) are intercepted and denied before execution.
 
-   plus one real session settles whether SEC-15 protects anything. This is the highest-value
-   remaining action and it is not answerable from static review.
+2. **Container Filesystem Protection & Module Resolution Verified (Closed)**:
+   Built and verified in live container `dsh-local:test`:
+   - `@dsh-dds/core` cleanly resolves in the Cordis web profile via `/var/lib/dsh/profiles/web/node_modules/@dsh-dds/core`.
+   - `/app` is owned by `root:root 755` and the `@dsh-dds` scope in the profile tree is likewise `root:root 755`.
+   - Executing as unprivileged `dsh:dsh` (UID 1000), attempts to write `/app` or tamper with `@dsh-dds` return `Permission denied`.
+   - The removed entrypoint re-link leaves the root-owned build-time link intact and untampered.
 
-2. **`SHA256SUMS` must be published per release.** D-04 fails closed by default; until the
-   asset exists for a tag, remote installs of that tag need `DSH_ALLOW_UNVERIFIED_ARCHIVE=1`.
+3. **Audit File Landing Verified (Closed)**:
+   Tested in live container execution across both runtime modes:
+   - **Standard Mode**: Mount `-v ./config/audit:/var/lib/dsh/audit:rw` with `DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl`. Verified that events written inside the container land directly on host file `./config/audit/audit_grc.jsonl`.
+   - **Sandbox Mode**: Rootfs is read-only, `/var/lib/dsh` and `/var/log/dsh` are tmpfs mounts, and `./config/audit` is deliberately unmounted so untrusted workloads cannot corrupt host logs. Events write safely to the tmpfs buffer and mirror to Arize Phoenix.
 
-3. **Container changes are statically reviewed only.** The `@dsh-dds` chown and the removed
-   entrypoint re-link (D-03) need one `./dsh.sh build && ./dsh.sh up` to confirm the plugin
-   still resolves.
+4. **`SHA256SUMS` per release**:
+   `install_dsh.sh` enforces cryptographic archive checksum validation against the published
+   `SHA256SUMS` asset and fails closed by default (D-04). For release tags where `SHA256SUMS`
+   has not yet been attached to the GitHub release assets, remote installations of that tag require
+   explicit opt-in via `DSH_ALLOW_UNVERIFIED_ARCHIVE=1`.
 
-4. **SEC-01 remains open by design.** The Web UI and Phoenix are unauthenticated and
-   contained only by loopback binding. Anything beyond a single-operator host needs an
+5. **SEC-01 remains open by design**:
+   The Web UI (`:3080`) and Arize Phoenix (`:6006`) are unauthenticated and contained by loopback
+   binding (`127.0.0.1`). Any deployment exposed beyond a single-operator local machine requires an
    authenticating reverse proxy.
 
 ---
