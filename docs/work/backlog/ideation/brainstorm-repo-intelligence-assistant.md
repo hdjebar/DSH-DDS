@@ -78,6 +78,18 @@ We focus on two external modalities residing completely on the host/developer ti
 
 ---
 
+## 🏢 Industry Benchmark: How Does This Compare to GitHub Copilot?
+
+While **GitHub** provides repository AI assistants across its commercial cloud suite (**Copilot Chat on github.com**, **Copilot Workspace**, **gh copilot CLI**, and **VS Code Copilot Agent**), they present critical architectural constraints for sovereign environments:
+* **Cloud Transmissibility**: GitHub Copilot transmits proprietary code, prompts, and context to Microsoft Azure / OpenAI cloud infrastructure, disqualifying it under strict data residency, DORA, and EU AI Act mandates.
+* **Vector Text RAG vs. Relational AST**: GitHub Chat uses probabilistic vector text chunks, which frequently hallucinate symbol relationships; DSH-DDS utilizes **GitNexus** with 2,613 typed AST nodes, 3,551 edges, and 77 execution flows for deterministic caller/callee analysis.
+* **Visual Governance**: GitHub has no visual modeling compiler; DSH-DDS compiles verifiable, interactive HTML blueprints via **Archify**.
+* **Zero Container Footprint**: Like GitHub's host-side Copilot Agent, our assistant operates strictly on the host/IDE tier, preserving the unprivileged isolation of the `DSH-DDS` runtime.
+
+*(See the complete comparative analysis in the **[SOTA Research Report](sota-research-external-repo-assistant.md#21-deep-dive-githubs-ai-assistant-ecosystem--architectural-comparison)**).*
+
+---
+
 ## 🛡️ Security & Boundary Guarantees
 
 * **Zero In-Container Footprint**: No personas added to `config/personas/`, no new daemons inside Docker.
