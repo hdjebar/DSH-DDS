@@ -4,7 +4,7 @@
 > 
 > 🌐 **Ecosystem Comparison**: For architectural comparisons against OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI, and NeMo Guardrails, see **[Open Source Landscape & Ecosystem Comparison](ecosystem-comparison.md)**.
 > 
-> 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](globalrefactoring/README.md)** and **[ADR 0006: Global Refactoring](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)**.
+> 🏗️ **Global Architecture Refactoring Blueprint**: For the 9-pillar refactoring specification (root role elimination, native Cordis IoC plugins, and pnpm.patchedDependencies), see **[Global Refactoring Blueprint](work/done/global-refactoring/README.md)** and **[ADR 0006: Global Refactoring](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)**.
 > 
 > 🔒 **Sandbox Hardening & Supply Chain**: For credential isolation, GRC audit retention, and production cgroup limits, see **[ADR 0008: Container Sandbox Hardening](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)**.
 > 

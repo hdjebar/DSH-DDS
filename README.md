@@ -274,6 +274,9 @@ Full specification: [Plugins & MCP Reference](docs/plugins.md).
 * 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — theoretical foundations, academic literature, framework comparisons.
 * 🚀 **[Future Development Hub](docs/future-development/README.md)** — [engineering roadmap](docs/future-development/ROADMAP.md) (v1.11.0, v1.12.0, v2.0.0) and [SOTA research report](docs/future-development/SOTA-ResearchReport-ProductionArch.md).
 
+### 📋 Agile engineering & roadmap
+* 📋 **[Agile Kanban Work Hub](docs/work/README.md)** — interactive Kanban board tracking backlog epics, active sprints, and verified delivery milestones (`todo/`, `in-progress/`, `done/`).
+
 ---
 
 ## ⚡ Quick Start
