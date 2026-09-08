@@ -25,6 +25,6 @@ An idea graduates from `backlog/ideation/` to `todo/` when:
 
 | Title | Focus Area | Status | Document Link |
 | :--- | :--- | :---: | :--- |
-| **Repo Intelligence Assistant** | Agentic Tooling & DevEx | 💡 Brainstorming / Ready for Epic | [`ideation/brainstorm-repo-intelligence-assistant.md`](ideation/brainstorm-repo-intelligence-assistant.md) |
+| **External Repo Assistant (Host/IDE Tier)** | Developer Tooling & DevEx | 💡 Brainstorming / Ready for Epic | [`ideation/brainstorm-repo-intelligence-assistant.md`](ideation/brainstorm-repo-intelligence-assistant.md) |
 | **Multi-Tenancy Workspace Partitions** | Platform & Isolation | 🔬 Preliminary Discovery | Proposed |
 | **eBPF Syscall Auditing** | Kernel Observability | 🔬 Technology Spike | Proposed |

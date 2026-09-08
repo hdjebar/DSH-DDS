@@ -1,54 +1,61 @@
-# 📋 Epic: In-Repository AI Assistant (`codebase-architect`)
+# 📋 Epic: External Repository AI Assistant (Host & IDE Tier)
 
 * **Status**: 📋 To Do
 * **Target Release**: `v2.1.0`
 * **Priority**: High
 * **Category**: Agentic Tooling & Developer Experience
+* **Architectural Boundary**: **Strictly Outside DSH-DDS System (Host/IDE Tier)**
 * **Brainstorm Reference**: [`../backlog/ideation/brainstorm-repo-intelligence-assistant.md`](../backlog/ideation/brainstorm-repo-intelligence-assistant.md)
 
 ---
 
 ## 🎯 Objective
 
-Provide an authoritative, in-repository AI assistant that enables developers, architects, and auditors to intelligently interact with `DSH-DDS`. The assistant combines **GitNexus AST code intelligence** (2,613 symbols, 77 execution flows), **Archify visual architecture compilation**, and local **Arize Phoenix trace telemetry** to explain architecture, analyze blast radiuses, answer ADR questions, and safely propose code modifications.
+Provide an authoritative, **external** repository AI assistant operating on the **Host Developer & IDE Tier** (completely outside the sandboxed `DSH-DDS` Docker container stack). The assistant enables human developers and security engineers to intelligently interact with the repository: exploring AST call chains via **GitNexus**, authoring verifiable visual architecture models via **Archify**, verifying ADR invariants, and running pre-commit blast-radius checks safely on the host.
+
+---
+
+## 🛑 Strict Architectural Boundary: Outside the System
+
+* **Never Inside the Container**: Adhering to **[ADR 0007](../../adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md)** and **ADR 0006**, this assistant **MUST NOT** be implemented as an in-container persona in `config/personas/` or executed within Docker.
+* **Separation of Concerns**:
+  * **Inside `dsh-dds`**: Untrusted, sandboxed task execution for business domains (SDMX, statistics, data analytics).
+  * **Outside `dsh-dds` (Host)**: Privileged repository engineering, code intelligence, refactoring, and governance.
 
 ---
 
 ## 📋 Scope & Deliverables
 
-1. **`codebase-architect` Persona (`config/personas/codebase-architect/`)**:
-   * Author declarative `persona.yaml` and `SKILL.md` defining the resident codebase architect.
-   * Configure model routing matrix: Gemini 2.5 Flash for rapid AST lookups, DeepSeek R1 / Claude 3.7 Sonnet for complex architectural reasoning.
-   * Zero-Trust RBAC: Read-only access over `/app`, `/workspaces`, and `/etc/dsh`; writes restricted to ephemeral worktrees.
+1. **Agentic IDE Assistant Skill (`.agents/skills/dsh-repo-assistant/`)**:
+   * Package repository intelligence instructions and cheatsheets for pair programmers (Antigravity, Claude Code, Cursor).
+   * Encode core invariants: Landlock LSM, non-root execution (UID 1000), ADR 0001–0008, and Diátaxis documentation structure.
+   * Provide direct AST navigation workflows using the local GitNexus knowledge graph (2,613 symbols, 77 execution flows).
 
-2. **GitNexus MCP Toolchain Integration**:
-   * Expose `gitnexus_query`, `gitnexus_context`, and `gitnexus_impact` to the persona's tool execution matrix.
-   * Enable real-time blast-radius calculation for any requested code mutation.
+2. **Host Developer CLI Companion (`./dsh.sh assistant` / `scripts/repo_assistant.mjs`)**:
+   * Implement a lightweight, standalone Node.js CLI tool running on the host machine.
+   * Subcommands:
+     * `./dsh.sh assistant ask "<query>"`: Answer architecture, code, and ADR questions with exact citations.
+     * `./dsh.sh assistant review <file>`: Compute AST blast radius and report direct callers/callees using GitNexus.
+     * `./dsh.sh assistant verify`: Run pre-commit checks (`npx gitnexus detect-changes`, `npm run verify:installer`, `npm test`).
+     * `./dsh.sh assistant build-visuals`: Recompile Archify visual architecture artifacts with showcase validation.
 
-3. **Terminal Companion (`./dsh.sh ask` / `./dsh.sh review`)**:
-   * Add `./dsh.sh ask "<prompt>"` CLI command for fast terminal queries against the local model bridge.
-   * Add `./dsh.sh review <file_or_symbol>` to report upstream/downstream callers and risk rating directly in stdout.
-
-4. **Archify Visual Compilation On-Demand**:
-   * Provide capability adapter enabling the assistant to compile or update visual architecture diagrams (`npm run visual-architecture:build`) during interactive sessions.
-
-5. **Agentic IDE Skill (`.agents/skills/dsh-assistant/`)**:
-   * Document and package repo-level guidelines, ADR invariants, non-root rules, and pre-commit verification workflows.
+3. **CI/CD Pre-Commit & PR Impact Hook**:
+   * Optional Git pre-commit hook executing `npx gitnexus detect-changes` to warn if commits alter unexpected execution flows.
 
 ---
 
 ## 🛡️ Security & Confinement Invariants
 
-* **Fail-Closed RBAC**: The assistant operates under unprivileged non-root execution (UID 1000) and cannot execute arbitrary host bash commands outside declared capability adapters.
-* **Ephemeral Worktree Staging**: Any proposed code modifications must stage in isolated Git worktrees (`config/worktree-staging.mjs`) with automated rollback on test failures.
-* **Air-Gapped Telemetry**: All assistant queries, reasoning steps, and tool invocations record locally to Arize Phoenix (`127.0.0.1:6006`) with zero external trace leakage.
+* **Zero Container Footprint**: 0 files added to `config/personas/`, 0 Docker modifications.
+* **Host Credential Boundary**: Uses host-scoped environment variables or local LLM keys; credentials never mounted into or shared with the sandboxed container runtime.
+* **Preservation of Canonical State**: Proposed code changes must stage in host ephemeral Git worktrees with zero diff on rollback.
 
 ---
 
 ## 🧪 Acceptance Criteria
 
-- [ ] `codebase-architect` persona manifest passes all persona architecture validation tests (`tests/personas.test.mjs`).
-- [ ] Persona demonstrates accurate symbol lookups and blast-radius reports using GitNexus MCP tools.
-- [ ] `./dsh.sh ask` functions headlessly without browser dependency.
-- [ ] Automated regression tests added under `tests/repo_assistant.test.mjs` verifying fail-closed RBAC containment.
-- [ ] All existing 169 tests continue to pass with 0 regressions.
+- [ ] Repository assistant executes 100% on the host environment; `docker ps` confirms zero additional daemons.
+- [ ] Existing 7 in-container domain personas and `tests/personas.test.mjs` remain completely untouched and green.
+- [ ] `./dsh.sh assistant ask` and `./dsh.sh assistant review` execute cleanly on host shell.
+- [ ] `.agents/skills/dsh-repo-assistant/` validates against IDE skill schema.
+- [ ] All 169 automated test suites (`npm test`) continue to pass with 0 regressions.

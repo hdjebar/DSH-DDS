@@ -1,98 +1,91 @@
-# 💡 Brainstorm Brief: In-Repository AI Assistant (`repo-copilot`)
+# 💡 Brainstorm Brief: External Repository AI Assistant (Host & IDE Tier)
 
-> **Concept**: Transform DSH-DDS into a self-referential, self-explaining, and self-governing AI harness by embedding a specialized AI assistant that understands the repository's code, architecture, invariants, and operational workflows.
-
----
-
-## 🧭 Problem Statement & Context
-
-Currently, developers and security auditors interact with DSH-DDS through:
-1. The **Web UI** (`:3080`) using domain personas (`sdmx-expert`, `security-auditor`, `devops-sre`).
-2. The **Host CLI** (`./dsh.sh`) executing operational bash subcommands (`up`, `doctor`, `reset`, `approve`).
-3. External AI pair-programmers (Antigravity, Claude Code, Cursor) reading workspace files and rules.
-
-However, there is no **in-repo native intelligence agent** specifically specialized in:
-* Answering deep questions about DSH-DDS internals (e.g. Invariant 7 loop trap, AES-256 BYOK Vault, Envoy egress filter).
-* Exploring symbol call graphs and blast radiuses using the local GitNexus AST index.
-* Authoring or compiling interactive Archify visual architecture diagrams on demand.
-* Proposing atomic code changes safely through ephemeral Git worktrees with automatic rollback on test failure.
+> **Core Architectural Principle**: The Repository AI Assistant must reside **STRICTLY OUTSIDE** the `DSH-DDS` container runtime, operating at the **Host Developer & IDE Tier**, never as an in-container persona.
 
 ---
 
-## 🎨 Modality & Architecture Ideation
+## 🛑 Foundational Rule: Why Outside, Never Inside?
 
-We brainstormed three complementary interaction modalities:
+In `DSH-DDS`, a strict architectural boundary exists between the **sandboxed runtime** and the **host developer environment**:
 
 ```mermaid
 flowchart TD
-    subgraph Modality_1 ["Modality 1: DSH Web UI Persona"]
-        PERSONA["🎭 codebase-architect\n(config/personas/codebase-architect/)"]
-        PERSONA_TOOLS["🔌 MCP Tools: GitNexus, Archify, FS Read"]
-        PERSONA --> PERSONA_TOOLS
+    subgraph Host_Tier ["💻 Host Developer & IDE Tier (OUTSIDE - Privileged Development)"]
+        ASSISTANT["🤖 External Repo Assistant\n(Antigravity / Claude Code / Host CLI)"]
+        HOST_GN["🕸️ GitNexus AST Engine\n(Host index: 2,613 nodes)"]
+        HOST_ARCH["📐 Archify Compiler\n(scripts/build_diagrams.mjs)"]
+        HOST_GIT["📦 Host Git Worktree & npm test"]
+        
+        ASSISTANT --> HOST_GN
+        ASSISTANT --> HOST_ARCH
+        ASSISTANT --> HOST_GIT
     end
 
-    subgraph Modality_2 ["Modality 2: Terminal Developer Companion"]
-        CLI["💻 ./dsh.sh ask <prompt>\n./dsh.sh review <file>"]
-        CLI_BRIDGE["⚡ Headless Cordis LLM Bridge\n(Streaming CLI Output)"]
-        CLI --> CLI_BRIDGE
+    subgraph DSH_Sandbox ["🐳 DSH Container Runtime (INSIDE - Untrusted Execution)"]
+        KERNEL["⚡ Cordis Microkernel (UID 1000, cap_drop: ALL)"]
+        PERSONAS["🎭 7 Domain Personas\n(sdmx-expert, data-analyst, etc.)"]
+        ENVOY["🔒 Envoy Egress Proxy Sidecar"]
     end
 
-    subgraph Modality_3 ["Modality 3: Agentic IDE Assistant Skill"]
-        SKILL[".agents/skills/dsh-assistant/\n(Antigravity / Claude Code Skill)"]
-        SKILL_RULES["🛡️ Codified ADR Invariants\n(Non-root, Diátaxis, Test suites)"]
-        SKILL --> SKILL_RULES
-    end
+    HOST_GIT -.->|Mounts config :ro| DSH_Sandbox
+    ASSISTANT -.->|Executes tests / commands from host| DSH_Sandbox
 
-    CORE[("🧠 Local Repo Intelligence Hub\nGitNexus AST + Archify IR + Diátaxis Docs")]
-    
-    PERSONA_TOOLS --> CORE
-    CLI_BRIDGE --> CORE
-    SKILL_RULES --> CORE
+    classDef outside fill:#e8f4fd,stroke:#2b6cb0,stroke-width:2px;
+    classDef inside fill:#fff5f5,stroke:#c53030,stroke-width:2px;
+    class ASSISTANT,HOST_GN,HOST_ARCH,HOST_GIT outside;
+    class KERNEL,PERSONAS,ENVOY inside;
 ```
 
-### 1. Web Persona: `codebase-architect`
-* **Role**: Resident repository architect and onboarding specialist.
-* **Manifest**: Declarative `persona.yaml` with zero-trust RBAC allowing `read` over `/app`, `/workspaces`, and `/etc/dsh`, but strictly preventing direct `write` to core runtime source files without human approval.
-* **Toolchain**:
-  * `gitnexus_query`: Search execution flows and call chains.
-  * `gitnexus_context`: Retrieve direct callers, callees, and functional clusters.
-  * `gitnexus_impact`: Compute blast radius before modifying any function.
-  * `archify_compile`: Render or update interactive visual architecture HTML models.
-
-### 2. Terminal CLI Companion: `./dsh.sh ask` / `./dsh.sh review`
-* **Role**: Zero-friction CLI companion for developers in the terminal.
-* **Workflow Examples**:
-  ```bash
-  # Quick architecture query:
-  ./dsh.sh ask "Explain how Envoy proxy sidecar blocks egress data exfiltration"
-
-  # Quick blast-radius code review:
-  ./dsh.sh review config/failover-gateway.mjs
-
-  # Status and audit check:
-  ./dsh.sh ask "Which OWASP Agentic AI guardrails are covered in tests/?"
-  ```
-* **Engine**: Dispatches headlessly into the running DSH container using the local LLM bridge (Gemini 2.5 Flash or OpenRouter) with session isolation.
-
-### 3. Agentic IDE Skill: `.agents/skills/dsh-assistant/`
-* **Role**: Context provider for Antigravity, Claude Code, and Cursor.
-* **Content**: Codified repository invariants (e.g., must run `npm test`, must check `gitnexus detect-changes` before commit, must preserve non-root UID 1000).
+### Why the Assistant Must NOT Live Inside `dsh-dds`:
+1. **Sandboxing Inversion**: The DSH container is an unprivileged sandbox (`cap_drop: ALL`, read-only root FS, internal network bridge, Envoy egress filter). An assistant that inspects, refactors, and tests the repository requires host git commands, filesystem read across the repo root, and developer tooling—granting this to the container would destroy sandbox containment.
+2. **Alignment with ADR 0007**: [ADR 0007](../../../adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md) formally rejected running agentic CLI tools (`agy`) inside the container to prevent privilege escalation and credential leakage. The repository assistant follows this exact mandate.
+3. **Circular Dependency & Self-Mutation Hazard**: A container cannot safely modify its own Dockerfile, Compose topology, entrypoint scripts, or host mount definitions from the inside.
+4. **Preservation of Domain Focus**: In-container personas (`config/personas/`) exist solely for user business domains (SDMX statistics, data analysis, MLOps, security auditing). The repository assistant is a meta-engineering tool for the human developer.
 
 ---
 
-## 🛡️ Security & Boundary Invariants
+## 🎨 External Modality Ideation (Outside the System)
 
-Any repo-assistant implementation must strictly obey the DSH-DDS security charter:
-1. **Zero Unsandboxed Execution**: Code execution or testing must run inside ephemeral containers or isolated Git worktrees (`config/worktree-staging.mjs`), never on the bare host.
-2. **Read-Only Code Access by Default**: The persona cannot mutate `config/` or `docker/` directly during a chat session without triggering an ACM human approval gate (`./dsh.sh approve <id>`).
-3. **Local Telemetry Retention**: Telemetry and conversation traces must stay inside local Arize Phoenix (`127.0.0.1:6006`) with zero export to third-party SaaS observability platforms.
+We focus on two external modalities residing completely on the host/developer tier:
+
+### Modality 1: Agentic IDE Assistant Skill (`.agents/skills/dsh-repo-assistant/`)
+* **Environment**: Runs within the developer's agentic IDE (Antigravity, Claude Code, Cursor) on the host.
+* **Capabilities**:
+  * **AST Navigation**: Uses GitNexus tools (`gitnexus_query`, `gitnexus_context`, `gitnexus_impact`) to trace symbols, callers, and execution flows.
+  * **Architectural Guidance**: Understands Diátaxis documentation, ADR 0001–0008 invariants, and non-root rules.
+  * **Visual Governance**: Formulates typed Archify JSON specs and runs `npm run visual-architecture:build`.
+  * **Safety Guardrails**: Proactively runs `npx gitnexus detect-changes` before proposing or staging commits.
+
+### Modality 2: Host CLI Companion (`./dsh.sh assistant` or `scripts/repo_assistant.mjs`)
+* **Environment**: Runs directly on the host shell (`mac / zsh / bash`), completely outside Docker.
+* **Developer Workflows**:
+  ```bash
+  # 1. Ask architectural questions from host terminal:
+  ./dsh.sh assistant ask "How does the Invariant 7 loop trap prevent infinite loops?"
+
+  # 2. Perform pre-commit blast radius review from host:
+  ./dsh.sh assistant review config/failover-gateway.mjs
+
+  # 3. Check documentation consistency & broken links:
+  ./dsh.sh assistant check-docs
+
+  # 4. Rebuild & validate visual architecture models:
+  ./dsh.sh assistant build-visuals
+  ```
+* **Architecture**: Uses a lightweight host-side Node.js script reading host `.env` or provider keys directly to stream answers to stdout without touching container processes.
+
+---
+
+## 🛡️ Security & Boundary Guarantees
+
+* **Zero In-Container Footprint**: No personas added to `config/personas/`, no new daemons inside Docker.
+* **Host Tool Orchestration**: Leverages host Node 20 runtime, host GitNexus CLI, and host Archify compiler.
+* **Read-Only Code Analysis**: The assistant analyzes code without mutating canonical branches unless explicit user approval is granted via ephemeral Git worktrees.
 
 ---
 
 ## 🚀 Recommendation & Next Steps
 
-1. **Formalize into Epic**: Promote this brainstorm into `docs/work/todo/epic-repo-intelligence-assistant.md` targeted for `v2.1.0`.
-2. **Phased Rollout**:
-   * **Phase 1**: Author the `codebase-architect` persona manifest and skill.
-   * **Phase 2**: Implement the `./dsh.sh ask` CLI wrapper.
-   * **Phase 3**: Add GitNexus automated PR review bot integration.
+1. Update the prioritized Epic (`docs/work/todo/epic-repo-intelligence-assistant.md`) to explicitly mandate **Host & IDE Tier (Outside DSH-DDS)**.
+2. Implement **Modality 1** first as an IDE skill (`.agents/skills/dsh-repo-assistant/`) to assist current development.
+3. Implement **Modality 2** as a host-side script (`scripts/repo_assistant.mjs`) exposed through `./dsh.sh assistant`.

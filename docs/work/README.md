@@ -11,9 +11,9 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 │    💡 BACKLOG     │     📋 TO DO      │  🚧 IN PROGRESS   │    🧪 TESTING     │      ✅ DONE      │
 │    (IDEATION)     │   (PRIORITIZED)   │     (SPRINT)      │  (VERIFICATION)   │    (VERIFIED)     │
 ├───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┤
-│ • Repo AI Copilot │ • In-Repo AI      │ • GitNexus &      │ • Quality Gates   │ • Global          │
-│   (Brainstorm &   │   Assistant Epic  │   Archify Visual  │   (Automated 169- │   Refactoring     │
-│   Architecture)   │   (v2.1.0 Tool)   │   Governance      │   suite regression│   (Pillars 1–9)   │
+│ • External Repo   │ • External Repo   │ • GitNexus &      │ • Quality Gates   │ • Global          │
+│   AI Assistant    │   Assistant Epic  │   Archify Visual  │   (Automated 169- │   Refactoring     │
+│   (Host/IDE Tier) │   (Host CLI/IDE)  │   Governance      │   suite regression│   (Pillars 1–9)   │
 │ • Multi-Tenancy   │ • Temporal Engine │   (Real-time AST  │   & Phoenix evals)│ • Milestone 1     │
 │   Partitions      │   (Durable flows) │   visual model)   │                   │   (Envoy Egress)  │
 │ • eBPF Syscall    │ • ISO 42001 Kit   │                   │                   │ • Milestone 2     │
@@ -29,9 +29,9 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 
 | Stage | Item / Epic | Target Release | Category | Specification Card |
 | :--- | :--- | :---: | :---: | :--- |
-| 💡 **Backlog** | **In-Repository AI Assistant Brainstorm** | `v2.1.0` | Discovery & Spikes | [`backlog/ideation/brainstorm-repo-intelligence-assistant.md`](backlog/ideation/brainstorm-repo-intelligence-assistant.md) |
+| 💡 **Backlog** | **External Repo Assistant Brainstorm (Host Tier)** | `v2.1.0` | Discovery & Spikes | [`backlog/ideation/brainstorm-repo-intelligence-assistant.md`](backlog/ideation/brainstorm-repo-intelligence-assistant.md) |
 | 💡 **Backlog** | **Backlog & Ideation Hub** | Ongoing | Process | [`backlog/README.md`](backlog/README.md) |
-| 📋 **To Do** | **In-Repository AI Assistant (`codebase-architect`)** | `v2.1.0` | Agentic Tooling | [`todo/epic-repo-intelligence-assistant.md`](todo/epic-repo-intelligence-assistant.md) |
+| 📋 **To Do** | **External Repo AI Assistant (Host & IDE Tier)** | `v2.1.0` | Developer Tooling | [`todo/epic-repo-intelligence-assistant.md`](todo/epic-repo-intelligence-assistant.md) |
 | 📋 **To Do** | **Temporal Durable Execution** | `v2.2.0` | Reliability | [`todo/epic-temporal-durable-execution.md`](todo/epic-temporal-durable-execution.md) |
 | 📋 **To Do** | **ISO 42001 & EU AI Act Audit Kit** | `v2.2.0` | Compliance | [`todo/epic-iso-42001-audit-kit.md`](todo/epic-iso-42001-audit-kit.md) |
 | 📋 **To Do** | **Firecracker MicroVM Isolation** | `v2.3.0` | Virtualization | [`todo/epic-microvm-firecracker-isolation.md`](todo/epic-microvm-firecracker-isolation.md) |
