@@ -66,3 +66,4 @@ workspaces/cases/*
 !workspaces/artifacts/
 workspaces/artifacts/*
 !workspaces/artifacts/.gitkeep
+.gitnexus
