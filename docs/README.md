@@ -79,7 +79,7 @@ Authoritative schemas, configurations, and catalogs:
 * **[Future Development Hub](future-development/README.md)** — Long-term technical roadmap ([ROADMAP.md](future-development/ROADMAP.md)) and enterprise SOTA research report ([SOTA-ResearchReport-ProductionArch.md](future-development/SOTA-ResearchReport-ProductionArch.md)).
 
 ### 📋 7. Agile Kanban Work Hub
-* **[Agile Kanban Board](work/README.md)** — Master work board tracking backlog epics (`todo/`), active sprints (`in-progress/`), and verified deliverables (`done/`).
+* **[Agile Kanban Board](work/README.md)** — Master work board managing the 5-stage engineering lifecycle: ideation (`backlog/`), prioritized epics (`todo/`), active sprints (`in-progress/`), quality verification (`testing/`), and verified milestones (`done/`).
 
 ---
 

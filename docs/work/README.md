@@ -7,30 +7,36 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 ## 📌 Master Kanban Board
 
 ```
-┌─────────────────────────────────┬─────────────────────────────────┬─────────────────────────────────┐
-│        📋 TO DO (BACKLOG)       │     🚧 IN PROGRESS (SPRINT)     │       ✅ DONE (VERIFIED)        │
-├─────────────────────────────────┼─────────────────────────────────┼─────────────────────────────────┤
-│ • Temporal Durable Execution    │ • GitNexus & Archify Visual     │ • Global Refactoring (Pillars   │
-│   (Resilient multi-day flows)   │   Governance (Real-time code    │   1–9, UID 1000, @dsh-dds/core) │
-│ • ISO 42001 & EU AI Act Audit   │   intelligence & AST diagrams)  │ • Milestone 1 (v1.11.0: Envoy   │
-│   Evidence Kit (Signed reports) │                                 │   egress, model failover)       │
-│ • Firecracker MicroVM Isolation │                                 │ • Milestone 2 (v1.12.0: Git     │
-│   (Hardware-virtualized guest)  │                                 │   worktrees, Phoenix evals)     │
-│                                 │                                 │ • Milestone 3 (v2.0.0: Level    │
-│                                 │                                 │   4.0 Context quarantine)       │
-└─────────────────────────────────┴─────────────────────────────────┴─────────────────────────────────┘
+┌───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┐
+│    💡 BACKLOG     │     📋 TO DO      │  🚧 IN PROGRESS   │    🧪 TESTING     │      ✅ DONE      │
+│    (IDEATION)     │   (PRIORITIZED)   │     (SPRINT)      │  (VERIFICATION)   │    (VERIFIED)     │
+├───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┤
+│ • Repo AI Copilot │ • In-Repo AI      │ • GitNexus &      │ • Quality Gates   │ • Global          │
+│   (Brainstorm &   │   Assistant Epic  │   Archify Visual  │   (Automated 169- │   Refactoring     │
+│   Architecture)   │   (v2.1.0 Tool)   │   Governance      │   suite regression│   (Pillars 1–9)   │
+│ • Multi-Tenancy   │ • Temporal Engine │   (Real-time AST  │   & Phoenix evals)│ • Milestone 1     │
+│   Partitions      │   (Durable flows) │   visual model)   │                   │   (Envoy Egress)  │
+│ • eBPF Syscall    │ • ISO 42001 Kit   │                   │                   │ • Milestone 2     │
+│   Auditing Spike  │ • MicroVM Guests  │                   │                   │   (Worktrees)     │
+│                   │   (Firecracker)   │                   │                   │ • Milestone 3     │
+│                   │                   │                   │                   │   (Sovereign L4)  │
+└───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘
 ```
 
 ---
 
 ### 📋 Detailed Work Breakdown
 
-| State | Item / Epic | Target Release | Category | Specification Card |
+| Stage | Item / Epic | Target Release | Category | Specification Card |
 | :--- | :--- | :---: | :---: | :--- |
+| 💡 **Backlog** | **In-Repository AI Assistant Brainstorm** | `v2.1.0` | Discovery & Spikes | [`backlog/ideation/brainstorm-repo-intelligence-assistant.md`](backlog/ideation/brainstorm-repo-intelligence-assistant.md) |
+| 💡 **Backlog** | **Backlog & Ideation Hub** | Ongoing | Process | [`backlog/README.md`](backlog/README.md) |
+| 📋 **To Do** | **In-Repository AI Assistant (`codebase-architect`)** | `v2.1.0` | Agentic Tooling | [`todo/epic-repo-intelligence-assistant.md`](todo/epic-repo-intelligence-assistant.md) |
 | 📋 **To Do** | **Temporal Durable Execution** | `v2.2.0` | Reliability | [`todo/epic-temporal-durable-execution.md`](todo/epic-temporal-durable-execution.md) |
 | 📋 **To Do** | **ISO 42001 & EU AI Act Audit Kit** | `v2.2.0` | Compliance | [`todo/epic-iso-42001-audit-kit.md`](todo/epic-iso-42001-audit-kit.md) |
 | 📋 **To Do** | **Firecracker MicroVM Isolation** | `v2.3.0` | Virtualization | [`todo/epic-microvm-firecracker-isolation.md`](todo/epic-microvm-firecracker-isolation.md) |
 | 🚧 **In Progress** | **GitNexus & Archify Visual Governance** | `v2.1.0` | Agentic Tooling | [`in-progress/feature-gitnexus-archify-visual-governance.md`](in-progress/feature-gitnexus-archify-visual-governance.md) |
+| 🧪 **Testing** | **Quality Gates & Regression Gate** | Continuous | Quality Assurance | [`testing/README.md`](testing/README.md) |
 | ✅ **Done** | **Global Architecture Refactoring** | `v1.10.0` | Core Kernel | [`done/global-refactoring/README.md`](done/global-refactoring/README.md) |
 | ✅ **Done** | **Milestone 1: Egress Proxy & Failover** | `v1.11.0` | Security & Net | [`done/milestone-1-zero-trust-egress.md`](done/milestone-1-zero-trust-egress.md) |
 | ✅ **Done** | **Milestone 2: Git Worktrees & Evals** | `v1.12.0` | State & Evals | [`done/milestone-2-transactional-evals.md`](done/milestone-2-transactional-evals.md) |
@@ -40,22 +46,25 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 
 ## 📐 Kanban Operating Principles
 
-### 1. Work-in-Progress (WIP) Limits
-* **In Progress Cap**: Maximum **3 active features** simultaneously to maintain focus and prevent delivery bottlenecks.
-* **Review / Quality Gate**: Every item transitioning to `done/` must pass all test suites (`npm test`) with 0 regressions.
+### 1. The 5-Stage Engineering Lifecycle
+1. **💡 Backlog (`backlog/`)**: Brainstorming, ideation briefs (`backlog/ideation/`), technology feasibility spikes, and exploratory architecture proposals.
+2. **📋 To Do (`todo/`)**: Prioritized Epics with validated scopes and technical acceptance criteria ready for implementation.
+3. **🚧 In Progress (`in-progress/`)**: Active implementation sprint. Strictly capped at **maximum 3 active features** simultaneously to maintain focus and prevent delivery bottlenecks.
+4. **🧪 Testing (`testing/`)**: Quality gate verification. Automated regression testing (`npm test`), installer sync (`verify:installer`), visual architecture certification (`visual-architecture:build`), and LLM trajectory evals (`tests/phoenix-evals.test.mjs`).
+5. **✅ Done (`done/`)**: Production-ready, verified deliverables with merged code, zero regressions, and updated Diátaxis documentation.
 
 ### 2. Definition of Ready (DoR)
-A task or epic can move from `todo/` to `in-progress/` only when:
+A task or epic can graduate from `backlog/` to `todo/` and into `in-progress/` only when:
 * Objective, scope, and technical acceptance criteria are clearly defined.
-* Security impact and architectural boundaries (e.g. ADR requirements) are vetted.
+* Security impact and architectural boundaries (e.g. Landlock LSM, non-root UID 1000, ADR invariants) are vetted.
 * Dependencies (APIs, tools, container profiles) are identified.
 
 ### 3. Definition of Done (DoD)
-A task or epic can move from `in-progress/` to `done/` only when:
+A task or epic can graduate from `testing/` to `done/` only when:
 * Code implementation is complete, non-breaking, and adheres to non-root execution guidelines.
-* Unit and integration test coverage is added under `tests/` with 100% pass rate (`npm test`).
-* GitNexus impact and pre-commit check (`npx gitnexus detect-changes`) passes with zero unmapped symbol mutations.
-* Core documentation and ADR references are updated.
+* All Five Quality Gates pass (169/169 tests, installer parity, visual models compiled, AST checks).
+* GitNexus pre-commit check (`npx gitnexus detect-changes`) passes with zero unmapped symbol mutations.
+* Core documentation, CHANGELOG, and ADR references are updated.
 
 ---
 

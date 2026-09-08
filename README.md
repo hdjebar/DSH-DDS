@@ -284,7 +284,7 @@ Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 * 🗺️ **[Visual Architecture Journey](docs/visual-architecture/README.md)** — explore the architecture interactively: standalone HTML web apps with dark/light toggles, route tracing, and deep state inspection: [System Runtime Topology](docs/visual-architecture/system-runtime.architecture.html), [Zero-Trust PEP Pipeline](docs/visual-architecture/security-pipeline.workflow.html), [Declarative Loop Trap](docs/visual-architecture/declarative-workflow.workflow.html), and [Agent Trace Sequence](docs/visual-architecture/agent-trace.sequence.html).
 
 ### 📋 Agile engineering & roadmap
-* 📋 **[Agile Kanban Work Hub](docs/work/README.md)** — interactive Kanban board tracking backlog epics, active sprints, and verified delivery milestones (`todo/`, `in-progress/`, `done/`).
+* 📋 **[Agile Kanban Work Hub](docs/work/README.md)** — interactive Kanban board tracking ideation, backlog epics, active sprints, and quality-gated delivery milestones (`backlog/`, `todo/`, `in-progress/`, `testing/`, `done/`).
 * 🚀 **[Future Development Hub](docs/future-development/README.md)** — [engineering roadmap](docs/future-development/ROADMAP.md) (v1.11.0, v1.12.0, v2.0.0) and [SOTA research report](docs/future-development/SOTA-ResearchReport-ProductionArch.md).
 
 ---
