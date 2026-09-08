@@ -24,7 +24,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   - Migrated to unprivileged `dsh:dsh` (UID/GID 1000) execution with Linux FHS directory segregation (`/app`, `/etc/dsh`, `/var/lib/dsh`, `/workspaces`).
   - Implemented first-class `@dsh-dds/core` Cordis plugin replacing all legacy monkey-patch scripts.
   - Implemented single-source installer build pipeline (`scripts/build_installer.mjs`) with zero heredoc drift.
-  - Comprehensive test suite expanded to **143 / 143 passing tests (100%)** across 18 test suites.
+  - Comprehensive test suite expanded to **169 / 169 passing tests (100%)** across 22 test suites.
+* **Visual Architecture Journey & Diátaxis Documentation Reorganization**:
+  - **Diátaxis Information Architecture**: Structured documentation into `getting-started/`, `guides/`, `architecture/`, and `reference/`, establishing clear separation of concerns across operational runbooks, security specifications, and schemas.
+  - **Visual Architecture Journey (`docs/visual-architecture/`)**: Compiled typed JSON Intermediate Representations into standalone, interactive HTML applications via Archify (`@tt-a1i/archify-dsh`) featuring pan/zoom, dark/light themes, story chapters, and SVG/WebM exports with 100% showcase quality.
+  - **GitNexus Code Intelligence Integration**: Integrated AST knowledge graph analyzing 2,591 nodes, 3,510 edges, and 77 execution flows for deterministic blast radius and pre-commit impact analysis (`npx gitnexus detect-changes`).
+  - **Agile Kanban Work Hub (`docs/work/`)**: Established continuous backlog tracking across `todo/` (Temporal, ISO 42001, Firecracker), `in-progress/` (GitNexus/Archify visual governance), and `done/` (Milestones 1–3 and 9-pillar refactoring).
+  - **Documentation Portal (`docs/README.md`)**: Centralized Diátaxis navigation map with quick-launch browser commands.
 
 ---
 
