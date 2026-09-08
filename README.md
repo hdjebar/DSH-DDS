@@ -1,4 +1,4 @@
-# 🚀 DeepSeek Harness (DSH) — Multi-Provider Agent Operating Environment
+# 🛡️ DeepSeek Harness (DSH-DDS) — Governed Agent Operations, Air-Gapped by Default
 
 [![Docker](https://img.shields.io/badge/Docker-24.0+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/Compose-2.24+-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
@@ -6,175 +6,97 @@
 [![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **Run AI coding agents locally, and see exactly what they cost.**  
-> A self-hosted Docker environment pairing DeepSeek Harness with an on-premise Arize Phoenix dashboard — every prompt, token, and dollar stays on your machine.
+> **Run AI agents where nothing is allowed to leave.**
+> A self-hosted Docker stack pairing DeepSeek Harness with an on-premise Arize Phoenix backend. Every prompt, span, token and euro stays on the host — no SaaS tracing backend, no egress requirement, no telemetry contract to sign.
 
-*For developers, platform engineers, and AI teams who need agent observability without sending prompts to a third-party SaaS.*
+*For platform and AI engineering teams operating under data-residency, sovereignty or regulated-sector constraints — and for developers who want full agent observability and cost attribution without sending prompts to a third party.*
 
-```text
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ ARIZE PHOENIX — LOCAL OPENTELEMETRY TRACE WATERFALL [http://localhost:6006]            │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ Trace: persona-execution [sdmx-expert]                         Latency: 1.84s   Cost: $0.0012 │
-│ ├─ [Span] agent-think: Gemini 3.7 Flash (thought_signature preserved)     420ms   $0.0003  │
-│ ├─ [Tool] mcp-fetch: GET https://lustat.statec.lu/rest/dataflow/...        310ms        -   │
-│ ├─ [Tool] mcp-sqlite-db: SELECT indicator, value FROM dataset_cache        45ms        -   │
-│ └─ [Span] agent-response: DeepSeek V3 (synthesize findings)               1065ms   $0.0009  │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph HOST["💻 Your host — everything inside this boundary stays here"]
+        UI["🌐 Browser<br/>:3080 workbench · :6006 traces"]
+        KERNEL["⚡ Agent kernel<br/>declarative workflows<br/>no arbitrary shell"]
+        PEP["🛡️ Policy Enforcement Point<br/>per-persona RBAC · fail-closed"]
+        AUDIT[("📜 audit_grc.jsonl<br/>append-only<br/>GRANTED / DENIED")]
+        TRACES["🔥 Arize Phoenix<br/>spans · latency · cost<br/>on-premise, nothing exported"]
+        ENVOY["🔒 Envoy egress filter<br/>strict destination allowlist"]
+    end
+
+    CLOUD["☁️ Model providers<br/>OpenRouter · Google AI Studio"]
+
+    UI --> KERNEL
+    KERNEL --> PEP
+    PEP --> AUDIT
+    KERNEL -- OTLP --> TRACES
+    PEP -- "the only path out" --> ENVOY
+    ENVOY --> CLOUD
+
+    classDef gov stroke-width:3px
+    class PEP,AUDIT,ENVOY gov
 ```
 
-DeepSeek Harness is a self-hosted environment for governed AI agents, combining multi-provider model routing, declarative workflows, MCP tools, human approval gates, sandboxed execution, and local observability in one reproducible Docker stack.
+*Interactive versions of the full topology, the Zero-Trust RBAC pipeline, the declarative workflow loop trap and the OTLP trace sequence are in the [Archify suite](docs/diagrams/README.md).*
+
+DSH-DDS is a self-hosted environment for governed AI agents, combining multi-provider model routing, declarative workflows, MCP tools, human approval gates, sandboxed execution and local observability in one reproducible Docker stack.
+
+**→ [Get running in about 10 minutes](#-quick-start)** · **[Read the whitepaper](docs/ai-harness-architecture-sota.md)** · **[Inspect the threat model](#️-threat-model--security-boundaries)**
 
 ---
 
-## ⚡ Quick Start
+### Contents
 
-### Before You Start (Prerequisites)
-* **Docker Engine 24+ & Docker Compose v2.24+** (`docker compose version`) — Compose 2.24+ is required for the sandbox `!override` syntax.
-* **~4 GB free disk space** for the multi-stage image layers.
-* **API Credentials (Optional at install time)**: Google AI Studio (`GEMINI_API_KEY`) or OpenRouter (`OPENROUTER_API_KEY`). You can launch without keys and populate them in `.env` later.
+**Understand it** — [The problem](#-the-problem-this-solves) · [Governance posture](#️-governance-posture) · [What it gives you](#-what-it-gives-you) · [Personas-as-code](#-personas-as-code-worked-example) · [Why it's different](#-why-dsh-dds-is-unique) · [What it is not](#-what-this-is-not)
 
----
+**Verify it** — [Security & sandbox](#️-hardened-sandbox-mode-untrusted-code-evaluation) · [Threat model](#️-threat-model--security-boundaries) · [Test suite](#-automated-regression--supply-chain-test-suite) · [Plugins & MCP](#-pre-packaged-plugins--mcp-servers) · [Documentation](#-documentation-suite-diátaxis-organization)
 
-### Step 1: Choose Your Installation Path
-
-#### Path A: Turnkey 1-File Installer (Recommended)
-*Best for evaluators and standalone servers — no Git clone required:*
-
-```bash
-# 1. Download the standalone installer script
-curl -fsSL https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/install_dsh.sh -o install_dsh.sh
-chmod +x install_dsh.sh
-
-# 2. Run the turnkey installer (scaffolds environment & prompts for keys)
-./install_dsh.sh
-
-# 3. Launch the container stack
-./dsh.sh up
-```
-
-#### Path B: Clone the Repository
-*Best for developers modifying personas, Dockerfiles, or plugins:*
-
-```bash
-git clone https://github.com/hdjebar/DSH-DDS.git
-cd DSH-DDS
-
-# Configure environment variables (restrict permissions)
-cp .env.example .env
-chmod 0600 .env
-nano .env
-
-# Launch the stack
-./dsh.sh up
-```
+**Run it** — [Quick start](#-quick-start) · [Environment config](#️-environment-configuration-env-reference) · [Endpoints](#-web-interfaces--endpoints) · [Storage layout](#-config-directory--persistent-storage) · [Maintenance](#-maintenance--operations)
 
 ---
 
-### ⚙️ Environment Configuration (`.env` Reference)
+## 🎯 The Problem This Solves
 
-The environment file [`.env`](.env.example) configures network ports, LLM provider credentials, MCP integrations, and governance secrets:
+Most agent tooling assumes the opposite of an air gap. Observability wants a hosted backend. Agent frameworks assume outbound network access. In a sovereignty-constrained or data-resident environment, that assumption disqualifies the tool before evaluation starts.
 
-| Variable | Requirement | Default | Purpose & Notes |
-| :--- | :---: | :---: | :--- |
-| **`DSH_PORT`** | **Optional** | `3080` | Host port on `127.0.0.1` for DSH Web UI. Change if port 3080 is already bound. |
-| **`GEMINI_API_KEY`** | **Conditionally Mandatory** | *(empty)* | Google AI Studio API key (Gemini 3.7 / 2.5 Flash & Pro). *At least one provider key (`GEMINI` or `OPENROUTER`) is required to run agents.* |
-| **`OPENROUTER_API_KEY`** | **Conditionally Mandatory** | *(empty)* | OpenRouter API key (DeepSeek V3/R1, Claude 3.5/3.7, GPT-4o). *At least one provider key is required to run agents.* |
-| **`DSH_VAULT_MASTER_KEY`** | **Auto-Generated (Internal)** | *(auto-generated)* | Master key (>= 32 chars) for AES-256-GCM BYOK keystore. Auto-generated by `install_dsh.sh` or `openssl rand -hex 32`. |
-| **`DSH_APPROVAL_SECRET`** | **Auto-Generated (Internal)** | *(auto-generated)* | Internal HMAC/Ed25519 signing key. **NOT an external API key** — no account or signup needed. Required only for signing human approval tokens (`./dsh.sh approve`) when resuming gated workflows. Auto-generated by `install_dsh.sh` or via `openssl rand -hex 32`. |
-| **`GITHUB_PERSONAL_ACCESS_TOKEN`** | **Optional** | *(empty)* | Fine-grained PAT. Only required if your workflows invoke the `github` MCP server. |
-| **`PHOENIX_ENABLE_AUTH`** | **Optional** | `false` | Set to `true` to require authentication on Arize Phoenix UI (`127.0.0.1:6006`). |
-| **`PHOENIX_SECRET`** | **Optional** | *(empty)* | Session encryption secret. Required only when `PHOENIX_ENABLE_AUTH=true`. |
-| **`PHOENIX_API_KEY`** | **Optional** | *(empty)* | API key for programmatic OTel query endpoints. |
+DSH-DDS was built for that constraint rather than adapted to it. Four specific problems:
 
-> [!NOTE]
-> **No Registration Required for `DSH_APPROVAL_SECRET`**: Unlike LLM provider keys, `DSH_APPROVAL_SECRET` is purely an internal signing secret for human-in-the-loop governance. Standard chat, MCP tools, and web research work normally without it.
-> 
-> **Host Security**: Always secure your credentials with `chmod 0600 .env`. The `./dsh.sh doctor` diagnostic suite automatically verifies that permissions are restricted to the file owner.
+1. **Keep telemetry under your control.** Cloud tracing services receive prompts, code and tool data by design. Phoenix runs on the local Docker network at `127.0.0.1:6006`, so traces stay on the host unless you explicitly export them. This supports data-governance controls relevant to EU AI Act, DORA and NIS2 programmes; it is not compliance by itself.
+
+2. **Close the prompt-injection-to-RCE path.** Arbitrary shell execution is replaced by declarative YAML workflows and typed capability adapters. An injected instruction has no shell to reach.
+
+3. **Make model choice a cost decision, not a default.** Sending every step to a premium frontier model is expensive. Personas route routine drafting and tool work to fast tiers and reserve reasoning tiers for complex analysis, with live pricing synchronised at boot.
+
+4. **Make agent behaviour reproducible.** Prompt changes made in a chat window are lost. Personas package domain rules, model tiers, MCP tools and workflows as version-controlled declarative assets (`persona.yaml` + `SKILL.md`) tracked in Git.
 
 ---
 
-### Step 2: Confirm It Worked (Success Gate)
+## 🛡️ Governance Posture
 
-Run the automated diagnostic suite to verify container health, API credentials, and MCP permissions:
+Four properties, each verifiable in this repository:
 
-```bash
-./dsh.sh doctor
-```
+| Property | What it means | Where it lives |
+| :--- | :--- | :--- |
+| **Local telemetry invariant** | All spans, trajectories and GRC audit records remain on the host. Unlike SaaS agent observability platforms, zero trace data or prompt history is exported. | [`docs/security.md`](docs/security.md) |
+| **Kernel-level confinement** | Landlock LSM, `cap_drop: ALL`, read-only root filesystem, `no-new-privileges`, non-root execution (UID 1000), and filtered egress through a hardened Envoy sidecar on an internal-only bridge. | [`docker-compose.sandbox.yml`](docker-compose.sandbox.yml) · [Threat model](#️-threat-model--security-boundaries) |
+| **Non-repudiable audit trail** | `audit_grc.jsonl` on a privileged isolated path (mode `0600`), recording timestamp, persona, role, action, decision and reason. Append-only, surviving sandbox teardown. Aligned to EU AI Act Article 12 record-keeping. | [`docs/guardrails.md`](docs/guardrails.md) · [ADR 0002](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md) |
+| **Fail-closed RBAC** | Per-persona filesystem and MCP permissions enforced at an in-line Policy Enforcement Point, with explicit deny lists and symlink ancestor canonicalisation. | [ADR 0003](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md) · [ADR 0005](docs/adr/0005-remediation-of-audit-v3-findings.md) |
 
-```text
-🩺 DeepSeek Harness Ecosystem Diagnostics (Doctor)
-========================================================
-🔍 [1/9] DeepSeek Harness Engine:        ✅ Listening on 0.0.0.0:3080 (HTTP 200)
-🔍 [2/9] Arize Phoenix Telemetry:        ✅ Connected at http://phoenix:6006
-🔍 [3/9] Google AI Studio Bridge:        ✅ Authenticated (gemini-3.7-flash live)
-🔍 [4/9] OpenRouter Gateway:             ✅ Authenticated (420+ models available)
-🔍 [5/9] GitHub MCP Token:               ✅ Authenticated
-🔍 [6/9] MCP Binaries & Permissions:     ✅ 4 servers verified (fetch, context7, github, sqlite-db)
-🔍 [7/9] Automated Model Sync:           ✅ Active & Healthy
-🔍 [8/9] Pre-Packaged Plugins:           ✅ 10 plugins installed & active
-🔍 [9/9] Storage & Volume Mounts:        ✅ Config read-only; sessions & audit writable
-========================================================
-📊 Summary: 23 Passed | 0 Warnings | 0 Failed
-```
-
-*Nine suites report ✅ or ⚠️. (A ⚠️ on an optional provider you didn't configure is expected).*
-
-* **DeepSeek Harness Web UI**: [http://localhost:3080](http://localhost:3080) — Run `./dsh.sh web` or `./dsh.sh token` to launch or view the authenticated session URL (required on first access to set the session cookie).
-* **Arize Phoenix Telemetry**: [http://localhost:6006](http://localhost:6006)
-* *⏱️ Time to first value: ~10 minutes (mostly one-time Docker image build).*
-
----
-
-### Step 3: Now Try (Next Steps)
-
-1. **Run your first persona**:
-   ```bash
-   ./dsh.sh persona run sdmx-expert "List top statistical indicators from STATEC"
-   ```
-2. **Inspect the live trace in Phoenix**: Open [http://localhost:6006](http://localhost:6006) to examine prompt spans, tool call latencies, and token costs.
-3. **Follow the guided walkthrough**: [End-to-End Testing Scenario](docs/testing-scenario.md).
-
----
-
-## 💡 Why DSH-DDS is Unique
-
-DSH-DDS occupies a distinct sweet spot: it is an enterprise governance and reliability harness wrapped around an interactive, user-friendly agent environment.
-
-Instead of having to stitch together an agent UI, a Python orchestration library, a Docker sandbox, an egress proxy, an OpenTelemetry database, and compliance audit scripts from separate repositories, DSH-DDS delivers all of them in a single, verified, turnkey repository.
-
-> [!TIP]
-> For an in-depth architectural and functional comparison against upstream DeepSeek Harness, OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI, and NeMo Guardrails, consult the [Open Source Landscape & Ecosystem Comparison](docs/ecosystem-comparison.md).
-
----
-
-## 🎯 Core Problems Solved (Why This Exists)
-
-1. **Keep telemetry under your control**: Cloud tracing services can receive prompts, code, and tool data. Phoenix runs locally on the Docker network and is exposed at `127.0.0.1:6006`, so traces stay on the host unless you explicitly export them. This supports data-governance controls relevant to EU AI Act, DORA, and NIS2 programs; it is not compliance by itself.
-2. **Match model cost to task complexity**: Sending every step to a premium frontier model is expensive. Personas route routine drafting and tool work to fast/flash tiers and reserve reasoning tiers for complex analysis, with the active provider and model defined in configuration.
-3. **Make agent behavior reproducible**: Chat-only prompt changes are easy to lose. Personas package domain rules, model tiers, MCP tools, and workflows as **version-controlled declarative assets (`persona.yaml` + `SKILL.md`)** tracked in Git.
+> [!IMPORTANT]
+> This is a **reference implementation**, not a maintained product, and it supports compliance work rather than delivering it. Read the [threat model](#️-threat-model--security-boundaries) before treating any boundary here as uncircumventable — in particular, the Node.js loader is a Policy Enforcement Point, not a sandbox.
 
 ---
 
 ## 🌟 What It Gives You
 
-* **📊 100% Local Arize Phoenix Telemetry**: Integrated OpenTelemetry collector and dashboard visualizing agent trajectories, token waterfalls, latency bottlenecks, and exact invocation costs.
-* **🔄 Automatic Dynamic Model Synchronization (`dsh-model-sync`)**: Queries OpenRouter (420+ models) and Google AI Studio (31+ models) on boot, caching live pricing, context limits, and token specs into local DSH configuration. Displays live token quotas and balance rings directly in the Web UI.
-* **🛡️ Hardened Sandbox Mode**: Drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation, credential isolation, and zero-trust filtered egress via Envoy proxy for evaluating untrusted code.
-
----
-
-## 🚫 What This Is Not
-
-* **Not a hosted cloud SaaS**: This is a self-hosted infrastructure stack. You run the Docker containers on your local workstation, VM, or private cloud.
-* **Not a multi-user shared service by default**: By default, DeepSeek Harness and Arize Phoenix bind strictly to loopback (`127.0.0.1`). If deploying for team access, configure reverse proxy authentication or set `PHOENIX_ENABLE_AUTH=true` with `PHOENIX_SECRET`.
-* **Not native Windows**: Runs as a standard Linux container environment via Docker Desktop or WSL2 on Windows, macOS, and Linux.
+* **📊 100% local Arize Phoenix telemetry** — integrated OpenTelemetry collector and dashboard visualising agent trajectories, token waterfalls, latency bottlenecks and exact invocation costs.
+* **🔄 Dynamic model synchronisation (`dsh-model-sync`)** — queries OpenRouter (420+ models) and Google AI Studio (31+ models) on boot, caching live pricing, context limits and token specs locally. Live quota and balance rings render in the Web UI.
+* **🛡️ Hardened sandbox mode** — drop-in `docker-compose.sandbox.yml` with read-only root filesystems, stripped capabilities, disabled privilege escalation, credential isolation and zero-trust filtered egress for evaluating untrusted code.
+* **✋ Human approval gates** — asymmetric approval tokens (`./dsh.sh approve`) signed with an internal HMAC secret, gating workflows that need a person in the loop.
 
 ---
 
 ## 🎭 Personas-as-Code (Worked Example)
 
-Personas package instructions, model matrices, and MCP tools into clean, declarative YAML:
+Personas package instructions, model matrices, RBAC and MCP tools into declarative YAML:
 
 ```yaml
 # config/personas/sdmx-expert/persona.yaml
@@ -214,7 +136,8 @@ workflows:
         scope: /workspaces/data
 ```
 
-Execute personas directly via the unified CLI wrapper:
+Execute personas through the unified CLI wrapper:
+
 ```bash
 # Run with calibrated default tier
 ./dsh.sh persona run sdmx-expert "Analyze inflation metrics for Luxembourg"
@@ -225,70 +148,232 @@ Execute personas directly via the unified CLI wrapper:
 
 ---
 
+## 💡 Why DSH-DDS Is Unique
+
+An enterprise governance and reliability harness wrapped around an interactive, user-friendly agent environment.
+
+Instead of stitching together an agent UI, a Python orchestration library, a Docker sandbox, an egress proxy, an OpenTelemetry database and compliance audit scripts from separate repositories, DSH-DDS delivers all of them in a single verified turnkey repository.
+
+> [!TIP]
+> For an in-depth architectural and functional comparison against upstream DeepSeek Harness, OpenHands, SWE-agent, Goose, LangGraph, AutoGen, CrewAI and NeMo Guardrails, see the [Open Source Landscape & Ecosystem Comparison](docs/ecosystem-comparison.md).
+
+---
+
+## 🚫 What This Is Not
+
+* **Not a hosted cloud SaaS** — a self-hosted infrastructure stack running on your workstation, VM or private cloud.
+* **Not a multi-user shared service by default** — DSH and Phoenix bind strictly to loopback. For team access, configure reverse-proxy authentication or set `PHOENIX_ENABLE_AUTH=true` with `PHOENIX_SECRET`.
+* **Not a compliance product** — it produces evidence an auditor can read. It does not make you compliant.
+* **Not native Windows** — runs as a Linux container environment via Docker Desktop or WSL2 on Windows, macOS and Linux.
+
+---
+
+## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
+
+When analysing external or unverified code repositories, start with the sandbox override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+```
+
+**Sandbox protections:**
+
+* **Disposable runtime configuration** — copies `./config` from `/opt/dsh-config:ro` into an in-memory `/var/lib/dsh` tree on every start.
+* **Read-only workspaces (`/workspaces:ro`)** — protects host files from unauthorised modification.
+* **Linux capability stripping (`cap_drop: [ALL]`)** — drops all privileged container capabilities.
+* **No new privileges (`no-new-privileges:true`)** — prevents privilege escalation inside the container.
+* **Credential isolation** — explicitly blanks provider API keys inside the untrusted container to eliminate exfiltration paths.
+* **Zero-trust filtered egress** — isolates DSH and Phoenix on an internal bridge network (`internal: true`), with outbound traffic restricted through a hardened Envoy proxy sidecar enforcing strict destination allowlists.
+* **Persistent session isolation** — preserves transcripts and JSON storage in a dedicated `sandbox-session-state` volume, preventing contamination of trusted host session directories.
+* **Audit trail retention** — persists GRC audit logs to `./config/audit`, preserving non-repudiation records after sandbox teardown.
+* **Resource caps** — 2 CPUs, 2 GB RAM, 150 PIDs.
+
+Destroy all transient sandbox session data:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
+```
+
+### 🛡️ Threat Model & Security Boundaries
+
+* **Kernel and container primitives** — the primary security boundaries for untrusted code execution are Linux kernel namespaces, cgroups, capability stripping (`cap_drop: ALL`), read-only root filesystems, non-root execution (UID/GID 1000) and Landlock LSM.
+* **Role of the `@dsh-dds/core` loader** — `loader.mjs` is an internal runtime compatibility layer and an application-level Policy Enforcement Point. **It is not an uncircumventable sandbox boundary** against hostile subshell escapes; process-level containment rests on the container sandbox.
+* **Supply-chain policies** — installation uses `--frozen-lockfile` with explicit build-script approval (`allowBuilds`) for native modules (`node-pty`, `protobufjs`, `sharp`). `minimumReleaseAge: 0` enables immediate consumption of verified release candidates and hermetic offline packages.
+
+---
+
+## 🧪 Automated Regression & Supply-Chain Test Suite
+
+```bash
+# Run all regression & installer parity tests
+node --test tests/*.test.mjs
+```
+
+**Coverage:**
+
+1. **CLI argument parser** — validates `--option=value`, short flags, mixed ordering, prompts with quotes and spaces; rejects malformed options.
+2. **YAML & persona schema validation** — asserts patch validity across all 7 shipped personas.
+3. **Secret scrubber** — asserts redaction of Google AI Studio keys, GitHub fine-grained PATs and Bearer tokens.
+4. **Installer parity assertion** — dynamically asserts byte-for-byte synchronisation between `install_dsh.sh` manifests and canonical repository files.
+5. **CI & supply-chain hardening** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds images with `--no-cache`, validates ShellCheck and Hadolint, verifies entrypoint syntax, runs `npm audit`, and conducts `--network none` offline MCP smoke tests on every commit.
+
+---
+
 ## 📦 Pre-Packaged Plugins & MCP Servers
 
-### 1. Active Plugins (1 Core + 10 Pre-Packaged)
+### Active plugins (1 core + 10 pre-packaged)
 
 | Plugin | Service ID | Category | Purpose |
 | :--- | :--- | :--- | :--- |
-| **`@dsh-dds/core`** | `core` | **Core Kernel** | Gateway middleware, lifecycle restart, model catalog sync, localization tap, and in-line RBAC PEP |
+| **`@dsh-dds/core`** | `core` | **Core kernel** | Gateway middleware, lifecycle restart, model catalog sync, localization tap, in-line RBAC PEP |
 | **`@liustack/modsearch`** | `modsearch` | Search | Integrated free web search provider |
 | **`deepseek-flow`** | `deepseek-flow` | Workflows | Visual DAG canvas and workflow designer |
-| **`dshmarket`** | `dsh-market` | Marketplace | Visual Plugin Marketplace (English Localized) |
+| **`dshmarket`** | `dsh-market` | Marketplace | Visual plugin marketplace |
 | **`dsh-find-plugin`** | `find-dsh-plugin` | Navigation | Workspace file and symbol finder |
 | **`dsh-mcp-panel`** | `mcp-panel` | Tools | Model Context Protocol management panel |
-| **`dsh-mcp-market`** | `dsh-mcp-market` | Marketplace | Visual MCP Server Marketplace |
+| **`dsh-mcp-market`** | `dsh-mcp-market` | Marketplace | Visual MCP server marketplace |
 | **`dsh-provider-model-configurator`** | `dsh-provider-model-configurator` | Models | Visual LLM provider and model manager |
 | **`dsh-model-sync`** | `model-sync` | Telemetry | Automated model sync and quota monitor |
-| **`dsh-mnemon`** | `mnemon` | Memory | Multi-Workspace Unified Memory Engine |
+| **`dsh-mnemon`** | `mnemon` | Memory | Multi-workspace unified memory engine |
 | **`dsh-session-reader`** | `dsh-session-reader` | Inspection | Cross-session transcript and tool call reader |
 
-### 2. Pre-Configured MCP Tool Servers (4 Built-In)
+### Pre-configured MCP tool servers (4 built-in)
 
 | MCP Server | Runner Executable | Capabilities |
 | :--- | :--- | :--- |
-| **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarization, live URL fetching |
-| **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation & library context |
-| **`github`** | `github-mcp-server` (`v1.11.0`) | GitHub repository operations, PRs, and issue tracking |
+| **`fetch`** | `mcp-server-webresearch` (`@mzxrai/mcp-webresearch@0.1.7`) | Web scraping, page summarisation, live URL fetching |
+| **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation and library context |
+| **`github`** | `github-mcp-server` (`v1.11.0`) | Repository operations, PRs, issue tracking |
 | **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, tabular analysis |
+
+Full specification: [Plugins & MCP Reference](docs/plugins.md).
 
 ---
 
 ## 📚 Documentation Suite (Diátaxis Organization)
 
-Comprehensive guides organized by audience and operational goal:
+### 🚀 Getting started & evaluation
+* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — interactive chat, trace inspection, persona distillation.
+* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — diagnostic matrix, Gemini 400 thought signatures, port debugging.
 
-### 🚀 Getting Started & Evaluation
-* 🧪 **[End-to-End Test Scenario](docs/testing-scenario.md)** — Step-by-step walkthrough: interactive chat, trace inspection, and persona distillation.
-* ❓ **[Troubleshooting & Diagnostics](docs/troubleshooting.md)** — Diagnostic matrix, Gemini 400 thought signatures, and port debugging.
+### 🛠️ Daily operations & customization
+* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — daily operations, headless scripting, `./dsh.sh` reference.
+* 🎭 **[AI Agent Personas Guide](docs/personas.md)** — multi-model task matrix, session recording, automated persona distillation.
+* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — teaching skills, MCP servers and local model routing via chat.
 
-### 🛠️ Daily Operations & Customization
-* 🕹️ **[Standard Operations & CLI Manual](docs/standard-operations.md)** — Daily operations, headless scripting, and `./dsh.sh` command reference.
-* 🎭 **[AI Agent Personas Guide](docs/personas.md)** — Multi-Model Task Matrix, session recording, and automated persona distillation.
-* 🎨 **[Prompt-Driven Customization](docs/customization.md)** — Teaching skills, MCP servers, and local model routing via chat.
+### 🏛️ Architecture & security reference
+* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — self-contained interactive diagrams with dark/light modes, route tracing and state inspection: [system topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [loop trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP sequence](docs/diagrams/agent-trace.sequence.html). *These are HTML — view them via GitHub Pages or clone and open locally; GitHub's file viewer shows source rather than rendering them.*
+* 🧠 **[GitNexus & Archify Workflow Guide](docs/gitnexus-archify-workflow.md)** — coordinated code intelligence, AST knowledge graph, blast radius analysis, and interactive diagram compilation.
+* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — whitepaper: five architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, comparative benchmarks.
+* 🏛️ **[System Architecture](docs/architecture.md)** — dual-container topology, kernel proxy, OTel trace pipelines.
+* 🛡️ **[AI Guardrails & OWASP Agentic Security](docs/guardrails.md)** — four deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, OWASP LLM/ASI alignment.
+* 🔒 **[Security & Sandbox Guide](docs/security.md)** — filesystem boundaries, Zero Trust persona RBAC, network isolation.
+* 📜 **[Architecture Decision Records (ADR 0001–0008)](docs/adr/)** — build-time immutability and RBAC, out-of-band GRC, declarative orchestration and capability adapters, in-container containment, audit v3 remediation, non-root refactoring, rejection of in-container Antigravity CLI, sandbox hardening and supply-chain remediation.
 
-### 🏛️ Architecture & Security Reference
-* 📐 **[Archify Interactive Architecture Suite](docs/diagrams/README.md)** — **Interactive Visual Architecture**: Standalone, verified HTML/SVG diagrams ([System Topology](docs/diagrams/system-runtime.architecture.html), [Zero-Trust PEP](docs/diagrams/security-pipeline.workflow.html), [Loop Trap](docs/diagrams/declarative-workflow.workflow.html), [OTLP Sequence](docs/diagrams/agent-trace.sequence.html)).
-* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — **Comprehensive Whitepaper**: The 5 architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, and comparative benchmarks.
-* 🏛️ **[System Architecture](docs/architecture.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
-* 🛡️ **[AI Guardrails & OWASP Agentic Security Guide](docs/guardrails.md)** — The 4 deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, and OWASP LLM / Agentic AI (ASI) compliance.
-* 🧩 **[Plugins & MCP Reference](docs/plugins.md)** — Detailed specification of all 11 plugins (1 core + 10 community) and 4 MCP servers.
-* 🔒 **[Security & Sandbox Guide](docs/security.md)** — Filesystem boundaries, Zero Trust persona RBAC, and network isolation.
-* 📜 **[ADR 0001: Build-Time Immutability & RBAC](docs/adr/0001-build-time-immutability-and-rbac.md)** — Architecture Decision Record on build-time immutability, Zero Trust RBAC, and GRC audit logs.
-* 📜 **[ADR 0002: Out-of-Band GRC & E2E Sandbox](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md)** — Architecture Decision Record on out-of-band GRC telemetry and deterministic E2E sandbox verification.
-* 📜 **[ADR 0003: Authoritative Declarative Orchestrator](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)** — Architecture Decision Record on authoritative JavaScript orchestration, capability adapters, and fail-closed RBAC.
-* 📜 **[ADR 0004: In-Container Boundaries & Strict Containment](docs/adr/0004-in-container-boundaries-and-strict-directory-containment.md)** — Architecture Decision Record on in-container execution boundaries, strict directory containment, and acyclic policy architecture.
-* 📜 **[ADR 0005: Remediation of Audit v3 Findings](docs/adr/0005-remediation-of-audit-v3-findings.md)** — Architecture Decision Record on symlink ancestor canonicalization, truthful capability adapters, clean-room installer parity, and multi-state GRC auditing.
-* 📜 **[ADR 0006: Global Refactoring (Non-Root & Cordis Plugin)](docs/adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)** — Architecture Decision Record on non-root UID 1000 confinement, Linux FHS segregation, native pnpm patches, `@dsh-dds/core` plugin, and image slimming.
-* 📜 **[ADR 0007: Rejection of In-Container Antigravity CLI](docs/adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md)** — Architecture Decision Record on rejecting host credential mounts and adopting credential-isolated search.
-* 📜 **[ADR 0008: Container Sandbox Hardening & Supply Chain](docs/adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)** — Architecture Decision Record on sandbox credential isolation, GRC audit retention, dev mount isolation, cgroup caps, and compiler purging.
+### 🔬 Theory & research
+* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — theoretical foundations, academic literature, framework comparisons.
+* 🚀 **[Future Development Hub](docs/future-development/README.md)** — [engineering roadmap](docs/future-development/ROADMAP.md) (v1.11.0, v1.12.0, v2.0.0) and [SOTA research report](docs/future-development/SOTA-ResearchReport-ProductionArch.md).
 
-### 🔬 Theory & Research
-* 🏛️ **[SOTA AI Harness Architecture](docs/ai-harness-architecture-sota.md)** — Academic foundations, formal definitions, and framework comparative analysis.
-* 🔬 **[AI Personas Research Note](docs/research-notes-ai-personas.md)** — Theoretical foundations, academic literature, and industry framework comparisons.
-* 🚀 **[Future Development Hub](docs/future-development/README.md)** — Architectural roadmap, capability maturity scorecard, and sprint plans:
-  * 🗺️ **[Engineering Roadmap & Sprints](docs/future-development/ROADMAP.md)** — Phased milestones (v1.11.0, v1.12.0, v2.0.0) across `dsh` and `phoenix` containers.
-  * 🏛️ **[SOTA Research Report & Production Blueprint](docs/future-development/SOTA-ResearchReport-ProductionArch.md)** — Master consolidated audit, 17-layer evaluation, and Node.js Cordis blueprints.
+---
+
+## ⚡ Quick Start
+
+### Prerequisites
+
+* **Docker Engine 24+ & Docker Compose v2.24+** (`docker compose version`) — Compose 2.24+ is required for the sandbox `!override` syntax.
+* **~4 GB free disk space** for multi-stage image layers.
+* **API credentials (optional at install time)** — Google AI Studio (`GEMINI_API_KEY`) or OpenRouter (`OPENROUTER_API_KEY`). You can launch without keys and populate `.env` later.
+
+### Step 1 — Choose your installation path
+
+#### Path A: turnkey 1-file installer (recommended)
+
+*Best for evaluators and standalone servers — no Git clone required:*
+
+```bash
+# 1. Download the standalone installer script
+curl -fsSL https://raw.githubusercontent.com/hdjebar/DSH-DDS/main/install_dsh.sh -o install_dsh.sh
+chmod +x install_dsh.sh
+
+# 2. Run the turnkey installer (scaffolds environment & prompts for keys)
+./install_dsh.sh
+
+# 3. Launch the container stack
+./dsh.sh up
+```
+
+#### Path B: clone the repository
+
+*Best for developers modifying personas, Dockerfiles or plugins:*
+
+```bash
+git clone https://github.com/hdjebar/DSH-DDS.git
+cd DSH-DDS
+
+# Configure environment variables (restrict permissions)
+cp .env.example .env
+chmod 0600 .env
+nano .env
+
+# Launch the stack
+./dsh.sh up
+```
+
+### ⚙️ Environment Configuration (`.env` Reference)
+
+[`.env`](.env.example) configures network ports, LLM provider credentials, MCP integrations and governance secrets:
+
+| Variable | Requirement | Default | Purpose & Notes |
+| :--- | :---: | :---: | :--- |
+| **`DSH_PORT`** | Optional | `3080` | Host port on `127.0.0.1` for the DSH Web UI. Change if 3080 is already bound. |
+| **`GEMINI_API_KEY`** | Conditionally mandatory | *(empty)* | Google AI Studio key (Gemini 3.7 / 2.5 Flash & Pro). At least one provider key is required to run agents. |
+| **`OPENROUTER_API_KEY`** | Conditionally mandatory | *(empty)* | OpenRouter key (DeepSeek V3/R1, Claude 3.5/3.7, GPT-4o). At least one provider key is required. |
+| **`DSH_VAULT_MASTER_KEY`** | Auto-generated | *(auto)* | Master key (≥32 chars) for the AES-256-GCM BYOK keystore. Generated by `install_dsh.sh` or `openssl rand -hex 32`. |
+| **`DSH_APPROVAL_SECRET`** | Auto-generated | *(auto)* | Internal HMAC/Ed25519 signing key. **Not an external API key** — no account needed. Required only for signing human approval tokens (`./dsh.sh approve`). |
+| **`GITHUB_PERSONAL_ACCESS_TOKEN`** | Optional | *(empty)* | Fine-grained PAT. Only required if workflows invoke the `github` MCP server. |
+| **`PHOENIX_ENABLE_AUTH`** | Optional | `false` | Set `true` to require authentication on the Phoenix UI. |
+| **`PHOENIX_SECRET`** | Optional | *(empty)* | Session encryption secret. Required when `PHOENIX_ENABLE_AUTH=true`. |
+| **`PHOENIX_API_KEY`** | Optional | *(empty)* | API key for programmatic OTel query endpoints. |
+
+> [!NOTE]
+> **No registration required for `DSH_APPROVAL_SECRET`.** Unlike provider keys, it is purely an internal signing secret for human-in-the-loop governance. Chat, MCP tools and web research work normally without it.
+>
+> **Host security.** Always secure credentials with `chmod 0600 .env`. `./dsh.sh doctor` verifies that permissions are restricted to the file owner.
+
+### Step 2 — Confirm it worked (success gate)
+
+```bash
+./dsh.sh doctor
+```
+
+```text
+🩺 DeepSeek Harness Ecosystem Diagnostics (Doctor)
+========================================================
+🔍 [1/9] DeepSeek Harness Engine:        ✅ Listening on 0.0.0.0:3080 (HTTP 200)
+🔍 [2/9] Arize Phoenix Telemetry:        ✅ Connected at http://phoenix:6006
+🔍 [3/9] Google AI Studio Bridge:        ✅ Authenticated (gemini-3.7-flash live)
+🔍 [4/9] OpenRouter Gateway:             ✅ Authenticated (420+ models available)
+🔍 [5/9] GitHub MCP Token:               ✅ Authenticated
+🔍 [6/9] MCP Binaries & Permissions:     ✅ 4 servers verified (fetch, context7, github, sqlite-db)
+🔍 [7/9] Automated Model Sync:           ✅ Active & Healthy
+🔍 [8/9] Pre-Packaged Plugins:           ✅ 10 plugins installed & active
+🔍 [9/9] Storage & Volume Mounts:        ✅ Config read-only; sessions & audit writable
+========================================================
+📊 Summary: 23 Passed | 0 Warnings | 0 Failed
+```
+
+*Nine suites report ✅ or ⚠️. A ⚠️ on an optional provider you didn't configure is expected.*
+
+*⏱️ Time to first value: about 10 minutes, mostly a one-time Docker image build.*
+
+### Step 3 — Now try
+
+1. **Run your first persona:**
+   ```bash
+   ./dsh.sh persona run sdmx-expert "List top statistical indicators from STATEC"
+   ```
+2. **Inspect the live trace in Phoenix** — open [http://localhost:6006](http://localhost:6006) to examine prompt spans, tool call latencies and token costs.
+3. **Follow the guided walkthrough** — [End-to-End Testing Scenario](docs/testing-scenario.md).
 
 ---
 
@@ -296,14 +381,16 @@ Comprehensive guides organized by audience and operational goal:
 
 | Service | Local URL | Container Port | Purpose |
 | :--- | :--- | :--- | :--- |
-| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` (native service) | Interactive AI Agent Workbench |
-| **Arize Phoenix Telemetry** | **[http://localhost:6006](http://localhost:6006)** | `6006` | Real-time LLM Traces, Spans & Token Costs |
+| **DeepSeek Harness Web UI** | **[http://localhost:3080](http://localhost:3080)** | `3080` | Interactive AI agent workbench |
+| **Arize Phoenix Telemetry** | **[http://localhost:6006](http://localhost:6006)** | `6006` | Real-time LLM traces, spans and token costs |
+
+Run `./dsh.sh web` or `./dsh.sh token` to launch or view the authenticated session URL (required on first access to set the session cookie).
 
 ---
 
 ## 📁 `config/` Directory & Persistent Storage
 
-The local `./config` folder on the host is mounted into the container conforming to Linux FHS: declarative configuration is mounted read-only to `/etc/dsh:ro`, while mutable state (sessions, storages, audit) is mounted to `/var/lib/dsh`. (A `/root/.dsh -> /var/lib/dsh` symlink is maintained for backward compatibility with legacy scripts). All interactive chat histories, agent memories, and custom personas **survive container rebuilds, updates, and restarts**:
+The host `./config` folder is mounted conforming to Linux FHS: declarative configuration read-only to `/etc/dsh:ro`, mutable state (sessions, storages, audit) to `/var/lib/dsh`. A `/root/.dsh -> /var/lib/dsh` symlink is maintained for legacy scripts. Chat histories, agent memories and custom personas **survive container rebuilds, updates and restarts**:
 
 ```text
 config/                          # Mounted to /etc/dsh:ro and /var/lib/dsh in container
@@ -313,93 +400,46 @@ config/                          # Mounted to /etc/dsh:ro and /var/lib/dsh in co
 ├── doctor.mjs                   # Automated 9-suite diagnostic engine (./dsh.sh doctor)
 ├── persona.mjs                  # Multi-Model Persona CLI & Session Distiller
 ├── MEMORY.md                    # Long-term agent memory across sessions (dsh-mnemon)
-├── phoenix/                     # Persistent Arize Phoenix SQLite database (/root/.phoenix)
-├── sessions/                    # Historical chat transcripts & tool call logs (dsh-session-reader)
+├── phoenix/                     # Persistent Arize Phoenix SQLite database
+├── sessions/                    # Historical chat transcripts & tool call logs
 ├── personas/                    # Active custom persona packages (persona.yaml, SKILL.md)
 │   ├── sdmx-expert/             # Pre-configured SDMX 2.1 statistical data expert
 │   └── data-analyst/            # Pre-configured tabular & SQLite data analyst
 ├── skills/                      # Active agent skill definitions loaded at runtime
 │   └── <name>/SKILL.md
 └── profiles/
-    ├── web/                     # Web profile package manifest (10 plugins + 4 MCP servers)
-    ├── cli/                     # Interactive terminal profile (@deepseek-ai/dsh-terminal)
+    ├── web/                     # Web profile manifest (10 plugins + 4 MCP servers)
+    ├── cli/                     # Interactive terminal profile
     └── headless/                # One-shot autonomous CLI runner profile
 ```
 
 ---
 
-## 🛡️ Hardened Sandbox Mode (Untrusted Code Evaluation)
-
-When analyzing external or unverified code repositories, start with the sandbox override:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
-```
-
-**Sandbox Protections:**
-* **Disposable Runtime Configuration**: Copies `./config` from `/opt/dsh-config:ro` into an in-memory `/var/lib/dsh` tree on every start.
-* **Read-Only Workspaces (`/workspaces:ro`)**: Protects host files from unauthorized modification.
-* **Linux Capability Stripping (`cap_drop: [ALL]`)**: Drops all privileged container capabilities.
-* **No New Privileges (`no-new-privileges:true`)**: Prevents privilege escalation inside the container.
-* **Credential Isolation**: Explicitly blanks provider API keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, etc.) inside the untrusted container to eliminate exfiltration paths.
-* **Zero-Trust Filtered Egress**: Isolates DSH and Phoenix on an internal bridge network (`internal: true`) with outbound traffic restricted through a hardened Envoy proxy sidecar (`egress-filter`) enforcing strict destination allowlists and blocking unauthorized outbound mutations.
-* **Persistent Session Isolation (`sandbox-session-state`)**: Preserves session transcripts and DSH JSON storage in the dedicated `sandbox-session-state` volume, preventing contamination of trusted host session directories.
-* **Audit Trail Retention**: Persists GRC audit logs to `./config/audit` to preserve non-repudiation records even after sandbox teardown.
-* **Resource Caps**: Constrains container to 2 CPUs, 2GB RAM, and 150 PIDs.
-
-To destroy all transient sandbox session data:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
-```
-
-### 🛡️ Threat Model & Security Boundaries
-* **Kernel & Container Primitives**: The primary security boundaries for untrusted code execution are Linux kernel namespaces, cgroups, capability stripping (`cap_drop: ALL`), read-only root filesystems (`read_only: true`), non-root execution (`UID/GID 1000`), and Landlock LSM.
-* **Role of `@dsh-dds/core` Loader**: The Node.js loader (`loader.mjs`) is an internal runtime compatibility layer (ESM hooks, landlock parameter sanitization, and in-memory prototype augmentations) and an application-level Policy Enforcement Point (PEP). It is not an uncircumventable sandbox boundary against hostile subshell escapes; process-level containment rests on the container sandbox.
-* **Supply-Chain Policies**: Package installation uses `--frozen-lockfile` with explicit build script approval (`allowBuilds`) for native modules (`node-pty`, `protobufjs`, `sharp`). `minimumReleaseAge: 0` is configured to enable immediate consumption of verified release candidates and hermetic offline packages without artificial delay.
-
----
-
-## 🧪 Automated Regression & Supply-Chain Test Suite
-
-The repository includes a comprehensive regression and parity test suite built on the Node.js test runner:
-
-```bash
-# Run all regression & installer parity tests
-node --test tests/*.test.mjs
-```
-
-**What the test suite covers:**
-1. **CLI Argument Parser**: Validates `--option=value`, short flags (`-t`, `-p`), mixed ordering, prompts with quotes/spaces, and rejects malformed/unknown options.
-2. **YAML & Persona Schema Validation**: Validates structured YAML parsing and asserts patch validity across all 7 shipped personas.
-3. **Secret Scrubber**: Asserts redaction of Google AI Studio keys, GitHub fine-grained PATs, and Bearer tokens.
-4. **Installer Parity Assertion**: Dynamically asserts byte-for-byte synchronization between `install_dsh.sh` manifests and canonical repository files.
-5. **CI & Supply-Chain Hardening**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds Docker images with `--no-cache`, validates ShellCheck and Hadolint, verifies entrypoint syntax, runs `npm audit`, and conducts `--network none` offline MCP smoke tests on every commit.
-
----
-
 ## 🔄 Maintenance & Operations
 
-### 1. Resetting the Stack
+### 1. Resetting the stack
+
 ```bash
-# Soft Reset: Clears cache locks, temp files, and model sync without losing chat sessions
+# Soft reset: clears cache locks, temp files and model sync without losing chat sessions
 ./dsh.sh reset
 
-# Hard Reset: Confirms and wipes persistent databases and volume state
+# Hard reset: confirms and wipes persistent databases and volume state
 ./dsh.sh reset --hard
 ```
 
-### 2. Model Catalog Synchronization & Quotas (`dsh-model-sync`)
-* **From Host CLI**:
-  ```bash
-  ./dsh.sh sync-models    # Triggers manual resync from OpenRouter & Google AI Studio
-  ./dsh.sh models         # Displays active model totals, breakdown, and sync timestamp
-  ```
-* **Web UI Quota & Cost Rings**:
-  * The pre-packaged `dsh-model-sync` plugin synchronizes model catalogs on container boot and dynamically renders live balance and 5h/7d plan quota rings beside the prompt composer.
+### 2. Model catalog synchronisation & quotas (`dsh-model-sync`)
 
-### 3. Backups & Disaster Recovery
 ```bash
-# Create timestamped archive of configuration, memories, and traces
+./dsh.sh sync-models    # Manual resync from OpenRouter & Google AI Studio
+./dsh.sh models         # Active model totals, breakdown and sync timestamp
+```
+
+The `dsh-model-sync` plugin synchronises catalogs on container boot and renders live balance and 5h/7d quota rings beside the prompt composer.
+
+### 3. Backups & disaster recovery
+
+```bash
+# Create timestamped archive of configuration, memories and traces
 tar -czvf "dsh_backup_$(date +%Y%m%d_%H%M%S).tar.gz" config/ workspaces/ .env
 
 # Restore on a new machine
@@ -407,17 +447,19 @@ tar -xzvf dsh_backup_*.tar.gz
 docker compose up -d --build
 ```
 
-### 4. Upstream Upgrades & Component Evolution
-To upgrade DeepSeek Harness, the Cordis microkernel, plugins, or pre-baked MCP servers safely without breaking existing workflows, consult the [Upstream Upgrades & Component Evolution Guide](docs/upgrades.md).
+### 4. Upstream upgrades & component evolution
+
+To upgrade DeepSeek Harness, the Cordis microkernel, plugins or pre-baked MCP servers without breaking existing workflows, see the [Upstream Upgrades & Component Evolution Guide](docs/upgrades.md).
 
 ---
 
 ## 🤝 Contributing & Changelog
 
-* 📖 **[Contributing Guide](CONTRIBUTING.md)**: Review our 3-stage promotion lifecycle (`installtest/` → local canonical → `origin/main`), coding standards, and test runner workflows.
-* 📝 **[Changelog](CHANGELOG.md)**: Track release notes, security remediations, and audit findings.
+* 📖 **[Contributing Guide](CONTRIBUTING.md)** — three-stage promotion lifecycle (`installtest/` → local canonical → `origin/main`), coding standards, test runner workflows.
+* 📝 **[Changelog](CHANGELOG.md)** — release notes, security remediations, audit findings.
 
 ---
 
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+
+MIT — see [LICENSE](LICENSE).
