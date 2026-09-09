@@ -14,6 +14,7 @@ import path from 'path';
 import crypto from 'crypto';
 import vm from 'vm';
 import { spawnSync } from 'child_process';
+import { parseHostAllowlist, parsePortAllowlist, readResponseBodyLimited, secureFetch } from './outbound-security.mjs';
 import {
   parseYaml,
   parsePersonaYaml,
@@ -700,20 +701,29 @@ export class DeclarativeWorkflowEngine {
       let reachable = false;
       let statusCode = 0;
       let errorMsg = null;
+      let errorCode = null;
       try {
-        const c = new AbortController();
-        const t = setTimeout(() => c.abort(), 1000);
-        const res = await fetch(target, { signal: c.signal });
-        clearTimeout(t);
+        const allowedHosts = ['localhost', '127.0.0.1', '::1', ...parseHostAllowlist(process.env.DSH_SERVICE_PROBE_ALLOW_HOSTS)];
+        const defaultPortNumber = Number(defaultPort);
+        const res = await secureFetch(target, {
+          allowedHosts,
+          allowPrivateHosts: allowedHosts,
+          allowedPorts: [defaultPortNumber, ...parsePortAllowlist(process.env.DSH_SERVICE_PROBE_ALLOW_PORTS)].filter(Number.isInteger),
+          protocols: ['http:', 'https:'],
+          timeoutMs: 1000
+        });
         statusCode = res.status;
         reachable = res.ok || res.status < 500;
+        await res.body?.cancel?.().catch(() => {});
       } catch (err) {
         reachable = false;
         errorMsg = err.message;
+        errorCode = err.code || 'SERVICE_PROBE_FAILED';
       }
       return {
         status: reachable ? 'success' : 'failed',
         error: errorMsg || (!reachable ? `Service at ${target} unreachable (status ${statusCode})` : null),
+        code: reachable ? undefined : errorCode,
         service_probe: { target, reachable, status_code: statusCode, timestamp: new Date().toISOString() }
       };
     });
@@ -724,20 +734,28 @@ export class DeclarativeWorkflowEngine {
       let reachable = false;
       let statusCode = 0;
       let errorMsg = null;
+      let errorCode = null;
       try {
-        const c = new AbortController();
-        const t = setTimeout(() => c.abort(), 1500);
-        const res = await fetch(target, { signal: c.signal });
-        clearTimeout(t);
+        const allowedHosts = ['phoenix', ...parseHostAllowlist(process.env.DSH_SERVICE_PROBE_ALLOW_HOSTS)];
+        const res = await secureFetch(target, {
+          allowedHosts,
+          allowPrivateHosts: allowedHosts,
+          allowedPorts: [6006, ...parsePortAllowlist(process.env.DSH_SERVICE_PROBE_ALLOW_PORTS)],
+          protocols: ['http:', 'https:'],
+          timeoutMs: 1500
+        });
         statusCode = res.status;
         reachable = res.ok || res.status < 500;
+        await res.body?.cancel?.().catch(() => {});
       } catch (err) {
         reachable = false;
         errorMsg = err.message;
+        errorCode = err.code || 'ENDPOINT_VERIFICATION_FAILED';
       }
       return {
         status: reachable ? 'success' : 'failed',
         error: errorMsg || (!reachable ? `Endpoint ${target} unreachable (status ${statusCode})` : null),
+        code: reachable ? undefined : errorCode,
         endpoint_verification: { target, verified: reachable, status_code: statusCode }
       };
     });
@@ -766,22 +784,14 @@ export class DeclarativeWorkflowEngine {
     // 10. fetch_sdmx_dataflows: Validated SDMX REST query builder & parser (FR-003)
     this.registerAction('fetch_sdmx_dataflows', async (step, ctx) => {
       const endpoint = step.target || step.scope || 'https://lustat.statec.lu/rest/dataflow/LU1/all/latest';
-      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
-        return {
-          status: 'failed',
-          error: `Invalid SDMX endpoint URL '${endpoint}'`,
-          code: 'SDMX_INVALID_ENDPOINT'
-        };
-      }
-
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 2000);
-        const res = await fetch(endpoint, {
+        const res = await secureFetch(endpoint, {
+          allowedHosts: ['lustat.statec.lu', ...parseHostAllowlist(process.env.DSH_SDMX_ALLOW_HOSTS)],
+          allowedPorts: [443, ...parsePortAllowlist(process.env.DSH_SDMX_ALLOW_PORTS)],
+          protocols: ['https:'],
+          timeoutMs: 2000,
           headers: { 'Accept': 'application/vnd.sdmx.structure+json, application/json;q=0.9, application/xml;q=0.8, */*;q=0.5' },
-          signal: controller.signal
         });
-        clearTimeout(timer);
 
         if (!res.ok) {
           return {
@@ -791,7 +801,7 @@ export class DeclarativeWorkflowEngine {
           };
         }
 
-        const text = await res.text();
+        const text = await readResponseBodyLimited(res, 2 * 1024 * 1024);
         let flowsCount = 0;
         const contentType = res.headers.get('content-type') || '';
 
@@ -856,7 +866,7 @@ export class DeclarativeWorkflowEngine {
         return {
           status: 'failed',
           error: `Network error querying SDMX endpoint ${endpoint}: ${err.message}`,
-          code: 'SDMX_NETWORK_ERROR'
+          code: err.code || 'SDMX_NETWORK_ERROR'
         };
       }
     });

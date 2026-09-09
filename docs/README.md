@@ -10,7 +10,7 @@ Rather than relying on static image exports, DSH-DDS features publication-ready,
 
 ### 🚀 Direct Browser Launch
 ```bash
-# 1. Dual-container topology, non-root sandbox & Envoy egress sidecar:
+# 1. Multi-service topology, isolated executor, trusted sidecars & Envoy egress:
 open docs/visual-architecture/system-runtime.architecture.html
 
 # 2. In-line tool interceptor, symlink escape check & GRC audit trail:
@@ -56,10 +56,11 @@ Task-oriented recipes for common engineering operations:
 * **[Prompt-Driven Customization](guides/customization.md)** — Teaching skills, connecting custom MCP servers, and configuring local model routing.
 * **[Upstream Upgrades & Evolution](guides/upgrades.md)** — Cordis microkernel upgrades, plugin evolution, and pnpm patch management.
 * **[GitNexus & Archify Workflow Guide](guides/gitnexus-archify.md)** — Coordinated code intelligence, AST knowledge graph navigation, blast radius analysis, and visual governance.
+* **[Tenant Partition Migration](guides/tenant-partition-migration.md)** — Inventory, adjudicate, back up, migrate, verify, and roll back legacy tenant partitions safely.
 
 ### 🏛️ 3. Architecture & Security Specifications (Explanations)
 Theoretical and architectural deep-dives:
-* **[System Architecture Overview](architecture/system-overview.md)** — Dual-container topology, kernel proxy, and OTel trace pipelines.
+* **[System Architecture Overview](architecture/system-overview.md)** — Multi-service runtime topology, isolated execution, trusted gateways, and OTel trace pipelines.
 * **[SOTA AI Harness Architecture](architecture/sota-whitepaper.md)** — 5-Pillar SOTA AI Harness whitepaper, NIST AI RMF / EU AI Act alignment, and comparative benchmarks.
 * **[Security & Sandbox Guide](architecture/security-model.md)** — Non-root execution (UID 1000), filesystem boundaries, and Zero Trust persona RBAC.
 * **[AI Guardrails & OWASP Agentic Security](architecture/guardrails-owasp.md)** — Four deterministic guardrail layers, Invariant 7 loop trap, and OWASP LLM / ASI compliance matrices.
@@ -70,7 +71,7 @@ Theoretical and architectural deep-dives:
 Authoritative schemas, configurations, and catalogs:
 * **[AI Agent Personas Guide](reference/personas.md)** — Declarative persona manifests, YAML schemas, and multi-model task matrices.
 * **[Plugins & MCP Reference](reference/plugins.md)** — Active plugins catalog and pre-configured MCP tool suite specifications.
-* **[Architecture Decision Records (ADRs)](adr/)** — ADR 0001 through ADR 0008 documenting all foundational design and security decisions.
+* **[Architecture Decision Records (ADRs)](adr/)** — ADR 0001 through ADR 0009 documenting foundational design and security decisions.
 
 ### 🗺️ 5. Visual Architecture Journey
 * **[Visual Architecture Suite](visual-architecture/README.md)** — Interactive HTML models with dark/light themes, pan/zoom canvas, and trace motion.
@@ -86,7 +87,7 @@ Authoritative schemas, configurations, and catalogs:
 ## 🛠️ Validation & Build Commands
 
 ```bash
-# Run all 169 unit, integration, and security regression tests:
+# Run all unit, integration, and security regression tests:
 npm test
 
 # Verify turnkey installer parity with canonical sources:

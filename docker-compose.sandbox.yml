@@ -25,13 +25,13 @@ services:
           cpus: '0.5'
           memory: 512M
     volumes: !override
-      # Configuration is copied into disposable tmpfs; session data persists in dedicated named volume.
-      # No host bind for /var/lib/dsh/audit: an untrusted workload must not be able to
-      # rewrite its own authorization record on the host. The in-sandbox audit file is a
-      # tmpfs buffer only; the durable copy is the OTel span export to the phoenix container.
+      # Configuration is copied into disposable tmpfs; session data persists in a dedicated
+      # named volume. DSH has no audit mount: the separate audit-writer owns the durable
+      # ledger and checkpoint bind mounts inherited from the base Compose file.
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
       - sandbox-session-state:/var/lib/dsh-state:rw
+      - executor-socket:/run/dsh-executor:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
       - /run:rw,size=32m,mode=0770,uid=1000,gid=1000
@@ -49,6 +49,11 @@ services:
       - DSH_SESSION_STATE_DIR=/var/lib/dsh-state
       - DSH_SESSIONS_DIR=/var/lib/dsh/sessions
       - DSH_DISABLE_MODEL_SYNC=1
+      - DSH_RESTART_CSRF_TOKEN=
+      # The PEP ignores the escape hatch when DSH_SANDBOX=1; pin it off as defence in depth.
+      - DSH_ALLOW_UNCONFINED_SHELL=0
+      - DSH_EXECUTOR_MODE=isolated
+      - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
       - OPENROUTER_API_KEY=
       - GEMINI_API_KEY=
       - TAVILY_API_KEY=
@@ -58,11 +63,33 @@ services:
       - GITHUB_TOKEN=
       - PHOENIX_API_KEY=
       - PHOENIX_SECRET=
+      - NODE_USE_ENV_PROXY=1
       - HTTP_PROXY=http://egress-filter:10000
       - HTTPS_PROXY=http://egress-filter:10000
-      - NO_PROXY=localhost,127.0.0.1,phoenix,dsh
-    networks:
+      - NO_PROXY=localhost,127.0.0.1,dsh,audit-writer,telemetry-gateway
+    networks: !override
       - dsh-internal
+      - audit-internal
+
+  isolated-executor:
+    read_only: true
+    network_mode: none
+    security_opt: !override
+      - no-new-privileges:true
+    cap_drop: !override
+      - ALL
+    pids_limit: 48
+    mem_limit: 384m
+    cpus: 0.75
+
+  audit-writer:
+    networks: !override
+      - audit-internal
+
+  telemetry-gateway:
+    networks: !override
+      - dsh-internal
+      - phoenix-internal
 
   phoenix:
     user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
@@ -70,8 +97,8 @@ services:
       - no-new-privileges:true
     cap_drop: !override
       - ALL
-    networks:
-      - dsh-internal
+    networks: !override
+      - phoenix-internal
 
   egress-filter:
     image: envoyproxy/envoy:v1.31-latest@sha256:caa5b411be1633b90023592a34a7e010c933d6e60206c758f631485e53006865

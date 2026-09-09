@@ -105,7 +105,11 @@ test('Sandbox Compose Topology: egress-filter sidecar and dual-network routing',
 
   // dsh container isolation
   const dsh = compose.services.dsh;
-  assert.deepEqual(dsh.networks, ['dsh-internal'], 'dsh must strictly connect only to internal network');
+  assert.deepEqual(
+    dsh.networks,
+    ['dsh-internal', 'audit-internal'],
+    'dsh must connect only to the filtered runtime and dedicated internal audit networks'
+  );
   assert.ok(
     dsh.environment.some(e => e.includes('HTTP_PROXY=http://egress-filter:10000')),
     'dsh must route HTTP via egress-filter'
@@ -114,6 +118,13 @@ test('Sandbox Compose Topology: egress-filter sidecar and dual-network routing',
     dsh.environment.some(e => e.includes('HTTPS_PROXY=http://egress-filter:10000')),
     'dsh must route HTTPS via egress-filter'
   );
+  assert.ok(
+    dsh.environment.includes('NODE_USE_ENV_PROXY=1'),
+    'Node 24 fetch/http clients must be forced to honor the sandbox proxy environment'
+  );
+  const noProxy = dsh.environment.find(e => e.startsWith('NO_PROXY='));
+  assert.ok(noProxy?.includes('telemetry-gateway') && noProxy?.includes('audit-writer'));
+  assert.ok(!noProxy?.split('=')[1].split(',').includes('phoenix'), 'dsh must not bypass the telemetry gateway to Phoenix');
 
   // Networks definition
   assert.equal(compose.networks['dsh-internal'].internal, true, 'dsh-internal must have internal: true');

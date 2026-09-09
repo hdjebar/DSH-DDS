@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsh.local/schemas/tenant-partition-migration-v1.schema.json",
+  "title": "DSH tenant partition migration manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "migrationId",
+    "createdAt",
+    "sourceInventoryIntegrity",
+    "roots",
+    "entries",
+    "skipped",
+    "integrity"
+  ],
+  "properties": {
+    "schema": { "const": "dsh.tenant-partition-migration/v1" },
+    "migrationId": { "type": "string", "format": "uuid" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "sourceInventoryIntegrity": { "$ref": "#/$defs/digest" },
+    "roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "workspace"],
+      "properties": {
+        "state": { "type": "string", "minLength": 1 },
+        "workspace": { "type": "string", "minLength": 1 }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["legacyPartitionId", "identity", "adjudicationReason"],
+        "properties": {
+          "legacyPartitionId": { "$ref": "#/$defs/legacyId" },
+          "identity": { "$ref": "#/$defs/identity" },
+          "adjudicationReason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "integrity": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "legacyId": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+    "u2Id": { "type": "string", "pattern": "^u2_[A-Za-z0-9_-]{43}$" },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuer", "subject"],
+      "properties": {
+        "issuer": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "fingerprint", "files", "directories", "bytes"],
+      "properties": {
+        "kind": { "enum": ["state", "workspace"] },
+        "fingerprint": { "$ref": "#/$defs/digest" },
+        "files": { "type": "integer", "minimum": 0 },
+        "directories": { "type": "integer", "minimum": 1 },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legacyPartitionId",
+        "destinationPartitionId",
+        "identity",
+        "ownershipEvidence",
+        "resources"
+      ],
+      "properties": {
+        "legacyPartitionId": { "$ref": "#/$defs/legacyId" },
+        "destinationPartitionId": { "$ref": "#/$defs/u2Id" },
+        "identity": { "$ref": "#/$defs/identity" },
+        "ownershipEvidence": { "type": "string", "minLength": 1 },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      }
+    }
+  }
+}

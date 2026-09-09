@@ -118,6 +118,7 @@ RUN for p in /var/lib/dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf 
 
 # Copy and link native in-tree @dsh-dds/core Cordis plugin
 COPY packages/dsh-dds-core /app/packages/dsh-dds-core
+COPY config/audit-writer-core.mjs config/audit-writer.mjs config/telemetry-gateway.mjs /app/services/
 RUN mkdir -p /usr/local/lib/node_modules/@dsh-dds /app/prebuilt-profiles/web/node_modules/@dsh-dds /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
     && ln -sfn /app/packages/dsh-dds-core /usr/local/lib/node_modules/@dsh-dds/core \
     && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/web/node_modules/@dsh-dds/core \
@@ -152,3 +153,20 @@ USER dsh:dsh
 WORKDIR /home/dsh
 
 ENTRYPOINT ["/usr/local/bin/dsh-entrypoint"]
+
+# Dedicated command-executor target. It deliberately inherits the pinned runtime so the
+# versioned Landlock launcher shipped with DSH is available, but runs a single narrow
+# Unix-socket service without the DSH entrypoint or application environment.
+FROM runner AS isolated-executor
+
+USER root
+COPY services/isolated-executor /app/services/isolated-executor
+RUN useradd --uid 11000 --gid dsh --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin dsh-executor \
+    && mkdir -p /run/dsh-executor \
+    && chown dsh-executor:dsh /run/dsh-executor \
+    && chmod 0770 /run/dsh-executor
+
+ENV NODE_OPTIONS=""
+USER dsh-executor:dsh
+WORKDIR /workspaces
+ENTRYPOINT ["node", "/app/services/isolated-executor/server.mjs"]

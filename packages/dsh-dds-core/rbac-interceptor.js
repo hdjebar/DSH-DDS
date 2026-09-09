@@ -10,6 +10,7 @@ import fs from 'fs';
 import crypto from 'node:crypto';
 import { UserPartitionManager } from './user-partition.js';
 import { DEFAULT_OPERATOR } from './iam.js';
+import { issueExecutionCapability, runWithExecutionCapability } from './execution-capability.js';
 
 let rbacEngine = null;
 
@@ -79,28 +80,20 @@ export function registerRbacInterceptor(ctx, config = {}) {
   if (config.enableToolRbac === false) return;
 
   const partitionManager = new UserPartitionManager(config);
+  const authEnabled = config.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
 
   const resolveUser = (explicitUser) => {
     if (explicitUser) return explicitUser;
-    let u = null;
-    try {
-      u = typeof ctx.get === 'function' ? ctx.get('user') : ctx.user;
-    } catch {}
-    if (u) return u;
     try {
       const iam = typeof ctx.get === 'function' ? ctx.get('iam') : ctx.iam;
       if (iam && typeof iam.getCurrentUser === 'function') {
-        u = iam.getCurrentUser();
+        return iam.getCurrentUser();
       }
     } catch {}
-    return u;
+    return authEnabled ? null : DEFAULT_OPERATOR;
   };
 
   const handler = async (actionContext) => {
-    if (actionContext.workdir && !fs.existsSync(actionContext.workdir)) {
-      try { fs.mkdirSync(actionContext.workdir, { recursive: true }); } catch {}
-    }
-
     const user = resolveUser(actionContext.user);
     if (!user) {
       throw new Error('[Zero-Trust RBAC Violation] Missing authenticated user identity context');
@@ -115,6 +108,13 @@ export function registerRbacInterceptor(ctx, config = {}) {
     }
 
     const isShellAction = resolvedAction === 'run_shell';
+    const isolatedExecutorEnabled = process.env.DSH_EXECUTOR_MODE === 'isolated';
+    if (isShellAction && !isolatedExecutorEnabled && (process.env.DSH_ALLOW_UNCONFINED_SHELL !== '1' || process.env.DSH_SANDBOX === '1')) {
+      throw new Error(
+        '[Zero-Trust RBAC Violation] Unconfined shell execution is disabled. '
+        + 'DSH_ALLOW_UNCONFINED_SHELL=1 is a temporary trusted single-operator escape hatch and is forbidden in sandbox mode.'
+      );
+    }
     const targetPath = actionContext.target || actionContext.path || (isShellAction ? (actionContext.workdir || actionContext.cwd || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases')) : null);
 
     const step = {
@@ -224,6 +224,22 @@ export function registerRbacInterceptor(ctx, config = {}) {
       }, traceId);
     }
 
+    // Authorization must complete (including its fail-closed audit write) before
+    // creating a caller-controlled workdir. Denied requests must have no filesystem
+    // side effects.
+    if (actionContext.workdir && !fs.existsSync(actionContext.workdir)) {
+      try {
+        fs.mkdirSync(actionContext.workdir, { recursive: true, mode: 0o770 });
+        if (isolatedExecutorEnabled) fs.chmodSync(actionContext.workdir, 0o770);
+      } catch {}
+    }
+
+    if (isShellAction && isolatedExecutorEnabled) {
+      return {
+        ...decision,
+        executionCapability: issueExecutionCapability({ user, workdir: step.workdir || step.target })
+      };
+    }
     return decision;
   };
 
@@ -246,13 +262,17 @@ export function registerRbacInterceptor(ctx, config = {}) {
         target: targetPath,
         command: rawArgs.command || rawArgs.cmd,
         workdir: rawArgs.workdir || rawArgs.cwd,
-        user: resolveUser(exec.user) || (config.authEnabled ? null : DEFAULT_OPERATOR),
+        user: resolveUser(exec.user),
         traceId: exec.callId || exec.traceId || (exec.signal && exec.signal.traceId),
         persona: exec.persona || exec.agent?.persona
       };
 
-      await handler(actionContext);
-      return typeof next === 'function' ? await next() : { kind: 'allow' };
+      const decision = await handler(actionContext);
+      if (typeof next !== 'function') return { kind: 'allow' };
+      if (decision.executionCapability) {
+        return await runWithExecutionCapability(decision.executionCapability, next);
+      }
+      return await next();
     } catch (err) {
       if (typeof next === 'function') {
         return { kind: 'deny', reason: err.message };

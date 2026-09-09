@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sanitizeUserId } from './iam.js';
+import { DEFAULT_OPERATOR, deriveUserPartitionId } from './iam.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -74,15 +74,45 @@ export class ByokVault {
       );
     }
     this.userStateBase = options.userStateBase || process.env.DSH_USER_STATE_BASE || '/var/lib/dsh/users';
+    this.legacyPartitionMap = Object.freeze({ ...(options.legacyPartitionMap || {}) });
+    const destinations = new Set();
+    for (const [partitionId, legacyId] of Object.entries(this.legacyPartitionMap)) {
+      if (!/^u2_[A-Za-z0-9_-]{43}$/.test(partitionId) || !/^[a-z0-9_-]+$/.test(legacyId)) {
+        throw new Error('Invalid legacy vault migration map');
+      }
+      if (destinations.has(legacyId)) {
+        throw new Error(`Ambiguous legacy vault migration mapping for '${legacyId}'`);
+      }
+      destinations.add(legacyId);
+    }
   }
 
-  getVaultPath(userId) {
-    const cleanId = sanitizeUserId(userId);
+  getVaultPath(identity) {
+    const id = identity && typeof identity === 'object' ? (identity.id || identity.sub) : identity;
+    const issuer = identity && typeof identity === 'object'
+      ? (identity.issuer || identity.iss || 'dsh-local')
+      : 'dsh-local';
+    const cleanId = deriveUserPartitionId(id, issuer);
     return path.join(this.userStateBase, cleanId, 'storages', 'vault.enc.json');
   }
 
-  loadVault(userId) {
-    const vaultPath = this.getVaultPath(userId);
+  getLegacyVaultPath(identity) {
+    const vaultPath = this.getVaultPath(identity);
+    const partitionId = path.basename(path.dirname(path.dirname(vaultPath)));
+    const legacyId = this.legacyPartitionMap[partitionId];
+    return legacyId
+      ? path.join(this.userStateBase, legacyId, 'storages', 'vault.enc.json')
+      : null;
+  }
+
+  loadVault(identity) {
+    const primaryPath = this.getVaultPath(identity);
+    const vaultPath = fs.existsSync(primaryPath)
+      ? primaryPath
+      : this.getLegacyVaultPath(identity);
+    if (!vaultPath) {
+      return {};
+    }
     if (!fs.existsSync(vaultPath)) {
       return {};
     }
@@ -94,8 +124,10 @@ export class ByokVault {
     }
   }
 
-  saveVault(userId, vaultData) {
-    const vaultPath = this.getVaultPath(userId);
+  saveVault(identity, vaultData) {
+    // Writes always use v2. An explicitly mapped legacy read is copied forward
+    // on the next mutation while the old file remains available for rollback.
+    const vaultPath = this.getVaultPath(identity);
     const dir = path.dirname(vaultPath);
     if (!fs.existsSync(dir)) {
       try { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch {}
@@ -152,11 +184,11 @@ export class ByokVault {
   }
 }
 
-export async function handleVaultApiRequest(req, res, vault, user = { id: 'default' }) {
+export async function handleVaultApiRequest(req, res, vault, user = DEFAULT_OPERATOR) {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'GET') {
-    const providers = vault.listConfiguredProviders(user.id);
+    const providers = vault.listConfiguredProviders(user);
     res.statusCode = 200;
     res.end(JSON.stringify({
       success: true,
@@ -203,7 +235,7 @@ export async function handleVaultApiRequest(req, res, vault, user = { id: 'defau
         }));
         return;
       }
-      vault.setApiKey(user.id, provider, apiKey);
+      vault.setApiKey(user, provider, apiKey);
       res.statusCode = 200;
       res.end(JSON.stringify({
         success: true,
@@ -227,7 +259,7 @@ export async function handleVaultApiRequest(req, res, vault, user = { id: 'defau
         res.end(JSON.stringify({ success: false, error: 'BAD_REQUEST', message: 'Provider is required' }));
         return;
       }
-      const deleted = vault.deleteApiKey(user.id, provider);
+      const deleted = vault.deleteApiKey(user, provider);
       res.statusCode = 200;
       res.end(JSON.stringify({
         success: true,

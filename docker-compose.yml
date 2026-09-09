@@ -21,7 +21,7 @@ services:
     volumes:
       - ./config:/etc/dsh:ro
       - ./config/sessions:/var/lib/dsh/sessions:rw
-      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/users:/var/lib/dsh/users:rw
       - ./config/storages:/var/lib/dsh/storages:rw
       - ./config/patch:/var/lib/dsh/patch:rw
       - ./config/personas:/var/lib/dsh/personas:ro
@@ -30,6 +30,7 @@ services:
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
+      - executor-socket:/run/dsh-executor:rw
     tmpfs:
       - /run/dsh:rw,size=32m,mode=1777
       - /tmp:rw,size=512m,mode=1777
@@ -45,26 +46,146 @@ services:
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - DSH_TELEMETRY_MODE=FULL
-      - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - DSH_TELEMETRY_OTLP_URL=http://telemetry-gateway:4318/v1/traces
+      - PHOENIX_URL=http://telemetry-gateway:4318
+      - DSH_SERVICE_PROBE_ALLOW_HOSTS=telemetry-gateway
+      - DSH_SERVICE_PROBE_ALLOW_PORTS=4318
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_RESTART_CSRF_TOKEN=${DSH_RESTART_CSRF_TOKEN:-}
       - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
-      # Pin the GRC JSONL trail onto the mounted ./config/audit volume. Without this,
-      # getGrcAuditLogPath() falls back to the container-internal /var/log/dsh and the
-      # file is lost on recreate, leaving only the lossy Phoenix span export.
-      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
+      # Authorization grants require a receipt from the separately trusted writer.
+      # This container has neither the ledger mount nor its integrity key.
+      - DSH_AUDIT_WRITER_URL=http://audit-writer:3091/v1/events
+      - DSH_AUDIT_WRITER_TOKEN=${DSH_AUDIT_WRITER_TOKEN:-}
+      - DSH_AUDIT_WRITER_REQUIRED=1
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
+      # Legacy in-process escape hatch remains off. DSH_EXECUTOR_MODE routes approved
+      # shell calls to the separate capability-gated executor below.
+      - DSH_ALLOW_UNCONFINED_SHELL=${DSH_ALLOW_UNCONFINED_SHELL:-0}
+      - DSH_EXECUTOR_MODE=isolated
+      - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
+      - DSH_EXECUTOR_CAPABILITY_KEY=${DSH_EXECUTOR_CAPABILITY_KEY:-}
     depends_on:
-      phoenix:
+      telemetry-gateway:
         condition: service_healthy
+      audit-writer:
+        condition: service_healthy
+      isolated-executor:
+        condition: service_healthy
+    networks:
+      - dsh-runtime
+      - audit-internal
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+  audit-writer:
+    build: .
+    image: dsh-local:latest
+    entrypoint: ["node", "/app/services/audit-writer.mjs"]
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      - DSH_AUDIT_WRITER_PORT=3091
+      - DSH_AUDIT_WRITER_TOKEN=${DSH_AUDIT_WRITER_TOKEN:-}
+      - DSH_AUDIT_INTEGRITY_KEY=${DSH_AUDIT_INTEGRITY_KEY:-}
+      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
+      - DSH_AUDIT_CHECKPOINT_FILE=/var/lib/dsh/checkpoints/audit_head.jsonl
+    volumes:
+      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/audit-checkpoints:/var/lib/dsh/checkpoints:rw
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3091/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - audit-internal
+
+  telemetry-gateway:
+    build: .
+    image: dsh-local:latest
+    entrypoint: ["node", "/app/services/telemetry-gateway.mjs"]
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      - PORT=4318
+      - PHOENIX_UPSTREAM_URL=http://phoenix:6006
+      - PHOENIX_INGEST_TOKEN=${PHOENIX_API_KEY:-}
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4318/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      phoenix:
+        condition: service_healthy
+    networks:
+      - dsh-runtime
+      - phoenix-internal
+
+  isolated-executor:
+    build:
+      context: .
+      target: isolated-executor
+    image: dsh-isolated-executor:latest
+    restart: unless-stopped
+    init: true
+    read_only: true
+    network_mode: none
+    user: "11000:${DSH_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 1.0
+    environment:
+      - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
+      - DSH_EXECUTOR_CAPABILITY_KEY=${DSH_EXECUTOR_CAPABILITY_KEY:-}
+      # Commands share the executor PID namespace; serialize until per-invocation PID
+      # namespaces are available so tenants never execute concurrently.
+      - DSH_EXECUTOR_MAX_CONCURRENT=1
+    volumes:
+      - executor-socket:/run/dsh-executor:rw
+      - ./workspaces/users:/workspaces/users:rw
+      - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/shared:/workspaces/shared:ro
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m,mode=0700,uid=11000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "const n=require('net').connect('/run/dsh-executor/executor.sock');n.on('connect',()=>{n.end();process.exit(0)});n.on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   phoenix:
     image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
@@ -101,13 +222,29 @@ services:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_MAX_DAYS_RETENTION=14
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
-      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
+      - PHOENIX_ADMIN_SECRET=${PHOENIX_ADMIN_SECRET:-}
+      - PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD:-}
+      - PHOENIX_ENABLE_AUTH=true
     volumes:
       - ./config/phoenix:/home/phoenix/.phoenix
+    networks:
+      - phoenix-internal
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  executor-socket:
+
+networks:
+  dsh-runtime:
+    driver: bridge
+  phoenix-internal:
+    driver: bridge
+    internal: true
+  audit-internal:
+    driver: bridge
+    internal: true

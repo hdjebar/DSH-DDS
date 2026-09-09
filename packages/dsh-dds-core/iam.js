@@ -6,21 +6,67 @@
  */
 
 import crypto from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { isTrustedGatewayIp } from './net-trust.js';
+
+const PARTITION_ID_VERSION = 'u2';
 
 export const DEFAULT_OPERATOR = Object.freeze({
   id: 'default',
+  issuer: 'dsh-local',
+  partitionId: deriveUserPartitionId('default', 'dsh-local'),
   name: 'Default Operator',
-  roles: ['admin'],
-  permissions: ['*']
+  roles: Object.freeze(['admin']),
+  permissions: Object.freeze(['*'])
 });
 
-export function sanitizeUserId(userId) {
+function requireIdentityValue(value, label) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  return value.trim();
+}
+
+export function deriveUserPartitionId(userId, issuer = 'dsh-local') {
+  const subject = requireIdentityValue(userId, 'User identity');
+  const canonicalIssuer = requireIdentityValue(issuer, 'Identity issuer');
+  const digest = crypto.createHash('sha256')
+    .update(canonicalIssuer, 'utf8')
+    .update('\0', 'utf8')
+    .update(subject, 'utf8')
+    .digest('base64url');
+  return `${PARTITION_ID_VERSION}_${digest}`;
+}
+
+export function legacyUserPartitionId(userId) {
   if (!userId || typeof userId !== 'string') {
     return 'default';
   }
   const clean = userId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   return clean || 'default';
+}
+
+// Backward-compatible export name with secure, versioned semantics.
+export const sanitizeUserId = deriveUserPartitionId;
+
+export function freezeUserIdentity(user) {
+  if (!user || typeof user !== 'object') {
+    throw new Error('Authenticated user identity is required');
+  }
+  const id = requireIdentityValue(user.id || user.sub, 'User identity');
+  const issuer = requireIdentityValue(user.issuer || user.iss || 'dsh-local', 'Identity issuer');
+  const roles = Object.freeze([...(Array.isArray(user.roles) ? user.roles : ['user'])]);
+  const permissions = Object.freeze([...(Array.isArray(user.permissions)
+    ? user.permissions
+    : ['workspace:read', 'workspace:write'])]);
+  return Object.freeze({
+    ...user,
+    id,
+    issuer,
+    partitionId: deriveUserPartitionId(id, issuer),
+    roles,
+    permissions
+  });
 }
 
 export function verifyBearerToken(token, secret) {
@@ -74,22 +120,28 @@ export function extractUserFromHeaders(headers = {}, options = {}) {
     if (!tokenPayload) {
       return { error: 'UNAUTHORIZED', message: 'Invalid or expired Authorization Bearer token' };
     }
-    const id = sanitizeUserId(tokenPayload.sub || tokenPayload.id || 'default');
+    if (typeof (tokenPayload.sub || tokenPayload.id) !== 'string' || !(tokenPayload.sub || tokenPayload.id).trim()) {
+      return { error: 'UNAUTHORIZED', message: 'Bearer token is missing a stable subject' };
+    }
+    const id = requireIdentityValue(tokenPayload.sub || tokenPayload.id, 'Token subject');
+    const issuer = tokenPayload.iss || options.defaultIssuer || 'dsh-local';
     const roles = Array.isArray(tokenPayload.roles)
       ? tokenPayload.roles
       : (tokenPayload.role ? [tokenPayload.role] : ['user']);
-    return {
+    return freezeUserIdentity({
       id,
+      issuer,
       name: tokenPayload.name || id,
       roles,
       permissions: tokenPayload.permissions || ['workspace:read', 'workspace:write']
-    };
+    });
   }
 
   // Explicit user identity headers passed by reverse proxy or gateway (requires trusted peer & opt-in)
   const headerUserId = headers['x-dsh-user-id'];
   if (headerUserId && trustProxyHeaders && isTrustedGatewayIp(options.remoteAddress)) {
-    const id = sanitizeUserId(headerUserId);
+    const id = requireIdentityValue(headerUserId, 'Gateway user identity');
+    const issuer = headers['x-dsh-user-issuer'] || options.defaultIssuer || 'dsh-gateway';
     const name = headers['x-dsh-user-name'] || id;
     const rawRoles = headers['x-dsh-user-roles'] || headers['x-dsh-user-role'] || 'user';
     const roles = typeof rawRoles === 'string'
@@ -99,11 +151,11 @@ export function extractUserFromHeaders(headers = {}, options = {}) {
       ? ['*']
       : ['workspace:read', 'workspace:write'];
 
-    return { id, name, roles, permissions };
+    return freezeUserIdentity({ id, issuer, name, roles, permissions });
   }
 
   // Default fallback for single-operator local mode
-  return { ...DEFAULT_OPERATOR };
+  return DEFAULT_OPERATOR;
 }
 
 export class IamService {
@@ -113,25 +165,19 @@ export class IamService {
     this.authEnabled = config.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
     this.authSecret = config.authSecret || process.env.DSH_AUTH_SECRET || '';
     this.trustProxyHeaders = config.trustProxyHeaders ?? (process.env.DSH_TRUST_PROXY_HEADERS === 'true');
-    this.currentUser = { ...DEFAULT_OPERATOR };
+    this.defaultIssuer = config.defaultIssuer || process.env.DSH_IDENTITY_ISSUER || 'dsh-local';
+    this.identityContext = new AsyncLocalStorage();
   }
 
-  setCurrentUser(user) {
-    this.currentUser = Object.freeze({ ...user });
-    if (this.ctx) {
-      try {
-        if (typeof this.ctx.provide === 'function') {
-          this.ctx.provide('user', this.currentUser);
-        }
-      } catch {}
-      try {
-        this.ctx.user = this.currentUser;
-      } catch {}
+  runWithUser(user, callback) {
+    if (typeof callback !== 'function') {
+      throw new Error('A request callback is required for identity context');
     }
+    return this.identityContext.run(freezeUserIdentity(user), callback);
   }
 
   getCurrentUser() {
-    return this.currentUser;
+    return this.identityContext.getStore() || (this.authEnabled ? null : DEFAULT_OPERATOR);
   }
 
   authenticateRequest(req) {
@@ -140,6 +186,7 @@ export class IamService {
       authEnabled: this.authEnabled,
       authSecret: this.authSecret,
       trustProxyHeaders: this.trustProxyHeaders,
+      defaultIssuer: this.defaultIssuer,
       remoteAddress: req?.socket?.remoteAddress
     });
 
@@ -148,10 +195,9 @@ export class IamService {
     }
 
     if (req) {
-      req.user = result;
+      req.user = freezeUserIdentity(result);
     }
-    this.setCurrentUser(result);
-    return result;
+    return req?.user || freezeUserIdentity(result);
   }
 }
 
@@ -172,7 +218,9 @@ export function registerIamMiddleware(ctx, config = {}) {
             res.end(JSON.stringify({ error: authResult.error, message: authResult.message }));
             return;
           }
-          if (typeof next === 'function') next();
+          if (typeof next === 'function') {
+            return iam.runWithUser(authResult, next);
+          }
         });
       }
     } catch {}

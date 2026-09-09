@@ -16,7 +16,16 @@ import { registerLocalizationTap } from './localization.js';
 import { registerRbacInterceptor, TOOL_ACTION_MAP, KNOWN_POLICY_VERBS } from './rbac-interceptor.js';
 import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
 import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml, fetchSearchUrl, executeDuckDuckGoSearch } from './web-search.js';
-import { registerIamMiddleware, IamService, extractUserFromHeaders, verifyBearerToken, DEFAULT_OPERATOR } from './iam.js';
+import {
+  registerIamMiddleware,
+  IamService,
+  extractUserFromHeaders,
+  verifyBearerToken,
+  DEFAULT_OPERATOR,
+  deriveUserPartitionId,
+  legacyUserPartitionId,
+  freezeUserIdentity
+} from './iam.js';
 import { UserPartitionManager } from './user-partition.js';
 import { ByokVault, encryptSecret, decryptSecret, handleVaultApiRequest } from './byok-vault.js';
 
@@ -128,6 +137,18 @@ export function registerBashWorkdirShim(targetClass) {
       const origSpawnSpec = Executor.prototype.spawnSpec;
       if (typeof origSpawnSpec === 'function') {
         Executor.prototype.spawnSpec = function(spec, argv, stdoutMaxBytes, signal) {
+          if (spec && typeof spec === 'object') {
+            const sourceEnv = spec.env && typeof spec.env === 'object' ? spec.env : process.env;
+            const allowedKeys = [
+              'PATH', 'HOME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM', 'TMPDIR',
+              'NODE_PATH', 'NODE_OPTIONS', 'DSH_SANDBOX', 'DSH_WORKSPACE_ROOT'
+            ];
+            spec.env = Object.fromEntries(
+              allowedKeys
+                .filter((key) => typeof sourceEnv[key] === 'string')
+                .map((key) => [key, sourceEnv[key]])
+            );
+          }
           if (spec && spec.workdir && !fs.existsSync(spec.workdir)) {
             try {
               fs.mkdirSync(spec.workdir, { recursive: true });
@@ -175,11 +196,12 @@ export {
   extractUserFromHeaders,
   verifyBearerToken,
   DEFAULT_OPERATOR,
+  deriveUserPartitionId,
+  legacyUserPartitionId,
+  freezeUserIdentity,
   UserPartitionManager,
   ByokVault,
   encryptSecret,
   decryptSecret,
   handleVaultApiRequest
 };
-
-

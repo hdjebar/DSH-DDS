@@ -11,6 +11,17 @@
     path: /var/lib/dsh/storages/settings.yaml
 - id: sub-model-access
   disabled: true
+- id: bash-sandbox
+  disabled: true
+- insert:
+    - id: dsh-dds-isolated-shell
+      name: '@dsh-dds/core/isolated-shell-executor'
+      config:
+        socketPath: /run/dsh-executor/executor.sock
+        cwd: /workspaces/cases
+        timeoutMs: 60000
+        maxTimeoutMs: 120000
+        maxOutputBytes: 65536
 - id: model-sync
   disabled: false
 - insert:

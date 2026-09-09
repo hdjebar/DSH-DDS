@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { DeclarativeWorkflowEngine } from '../config/declarative-orchestrator.mjs';
+
+const TEST_AUDIT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-loop-audit-'));
+process.env.DSH_AUDIT_LOG_FILE = path.join(TEST_AUDIT_ROOT, 'audit_grc.jsonl');
+process.env.DSH_AUDIT_INTEGRITY_KEY = 'loop-test-audit-integrity-key-32-bytes';
+test.after(() => fs.rmSync(TEST_AUDIT_ROOT, { recursive: true, force: true }));
 
 function createEngineWithDeterministicProbe(meta) {
   const engine = new DeclarativeWorkflowEngine(meta);

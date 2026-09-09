@@ -5,7 +5,9 @@
  * Native Cordis integration intercepting requests on ctx.webServer.
  */
 import { handleVaultApiRequest, ByokVault } from './byok-vault.js';
+import { DEFAULT_OPERATOR } from './iam.js';
 import { isTrustedGatewayIp, isLoopbackOrLocalBridgeIp } from './net-trust.js';
+import crypto from 'node:crypto';
 
 export { isTrustedGatewayIp, isLoopbackOrLocalBridgeIp };
 
@@ -83,10 +85,27 @@ export function registerGatewayMiddleware(ctx, config = {}) {
       }
       const host = req.headers.host || '';
 
-      if (!isLoopbackOrLocalBridgeIp(remote) && !isSameOriginOrLoopback(origin, host)) {
+      if (!isLoopbackOrLocalBridgeIp(remote) || !isSameOriginOrLoopback(origin, host)) {
         res.statusCode = 403;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'Forbidden: Restart request must originate from loopback or container gateway.' }));
+        return;
+      }
+
+      if (!req.user || !Array.isArray(req.user.roles) || !req.user.roles.includes('admin')) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Forbidden: Administrator authorization is required.' }));
+        return;
+      }
+
+      const expectedCsrfToken = config.restartCsrfToken || process.env.DSH_RESTART_CSRF_TOKEN;
+      const suppliedCsrfToken = req.headers['x-dsh-csrf-token'];
+      if (!expectedCsrfToken || typeof suppliedCsrfToken !== 'string' || suppliedCsrfToken.length !== expectedCsrfToken.length ||
+          !crypto.timingSafeEqual(Buffer.from(suppliedCsrfToken), Buffer.from(expectedCsrfToken))) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Forbidden: Valid restart CSRF token is required.' }));
         return;
       }
 
@@ -130,12 +149,24 @@ export function registerGatewayMiddleware(ctx, config = {}) {
     path: '/dsh-dds/api/vault/keys',
     handler: async (req, res) => {
       try {
+        const iam = typeof ctx.get === 'function' ? ctx.get('iam') : null;
+        const user = req.user || iam?.getCurrentUser?.();
+        const authEnabled = config.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
+        if (!user && authEnabled) {
+          res.statusCode = 401;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            error: 'UNAUTHORIZED',
+            message: 'Authenticated user identity is required'
+          }));
+          return;
+        }
         const vault = (typeof ctx.get === 'function' ? ctx.get('byokVault') : null) || new ByokVault(config);
         if (vault) {
           void vault.userStateBase;
         }
-        const user = req.user || (typeof ctx.get === 'function' ? ctx.get('iam')?.getCurrentUser() : null) || { id: 'default' };
-        await handleVaultApiRequest(req, res, vault, user);
+        await handleVaultApiRequest(req, res, vault, user || DEFAULT_OPERATOR);
       } catch (err) {
         if (!res.headersSent) {
           res.statusCode = 500;

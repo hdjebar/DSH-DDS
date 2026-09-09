@@ -19,6 +19,24 @@ write_file_safe() {
   return 0
 }
 
+generate_secret() {
+  local secret=''
+  if command -v openssl >/dev/null 2>&1; then
+    secret="$(openssl rand -hex 32 2>/dev/null || true)"
+  fi
+  if [ "${#secret}" -ne 64 ] && command -v node >/dev/null 2>&1; then
+    secret="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))" 2>/dev/null || true)"
+  fi
+  if [ "${#secret}" -ne 64 ] && [ -r /dev/urandom ] && command -v od >/dev/null 2>&1; then
+    secret="$(od -An -N32 -tx1 /dev/urandom 2>/dev/null | tr -d '[:space:]' || true)"
+  fi
+  if [ "${#secret}" -ne 64 ] || ! [[ "$secret" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    echo '❌ Unable to generate a cryptographically secure secret.' >&2
+    return 1
+  fi
+  printf '%s' "$secret"
+}
+
 # 1. Target Directory & Path Setup
 export DSH_INSTALL="${DSH_INSTALL:-$(pwd)}"
 echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
@@ -26,13 +44,23 @@ echo "🚀 Setting up DeepSeek Harness at: $DSH_INSTALL"
 mkdir -p "$DSH_INSTALL/config/profiles/web" \
          "$DSH_INSTALL/config/sessions" \
          "$DSH_INSTALL/config/audit" \
+         "$DSH_INSTALL/config/audit-checkpoints" \
+         "$DSH_INSTALL/config/users" \
          "$DSH_INSTALL/config/storages" \
          "$DSH_INSTALL/config/patch" \
          "$DSH_INSTALL/config/phoenix" \
          "$DSH_INSTALL/config/cache" \
          "$DSH_INSTALL/workspaces/cases" \
+         "$DSH_INSTALL/workspaces/users" \
+         "$DSH_INSTALL/workspaces/shared" \
          "$DSH_INSTALL/workspaces/artifacts" \
-         "$DSH_INSTALL/packages/dsh-dds-core"
+         "$DSH_INSTALL/packages/dsh-dds-core" \
+         "$DSH_INSTALL/services/isolated-executor"
+
+# Workspace content is shared with the isolated executor through group DSH_GID.
+# Vaults, sessions, audit data, and other application state are intentionally excluded.
+chmod 0770 "$DSH_INSTALL/workspaces/cases" "$DSH_INSTALL/workspaces/users"
+chmod 0750 "$DSH_INSTALL/workspaces/shared"
 
 # 2. Strict & Safe Environment Variable Loader
 load_env_safely() {
@@ -80,39 +108,103 @@ else
     echo ""
     read -rp "  • DSH Web Port [default 3080]: " input_port
     
-    AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
-    VAULT_MASTER_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
+    AUTO_APPROVAL_SECRET="$(generate_secret)"
+    VAULT_MASTER_KEY="$(generate_secret)"
+    RESTART_CSRF_TOKEN="$(generate_secret)"
+    AUDIT_INTEGRITY_KEY="$(generate_secret)"
+    EXECUTOR_CAPABILITY_KEY="$(generate_secret)"
+    AUDIT_WRITER_TOKEN="$(generate_secret)"
+    PHOENIX_SECRET="$(generate_secret)"
+    PHOENIX_ADMIN_SECRET="dsh0_$(generate_secret)"
+    PHOENIX_INITIAL_PASSWORD="dsh0_$(generate_secret)"
     cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=${input_port:-3080}
 GEMINI_API_KEY=${input_gemini:-}
 OPENROUTER_API_KEY=${input_openrouter:-}
 GITHUB_PERSONAL_ACCESS_TOKEN=${input_github:-}
-PHOENIX_API_KEY=
+PHOENIX_ENABLE_AUTH=true
+PHOENIX_SECRET=${PHOENIX_SECRET}
+PHOENIX_ADMIN_SECRET=${PHOENIX_ADMIN_SECRET}
+PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_INITIAL_PASSWORD}
+PHOENIX_API_KEY=${PHOENIX_ADMIN_SECRET}
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
 DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
+DSH_RESTART_CSRF_TOKEN=${RESTART_CSRF_TOKEN}
+DSH_AUDIT_INTEGRITY_KEY=${AUDIT_INTEGRITY_KEY}
+DSH_AUDIT_WRITER_TOKEN=${AUDIT_WRITER_TOKEN}
+DSH_EXECUTOR_CAPABILITY_KEY=${EXECUTOR_CAPABILITY_KEY}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "✅ Generated $DSH_INSTALL/.env (mode 0600)"
     load_env_safely "$DSH_INSTALL/.env"
   else
-    AUTO_APPROVAL_SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
-    VAULT_MASTER_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null | head -n 1 || date +%s%N 2>/dev/null | sha256sum | head -c 64)"
+    AUTO_APPROVAL_SECRET="$(generate_secret)"
+    VAULT_MASTER_KEY="$(generate_secret)"
+    RESTART_CSRF_TOKEN="$(generate_secret)"
+    AUDIT_INTEGRITY_KEY="$(generate_secret)"
+    EXECUTOR_CAPABILITY_KEY="$(generate_secret)"
+    AUDIT_WRITER_TOKEN="$(generate_secret)"
+    PHOENIX_SECRET="$(generate_secret)"
+    PHOENIX_ADMIN_SECRET="dsh0_$(generate_secret)"
+    PHOENIX_INITIAL_PASSWORD="dsh0_$(generate_secret)"
     cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=3080
 GEMINI_API_KEY=
 OPENROUTER_API_KEY=
 GITHUB_PERSONAL_ACCESS_TOKEN=
-PHOENIX_API_KEY=
+PHOENIX_ENABLE_AUTH=true
+PHOENIX_SECRET=${PHOENIX_SECRET}
+PHOENIX_ADMIN_SECRET=${PHOENIX_ADMIN_SECRET}
+PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_INITIAL_PASSWORD}
+PHOENIX_API_KEY=${PHOENIX_ADMIN_SECRET}
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
 DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
+DSH_RESTART_CSRF_TOKEN=${RESTART_CSRF_TOKEN}
+DSH_AUDIT_INTEGRITY_KEY=${AUDIT_INTEGRITY_KEY}
+DSH_AUDIT_WRITER_TOKEN=${AUDIT_WRITER_TOKEN}
+DSH_EXECUTOR_CAPABILITY_KEY=${EXECUTOR_CAPABILITY_KEY}
 EOF
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "📝 Generated starter $DSH_INSTALL/.env template (mode 0600). You can populate keys anytime in .env."
     load_env_safely "$DSH_INSTALL/.env"
   fi
 fi
+
+# Upgrade-safe secret bootstrap: existing installations may predate the isolated
+# executor, external audit writer, and authenticated Phoenix gateway. Never reuse
+# one trust-domain secret for another.
+append_generated_env_secret() {
+  local variable_name="$1"
+  local prefix="${2:-}"
+  local current_value="${!variable_name:-}"
+  if [ -n "$current_value" ]; then return 0; fi
+  local generated_value
+  generated_value="${prefix}$(generate_secret)"
+  printf '\n%s=%s\n' "$variable_name" "$generated_value" >> "$DSH_INSTALL/.env"
+  export "$variable_name=$generated_value"
+}
+
+append_generated_env_secret DSH_RESTART_CSRF_TOKEN
+append_generated_env_secret DSH_AUDIT_INTEGRITY_KEY
+append_generated_env_secret DSH_AUDIT_WRITER_TOKEN
+append_generated_env_secret DSH_EXECUTOR_CAPABILITY_KEY
+append_generated_env_secret PHOENIX_SECRET
+append_generated_env_secret PHOENIX_ADMIN_SECRET 'dsh0_'
+append_generated_env_secret PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD 'dsh0_'
+if [ -z "${PHOENIX_API_KEY:-}" ]; then
+  printf '\nPHOENIX_API_KEY=%s\n' "$PHOENIX_ADMIN_SECRET" >> "$DSH_INSTALL/.env"
+  export PHOENIX_API_KEY="$PHOENIX_ADMIN_SECRET"
+fi
+if [ -z "${PHOENIX_ENABLE_AUTH:-}" ]; then
+  printf '\nPHOENIX_ENABLE_AUTH=true\n' >> "$DSH_INSTALL/.env"
+  export PHOENIX_ENABLE_AUTH=true
+elif [ "$PHOENIX_ENABLE_AUTH" != 'true' ] && [ "$PHOENIX_ENABLE_AUTH" != '1' ]; then
+  echo '❌ Phoenix authentication must be enabled. Set PHOENIX_ENABLE_AUTH=true in .env.' >&2
+  exit 1
+fi
+chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
 
 DSH_REF="${DSH_REF:-v2.0.0}"
 DSH_REPO_URL="${DSH_REPO_URL:-https://raw.githubusercontent.com/hdjebar/DSH-DDS}"
@@ -246,6 +338,12 @@ fetch_or_copy_file "config/doctor.mjs"
 fetch_or_copy_file "config/persona.mjs"
 
 fetch_or_copy_file "config/declarative-orchestrator.mjs"
+fetch_or_copy_file "config/outbound-security.mjs"
+fetch_or_copy_file "config/audit-client.mjs"
+fetch_or_copy_file "config/audit-writer-core.mjs"
+fetch_or_copy_file "config/audit-writer.mjs"
+fetch_or_copy_file "config/telemetry-gateway.mjs"
+fetch_or_copy_file "config/audit-checkpoints/.gitkeep"
 fetch_or_copy_file "config/rbac-policy.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
 # Stage settings.yaml for clean installs (FR-016)
@@ -261,6 +359,11 @@ fetch_or_copy_file "reset.sh"
 fetch_or_copy_file "docker-compose.sandbox.yml"
 fetch_or_copy_file "docker-compose.dev.yml"
 fetch_or_copy_file "docker/entrypoint.sh"
+fetch_or_copy_file "services/isolated-executor/server.mjs"
+fetch_or_copy_file "scripts/prepare_executor_workspaces.mjs"
+fetch_or_copy_file "scripts/migrate_tenant_partitions.mjs"
+fetch_or_copy_file "scripts/lib/tenant_partition_migration.mjs"
+fetch_or_copy_file "config/schemas/tenant-partition-migration-v1.schema.json"
 
 # Profiles
 fetch_or_copy_file "packages/dsh-dds-core/package.json"
@@ -277,6 +380,8 @@ fetch_or_copy_file "packages/dsh-dds-core/iam.js"
 fetch_or_copy_file "packages/dsh-dds-core/user-partition.js"
 fetch_or_copy_file "packages/dsh-dds-core/byok-vault.js"
 fetch_or_copy_file "packages/dsh-dds-core/net-trust.js"
+fetch_or_copy_file "packages/dsh-dds-core/execution-capability.js"
+fetch_or_copy_file "packages/dsh-dds-core/isolated-shell-executor.js"
 fetch_or_copy_file "config/profiles/web/pnpm-lock.yaml"
 fetch_or_copy_file "config/profiles/web/pnpm-workspace.yaml"
 fetch_or_copy_file "config/profiles/web/cordis.yml"
@@ -335,6 +440,12 @@ verify_and_promote_staged() {
     "config/doctor.mjs"
     "config/persona.mjs"
     "config/declarative-orchestrator.mjs"
+    "config/outbound-security.mjs"
+    "config/audit-client.mjs"
+    "config/audit-writer-core.mjs"
+    "config/audit-writer.mjs"
+    "config/telemetry-gateway.mjs"
+    "config/audit-checkpoints/.gitkeep"
     "config/rbac-policy.mjs"
     "config/settings.default.yaml"
     "config/settings.yaml"
@@ -343,6 +454,9 @@ verify_and_promote_staged() {
     "docker-compose.sandbox.yml"
     "docker-compose.dev.yml"
     "docker/entrypoint.sh"
+    "scripts/migrate_tenant_partitions.mjs"
+    "scripts/lib/tenant_partition_migration.mjs"
+    "config/schemas/tenant-partition-migration-v1.schema.json"
   )
   for f in "${required_staged[@]}"; do
     if [ ! -f "$DSH_INSTALL/$f" ] && [ ! -s "$STAGE_DIR/$f" ]; then
@@ -592,6 +706,17 @@ cat << 'EOF' > "$DSH_INSTALL/config/profiles/web/cordis.patch.yml"
     path: /var/lib/dsh/storages/settings.yaml
 - id: sub-model-access
   disabled: true
+- id: bash-sandbox
+  disabled: true
+- insert:
+    - id: dsh-dds-isolated-shell
+      name: '@dsh-dds/core/isolated-shell-executor'
+      config:
+        socketPath: /run/dsh-executor/executor.sock
+        cwd: /workspaces/cases
+        timeoutMs: 60000
+        maxTimeoutMs: 120000
+        maxOutputBytes: 65536
 - id: model-sync
   disabled: false
 - insert:
@@ -763,6 +888,7 @@ RUN for p in /var/lib/dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf 
 
 # Copy and link native in-tree @dsh-dds/core Cordis plugin
 COPY packages/dsh-dds-core /app/packages/dsh-dds-core
+COPY config/audit-writer-core.mjs config/audit-writer.mjs config/telemetry-gateway.mjs /app/services/
 RUN mkdir -p /usr/local/lib/node_modules/@dsh-dds /app/prebuilt-profiles/web/node_modules/@dsh-dds /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
     && ln -sfn /app/packages/dsh-dds-core /usr/local/lib/node_modules/@dsh-dds/core \
     && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/web/node_modules/@dsh-dds/core \
@@ -797,6 +923,23 @@ USER dsh:dsh
 WORKDIR /home/dsh
 
 ENTRYPOINT ["/usr/local/bin/dsh-entrypoint"]
+
+# Dedicated command-executor target. It deliberately inherits the pinned runtime so the
+# versioned Landlock launcher shipped with DSH is available, but runs a single narrow
+# Unix-socket service without the DSH entrypoint or application environment.
+FROM runner AS isolated-executor
+
+USER root
+COPY services/isolated-executor /app/services/isolated-executor
+RUN useradd --uid 11000 --gid dsh --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin dsh-executor \
+    && mkdir -p /run/dsh-executor \
+    && chown dsh-executor:dsh /run/dsh-executor \
+    && chmod 0770 /run/dsh-executor
+
+ENV NODE_OPTIONS=""
+USER dsh-executor:dsh
+WORKDIR /workspaces
+ENTRYPOINT ["node", "/app/services/isolated-executor/server.mjs"]
 EOF
 fi
 
@@ -826,7 +969,7 @@ services:
     volumes:
       - ./config:/etc/dsh:ro
       - ./config/sessions:/var/lib/dsh/sessions:rw
-      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/users:/var/lib/dsh/users:rw
       - ./config/storages:/var/lib/dsh/storages:rw
       - ./config/patch:/var/lib/dsh/patch:rw
       - ./config/personas:/var/lib/dsh/personas:ro
@@ -835,6 +978,7 @@ services:
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
       - ./workspaces/artifacts:/artifacts:rw
+      - executor-socket:/run/dsh-executor:rw
     tmpfs:
       - /run/dsh:rw,size=32m,mode=1777
       - /tmp:rw,size=512m,mode=1777
@@ -850,26 +994,146 @@ services:
       - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - GITHUB_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
       - DSH_TELEMETRY_MODE=FULL
-      - DSH_TELEMETRY_OTLP_URL=http://phoenix:6006/v1/traces
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
-      - PHOENIX_SECRET=${PHOENIX_SECRET:-}
+      - DSH_TELEMETRY_OTLP_URL=http://telemetry-gateway:4318/v1/traces
+      - PHOENIX_URL=http://telemetry-gateway:4318
+      - DSH_SERVICE_PROBE_ALLOW_HOSTS=telemetry-gateway
+      - DSH_SERVICE_PROBE_ALLOW_PORTS=4318
       - DSH_APPROVAL_PUBLIC_KEY=${DSH_APPROVAL_PUBLIC_KEY:-}
+      - DSH_RESTART_CSRF_TOKEN=${DSH_RESTART_CSRF_TOKEN:-}
       - DSH_VAULT_MASTER_KEY=${DSH_VAULT_MASTER_KEY:-}
       - DSH_HOME=/var/lib/dsh
       - DSH_CONFIG_DIR=/etc/dsh
-      # Pin the GRC JSONL trail onto the mounted ./config/audit volume. Without this,
-      # getGrcAuditLogPath() falls back to the container-internal /var/log/dsh and the
-      # file is lost on recreate, leaving only the lossy Phoenix span export.
-      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
+      # Authorization grants require a receipt from the separately trusted writer.
+      # This container has neither the ledger mount nor its integrity key.
+      - DSH_AUDIT_WRITER_URL=http://audit-writer:3091/v1/events
+      - DSH_AUDIT_WRITER_TOKEN=${DSH_AUDIT_WRITER_TOKEN:-}
+      - DSH_AUDIT_WRITER_REQUIRED=1
       - DSH_SETTINGS_FILE=/var/lib/dsh/storages/settings.yaml
+      # Legacy in-process escape hatch remains off. DSH_EXECUTOR_MODE routes approved
+      # shell calls to the separate capability-gated executor below.
+      - DSH_ALLOW_UNCONFINED_SHELL=${DSH_ALLOW_UNCONFINED_SHELL:-0}
+      - DSH_EXECUTOR_MODE=isolated
+      - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
+      - DSH_EXECUTOR_CAPABILITY_KEY=${DSH_EXECUTOR_CAPABILITY_KEY:-}
     depends_on:
-      phoenix:
+      telemetry-gateway:
         condition: service_healthy
+      audit-writer:
+        condition: service_healthy
+      isolated-executor:
+        condition: service_healthy
+    networks:
+      - dsh-runtime
+      - audit-internal
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+  audit-writer:
+    build: .
+    image: dsh-local:latest
+    entrypoint: ["node", "/app/services/audit-writer.mjs"]
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      - DSH_AUDIT_WRITER_PORT=3091
+      - DSH_AUDIT_WRITER_TOKEN=${DSH_AUDIT_WRITER_TOKEN:-}
+      - DSH_AUDIT_INTEGRITY_KEY=${DSH_AUDIT_INTEGRITY_KEY:-}
+      - DSH_AUDIT_LOG_FILE=/var/lib/dsh/audit/audit_grc.jsonl
+      - DSH_AUDIT_CHECKPOINT_FILE=/var/lib/dsh/checkpoints/audit_head.jsonl
+    volumes:
+      - ./config/audit:/var/lib/dsh/audit:rw
+      - ./config/audit-checkpoints:/var/lib/dsh/checkpoints:rw
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3091/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - audit-internal
+
+  telemetry-gateway:
+    build: .
+    image: dsh-local:latest
+    entrypoint: ["node", "/app/services/telemetry-gateway.mjs"]
+    user: "${DSH_UID:-1000}:${DSH_GID:-1000}"
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      - PORT=4318
+      - PHOENIX_UPSTREAM_URL=http://phoenix:6006
+      - PHOENIX_INGEST_TOKEN=${PHOENIX_API_KEY:-}
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4318/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      phoenix:
+        condition: service_healthy
+    networks:
+      - dsh-runtime
+      - phoenix-internal
+
+  isolated-executor:
+    build:
+      context: .
+      target: isolated-executor
+    image: dsh-isolated-executor:latest
+    restart: unless-stopped
+    init: true
+    read_only: true
+    network_mode: none
+    user: "11000:${DSH_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 1.0
+    environment:
+      - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
+      - DSH_EXECUTOR_CAPABILITY_KEY=${DSH_EXECUTOR_CAPABILITY_KEY:-}
+      # Commands share the executor PID namespace; serialize until per-invocation PID
+      # namespaces are available so tenants never execute concurrently.
+      - DSH_EXECUTOR_MAX_CONCURRENT=1
+    volumes:
+      - executor-socket:/run/dsh-executor:rw
+      - ./workspaces/users:/workspaces/users:rw
+      - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/shared:/workspaces/shared:ro
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m,mode=0700,uid=11000,gid=1000
+    healthcheck:
+      test: ["CMD", "node", "-e", "const n=require('net').connect('/run/dsh-executor/executor.sock');n.on('connect',()=>{n.end();process.exit(0)});n.on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   phoenix:
     image: arizephoenix/phoenix:20.5.0@sha256:39374ee6ad0c69c0a5e713e42e869f70ae99f681e0dbad374721a5ccecd0d54d
@@ -906,16 +1170,32 @@ services:
       - PHOENIX_PORT=6006
       - PHOENIX_GRPC_PORT=4317
       - PHOENIX_MAX_DAYS_RETENTION=14
-      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
       - PHOENIX_SECRET=${PHOENIX_SECRET:-}
-      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH:-false}
+      - PHOENIX_ADMIN_SECRET=${PHOENIX_ADMIN_SECRET:-}
+      - PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD:-}
+      - PHOENIX_ENABLE_AUTH=true
     volumes:
       - ./config/phoenix:/home/phoenix/.phoenix
+    networks:
+      - phoenix-internal
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  executor-socket:
+
+networks:
+  dsh-runtime:
+    driver: bridge
+  phoenix-internal:
+    driver: bridge
+    internal: true
+  audit-internal:
+    driver: bridge
+    internal: true
 EOF
 fi
 

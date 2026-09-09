@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -23,6 +25,10 @@ import { TRANSLATION_DICTIONARY } from '../packages/dsh-dds-core/localization.js
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
+const TEST_AUDIT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-core-audit-'));
+process.env.DSH_AUDIT_LOG_FILE = path.join(TEST_AUDIT_ROOT, 'audit_grc.jsonl');
+process.env.DSH_AUDIT_INTEGRITY_KEY = 'core-test-audit-integrity-key-32-bytes';
+test.after(() => fs.rmSync(TEST_AUDIT_ROOT, { recursive: true, force: true }));
 
 test('Core Plugin: package manifest and exports contract', () => {
   assert.equal(name, '@dsh-dds/core');
@@ -104,6 +110,47 @@ test('Core Gateway: registers restart and health endpoints on mock webServer', a
   const healthJson = JSON.parse(healthBody);
   assert.equal(healthJson.status, 'healthy');
   assert.ok(healthJson.timestamp);
+});
+
+test('Core Gateway: restart requires local transport, same origin, admin, and CSRF token', async () => {
+  const routes = new Map();
+  const webServer = {
+    server: { prependListener() {} },
+    register(route) { routes.set(route.path, route); }
+  };
+  registerGatewayMiddleware({ webServer }, { restartCsrfToken: 'restart-test-token' });
+  const handler = routes.get('/dsh-dds/lifecycle/restart').handler;
+  const invoke = async (overrides = {}) => {
+    const req = {
+      method: 'POST',
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: {
+        host: 'localhost:3080',
+        origin: 'http://localhost:3080',
+        'x-dsh-csrf-token': 'restart-test-token'
+      },
+      user: { id: 'admin', roles: ['admin'] },
+      ...overrides
+    };
+    let statusCode = 0;
+    let body = '';
+    const res = { set statusCode(code) { statusCode = code; }, setHeader() {}, end(value) { body = value; } };
+    await handler(req, res);
+    return { statusCode, body: JSON.parse(body) };
+  };
+
+  assert.equal((await invoke({ socket: { remoteAddress: '203.0.113.10' } })).statusCode, 403);
+  assert.equal((await invoke({ headers: { host: 'localhost:3080', origin: 'http://evil.example', 'x-dsh-csrf-token': 'restart-test-token' } })).statusCode, 403);
+  assert.equal((await invoke({ user: { id: 'alice', roles: ['user'] } })).statusCode, 403);
+  assert.equal((await invoke({ headers: { host: 'localhost:3080', origin: 'http://localhost:3080' } })).statusCode, 403);
+});
+
+test('Installer secret generation has only cryptographic sources and fails closed', () => {
+  const installer = fs.readFileSync(path.join(ROOT, 'install_dsh.sh'), 'utf8');
+  assert.match(installer, /generate_secret\(\)/);
+  assert.match(installer, /node:crypto/);
+  assert.match(installer, /\/dev\/urandom/);
+  assert.doesNotMatch(installer, /date \+%s%N/);
 });
 
 test('Core Localization: registerLocalizationTap transforms index HTML cleanly', () => {
@@ -269,7 +316,7 @@ test('Core RBAC Interceptor: intercepts and blocks unauthorized tool actions', a
       if (event === 'tool-execute') beforeHook = fn;
     }
   };
-  registerRbacInterceptor(noUserCtx, { enableToolRbac: true });
+  registerRbacInterceptor(noUserCtx, { enableToolRbac: true, authEnabled: true });
   await assert.rejects(
     async () => {
       await beforeHook({
@@ -309,7 +356,7 @@ test('Core Plugin: registerBashWorkdirShim guarantees spec.workdir exists and fa
 
   class MockExecutor {
     spawnSpec(spec, argv, stdoutMaxBytes, signal) {
-      return { cwd: spec.workdir, argv };
+      return { cwd: spec.workdir, env: spec.env, argv };
     }
   }
 
@@ -322,9 +369,22 @@ test('Core Plugin: registerBashWorkdirShim guarantees spec.workdir exists and fa
   const targetDir = path.join(tmpBase, 'sub', 'workspace');
   assert.equal(fs.existsSync(targetDir), false);
 
-  const res1 = instance.spawnSpec({ workdir: targetDir }, ['ls'], 1024, null);
+  const res1 = instance.spawnSpec({
+    workdir: targetDir,
+    env: {
+      PATH: '/usr/bin:/bin',
+      HOME: '/home/dsh',
+      OPENROUTER_API_KEY: 'must-not-reach-shell',
+      DSH_VAULT_MASTER_KEY: 'must-not-reach-shell'
+    }
+  }, ['ls'], 1024, null);
   assert.equal(res1.cwd, targetDir);
   assert.equal(fs.existsSync(targetDir), true, 'Target directory must be auto-created');
+  assert.deepEqual(res1.argv, ['ls']);
+  assert.equal(res1.env?.PATH, '/usr/bin:/bin');
+  assert.equal(res1.env?.HOME, '/home/dsh');
+  assert.equal(res1.env?.OPENROUTER_API_KEY, undefined, 'Provider credentials must not reach shell children');
+  assert.equal(res1.env?.DSH_VAULT_MASTER_KEY, undefined, 'Vault credentials must not reach shell children');
 
   // Test 2: Invalid/throwing directory falls back to an existing directory
   // E.g., a path under a regular file causes mkdirSync to fail with ENOTDIR
@@ -409,9 +469,12 @@ test('Core RBAC Interceptor: TOOL_ACTION_MAP precedence and prototype isolation'
   };
   registerRbacInterceptor(mockCtx, { enableToolRbac: true });
 
-  // 1. Precedence: toolName 'bash' beats generic action 'execute' -> maps to run_shell
-  await assert.doesNotReject(async () => {
-    await beforeHook({
+  // 1. Precedence: toolName 'bash' beats generic action 'execute' -> maps to run_shell.
+  // This legacy behavior is reachable only through the explicit trusted-operator escape hatch.
+  const previousShellEscape = process.env.DSH_ALLOW_UNCONFINED_SHELL;
+  process.env.DSH_ALLOW_UNCONFINED_SHELL = '1';
+  try {
+    await assert.doesNotReject(async () => beforeHook({
       toolName: 'bash',
       action: 'execute',
       workdir: '/workspaces/cases',
@@ -429,8 +492,11 @@ test('Core RBAC Interceptor: TOOL_ACTION_MAP precedence and prototype isolation'
           }
         }
       }
-    });
-  });
+    }));
+  } finally {
+    if (previousShellEscape === undefined) delete process.env.DSH_ALLOW_UNCONFINED_SHELL;
+    else process.env.DSH_ALLOW_UNCONFINED_SHELL = previousShellEscape;
+  }
 
   // 2. Prototype pollution injection attempts fail closed
   await assert.rejects(
@@ -499,8 +565,11 @@ test('Core RBAC Interceptor: shell command is separated from target path and che
     }
   };
 
-  // 1. Non-path command string inside allowed workdir must NOT fail write allowlist checks
-  await assert.doesNotReject(async () => {
+  const previousShellEscape = process.env.DSH_ALLOW_UNCONFINED_SHELL;
+  process.env.DSH_ALLOW_UNCONFINED_SHELL = '1';
+  try {
+    // 1. Non-path command string inside allowed workdir must NOT fail write allowlist checks
+    await assert.doesNotReject(async () => {
     await beforeHook({
       toolName: 'bash',
       command: 'npm test -- --coverage',
@@ -510,7 +579,7 @@ test('Core RBAC Interceptor: shell command is separated from target path and che
   });
 
   // 2. Shell command containing denied token must be rejected with RBAC_DENY_VIOLATION
-  await assert.rejects(
+    await assert.rejects(
     async () => {
       await beforeHook({
         toolName: 'bash',
@@ -523,7 +592,7 @@ test('Core RBAC Interceptor: shell command is separated from target path and che
   );
 
   // 3. Shell command targeting denied pattern rm -rf /
-  await assert.rejects(
+    await assert.rejects(
     async () => {
       await beforeHook({
         toolName: 'bash',
@@ -533,7 +602,11 @@ test('Core RBAC Interceptor: shell command is separated from target path and che
       });
     },
     /Command '.*' contains denied token 'rm -rf \/'/
-  );
+    );
+  } finally {
+    if (previousShellEscape === undefined) delete process.env.DSH_ALLOW_UNCONFINED_SHELL;
+    else process.env.DSH_ALLOW_UNCONFINED_SHELL = previousShellEscape;
+  }
 });
 
 test('Core RBAC Interceptor: fails closed when policy engine is unavailable', async () => {
@@ -609,24 +682,46 @@ test('Shell deny tripwire: documents that command-string inspection is not conta
     workdir: '/workspaces/cases'
   });
 
-  // The tripwire fires on the literal token and is reported as suspicious, not as
-  // path containment.
-  const tripped = enforceRbacPolicy(persona, shellStep('cat /etc/passwd'));
-  assert.equal(tripped.allowed, false);
-  assert.equal(tripped.code, 'RBAC_SUSPICIOUS_COMMAND');
+  const previousShellEscape = process.env.DSH_ALLOW_UNCONFINED_SHELL;
+  const previousSandbox = process.env.DSH_SANDBOX;
+
+  delete process.env.DSH_ALLOW_UNCONFINED_SHELL;
+  delete process.env.DSH_SANDBOX;
+  const contained = enforceRbacPolicy(persona, shellStep('cat /e""tc/passwd'));
+  assert.equal(contained.allowed, false, 'unconfined shell must be denied by default');
+  assert.equal(contained.code, 'RBAC_SHELL_ISOLATION_REQUIRED');
+
+  process.env.DSH_ALLOW_UNCONFINED_SHELL = '1';
+  try {
+    // The tripwire fires on the literal token and is reported as suspicious, not as
+    // path containment.
+    const tripped = enforceRbacPolicy(persona, shellStep('cat /etc/passwd'));
+    assert.equal(tripped.allowed, false);
+    assert.equal(tripped.code, 'RBAC_SUSPICIOUS_COMMAND');
 
   // Trivially evaded by shell quoting. This assertion is deliberate: it pins the
   // documented limitation so nobody mistakes the tripwire for enforcement. Confinement
   // of run_shell comes from the workdir allowlist plus the container controls.
-  const evaded = enforceRbacPolicy(persona, shellStep('cat /e""tc/passwd'));
-  assert.equal(evaded.allowed, true, 'string blocklists cannot confine a shell; this is expected');
+    const evaded = enforceRbacPolicy(persona, shellStep('cat /e""tc/passwd'));
+    assert.equal(evaded.allowed, true, 'escape hatch accepts the documented unconfined risk');
 
   // The workdir allowlist is the control that actually holds.
-  const outside = enforceRbacPolicy(persona, {
-    name: 'bash', action: 'run_shell', target: '/root', command: 'ls', workdir: '/root'
-  });
-  assert.equal(outside.allowed, false);
-  assert.equal(outside.code, 'RBAC_WRITE_UNAUTHORIZED');
+    const outside = enforceRbacPolicy(persona, {
+      name: 'bash', action: 'run_shell', target: '/root', command: 'ls', workdir: '/root'
+    });
+    assert.equal(outside.allowed, false);
+    assert.equal(outside.code, 'RBAC_WRITE_UNAUTHORIZED');
+
+    process.env.DSH_SANDBOX = '1';
+    const sandboxed = enforceRbacPolicy(persona, shellStep('pwd'));
+    assert.equal(sandboxed.allowed, false, 'sandbox must ignore the unconfined-shell escape hatch');
+    assert.equal(sandboxed.code, 'RBAC_SHELL_ISOLATION_REQUIRED');
+  } finally {
+    if (previousShellEscape === undefined) delete process.env.DSH_ALLOW_UNCONFINED_SHELL;
+    else process.env.DSH_ALLOW_UNCONFINED_SHELL = previousShellEscape;
+    if (previousSandbox === undefined) delete process.env.DSH_SANDBOX;
+    else process.env.DSH_SANDBOX = previousSandbox;
+  }
 });
 
 test('GRC correlation: in-line PEP records carry a real trace_id, not null', async () => {
@@ -754,6 +849,5 @@ test('PEP In-Line Hook: tools/pre-execute waterfall intercepts real tool calls a
   };
   const shellResult = await preHook(shellExec, async () => ({ kind: 'allow' }));
   assert.equal(shellResult.kind, 'deny');
-  assert.match(shellResult.reason, /Zero-Trust RBAC Violation.*denied token/);
+  assert.match(shellResult.reason, /Zero-Trust RBAC Violation.*Unconfined shell execution is disabled/);
 });
-

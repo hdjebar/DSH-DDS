@@ -11,19 +11,47 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { sanitizeUserId } from './iam.js';
+import { deriveUserPartitionId } from './iam.js';
+
+function partitionIdentity(identity) {
+  if (identity && typeof identity === 'object') {
+    return {
+      id: identity.id || identity.sub,
+      issuer: identity.issuer || identity.iss || 'dsh-local'
+    };
+  }
+  return { id: identity, issuer: 'dsh-local' };
+}
+
+function validateLegacyPartitionMap(map = {}) {
+  const destinations = new Set();
+  for (const [partitionId, legacyId] of Object.entries(map)) {
+    if (!/^u2_[A-Za-z0-9_-]{43}$/.test(partitionId) || !/^[a-z0-9_-]+$/.test(legacyId)) {
+      throw new Error('Invalid legacy partition migration map');
+    }
+    if (destinations.has(legacyId)) {
+      throw new Error(`Ambiguous legacy partition migration mapping for '${legacyId}'`);
+    }
+    destinations.add(legacyId);
+  }
+  return Object.freeze({ ...map });
+}
 
 export class UserPartitionManager {
   constructor(options = {}) {
     this.userStateBase = options.userStateBase || process.env.DSH_USER_STATE_BASE || '/var/lib/dsh/users';
     this.workspaceBase = options.workspaceBase || process.env.DSH_WORKSPACE_ROOT || '/workspaces';
+    this.legacyPartitionMap = validateLegacyPartitionMap(options.legacyPartitionMap);
   }
 
-  getUserPaths(userId) {
-    const cleanId = sanitizeUserId(userId);
+  getUserPaths(identity) {
+    const { id, issuer } = partitionIdentity(identity);
+    const cleanId = deriveUserPartitionId(id, issuer);
     const userDir = path.resolve(this.userStateBase, cleanId);
+    const legacyId = this.legacyPartitionMap[cleanId] || null;
     return {
       userId: cleanId,
+      legacyUserId: legacyId,
       root: userDir,
       sessions: path.join(userDir, 'sessions'),
       storages: path.join(userDir, 'storages'),
@@ -33,8 +61,8 @@ export class UserPartitionManager {
     };
   }
 
-  ensureUserPartition(userId) {
-    const paths = this.getUserPaths(userId);
+  ensureUserPartition(identity) {
+    const paths = this.getUserPaths(identity);
     const dirsToCreate = [
       paths.root,
       paths.sessions,
@@ -72,9 +100,12 @@ export class UserPartitionManager {
       return { allowed: true, reason: 'Admin role grants unrestricted access' };
     }
 
-    const userId = sanitizeUserId(user?.id);
+    if (!user?.id) {
+      return { allowed: false, reason: 'Missing authenticated user identity' };
+    }
+    const userPaths = this.getUserPaths(user);
+    const userId = userPaths.userId;
     const resolvedTarget = path.resolve(targetPath);
-    const userPaths = this.getUserPaths(userId);
 
     const isInside = (target, base) => {
       const rel = path.relative(base, target);
@@ -87,6 +118,12 @@ export class UserPartitionManager {
       userPaths.workspace,
       userPaths.sharedWorkspace
     ];
+    if (userPaths.legacyUserId) {
+      allowedRoots.push(
+        path.resolve(this.userStateBase, userPaths.legacyUserId),
+        path.resolve(this.workspaceBase, 'users', userPaths.legacyUserId)
+      );
+    }
 
     const isAllowed = allowedRoots.some(root => isInside(resolvedTarget, root) || resolvedTarget === root);
     if (isAllowed) {

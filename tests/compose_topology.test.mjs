@@ -150,23 +150,21 @@ test('Developer Compose: live-reload bind mounts isolated to dev override', () =
   );
 });
 
-test('GRC Audit Durability: base compose pins the audit log onto a mounted volume', () => {
+test('GRC Audit Durability: a separate writer exclusively owns ledger and checkpoint mounts', () => {
   const compose = yaml.parse(fs.readFileSync(BASE_COMPOSE_PATH, 'utf8'));
   const dsh = compose.services.dsh;
-
-  const entry = dsh.environment.find(e => String(e).startsWith('DSH_AUDIT_LOG_FILE='));
-  assert.ok(
-    entry,
-    'Base compose must set DSH_AUDIT_LOG_FILE; the getGrcAuditLogPath() default (/var/log/dsh) '
-    + 'is container-internal and is destroyed by docker compose up --force-recreate'
-  );
-
-  const auditPath = entry.split('=').slice(1).join('=');
-  const mountTargets = dsh.volumes.map(v => String(v).split(':')[1]).filter(Boolean);
-  assert.ok(
-    mountTargets.some(t => auditPath === t || auditPath.startsWith(t.endsWith('/') ? t : `${t}/`)),
-    `DSH_AUDIT_LOG_FILE (${auditPath}) must resolve inside a mounted volume, got mounts: ${mountTargets.join(', ')}`
-  );
+  const writer = compose.services['audit-writer'];
+  assert.ok(writer, 'Base compose must define the external audit writer');
+  assert.ok(!dsh.volumes.some(value => String(value).includes('/var/lib/dsh/audit')), 'dsh must not mount audit storage');
+  assert.ok(!dsh.environment.some(value => String(value).startsWith('DSH_AUDIT_INTEGRITY_KEY=')), 'dsh must not hold the audit integrity key');
+  assert.ok(dsh.environment.includes('DSH_AUDIT_WRITER_REQUIRED=1'), 'dsh must fail closed when the writer is unavailable');
+  assert.ok(writer.volumes.some(value => String(value).endsWith('/var/lib/dsh/audit:rw')), 'writer must own the ledger mount');
+  assert.ok(writer.volumes.some(value => String(value).endsWith('/var/lib/dsh/checkpoints:rw')), 'writer must own the checkpoint mount');
+  assert.ok(writer.environment.some(value => String(value).startsWith('DSH_AUDIT_INTEGRITY_KEY=')), 'only the writer receives the audit key');
+  assert.ok(!writer.volumes.some(value => String(value).includes('/etc/dsh')), 'writer must not mount the full configuration tree');
+  assert.deepEqual(writer.networks, ['audit-internal'], 'writer must use its dedicated internal network');
+  assert.ok(dsh.networks.includes('audit-internal'), 'dsh must reach the writer on the dedicated internal network');
+  assert.equal(compose.networks['audit-internal'].internal, true);
 });
 
 test('GRC Audit Durability: getGrcAuditLogPath honours DSH_AUDIT_LOG_FILE over the internal default', async () => {
@@ -179,4 +177,23 @@ test('GRC Audit Durability: getGrcAuditLogPath honours DSH_AUDIT_LOG_FILE over t
     if (prev === undefined) delete process.env.DSH_AUDIT_LOG_FILE;
     else process.env.DSH_AUDIT_LOG_FILE = prev;
   }
+});
+
+test('Phoenix authentication and management-plane isolation are enabled by default', () => {
+  const compose = yaml.parse(fs.readFileSync(BASE_COMPOSE_PATH, 'utf8'));
+  const dsh = compose.services.dsh;
+  const phoenix = compose.services.phoenix;
+  const gateway = compose.services['telemetry-gateway'];
+
+  assert.ok(phoenix.environment.includes('PHOENIX_ENABLE_AUTH=true'));
+  assert.ok(phoenix.environment.some(value => String(value).startsWith('PHOENIX_ADMIN_SECRET=')));
+  assert.ok(!dsh.environment.some(value => String(value).startsWith('PHOENIX_SECRET=')));
+  assert.ok(!dsh.environment.some(value => String(value).startsWith('PHOENIX_API_KEY=')));
+  assert.deepEqual(dsh.networks, ['dsh-runtime', 'audit-internal']);
+  assert.deepEqual(phoenix.networks, ['phoenix-internal']);
+  assert.ok(gateway.networks.includes('dsh-runtime'));
+  assert.ok(gateway.networks.includes('phoenix-internal'));
+  assert.ok(!gateway.volumes, 'telemetry gateway must use immutable image code without the full config mount');
+  assert.equal(compose.networks['phoenix-internal'].internal, true);
+  assert.ok(dsh.environment.includes('DSH_TELEMETRY_OTLP_URL=http://telemetry-gateway:4318/v1/traces'));
 });

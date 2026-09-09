@@ -32,6 +32,7 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 | 💡 **Backlog** | **External Repo Assistant Brainstorm (Host Tier)** | `v2.1.0` | Discovery & Spikes | [`backlog/ideation/brainstorm-repo-intelligence-assistant.md`](backlog/ideation/brainstorm-repo-intelligence-assistant.md) |
 | 💡 **Backlog** | **SOTA Research: External Repo Assistant** | `v2.1.0` | System Architecture | [`backlog/ideation/sota-research-external-repo-assistant.md`](backlog/ideation/sota-research-external-repo-assistant.md) |
 | 💡 **Backlog** | **Backlog & Ideation Hub** | Ongoing | Process | [`backlog/README.md`](backlog/README.md) |
+| 🚧 **In Progress** | **September 2026 Security Audit Remediation** | Next security release | Security & Multi-Tenancy | [`in-progress/epic-security-audit-2026-09-remediation.md`](in-progress/epic-security-audit-2026-09-remediation.md) |
 | 📋 **To Do** | **External Repo AI Assistant (Host & IDE Tier)** | `v2.1.0` | Developer Tooling | [`todo/epic-repo-intelligence-assistant.md`](todo/epic-repo-intelligence-assistant.md) |
 | 📋 **To Do** | **Temporal Durable Execution** | `v2.2.0` | Reliability | [`todo/epic-temporal-durable-execution.md`](todo/epic-temporal-durable-execution.md) |
 | 📋 **To Do** | **ISO 42001 & EU AI Act Audit Kit** | `v2.2.0` | Compliance | [`todo/epic-iso-42001-audit-kit.md`](todo/epic-iso-42001-audit-kit.md) |

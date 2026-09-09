@@ -9,6 +9,8 @@
     "./loader": "./loader.mjs",
     "./loader.mjs": "./loader.mjs",
     "./loader-hooks": "./loader-hooks.mjs",
-    "./loader-hooks.mjs": "./loader-hooks.mjs"
+    "./loader-hooks.mjs": "./loader-hooks.mjs",
+    "./isolated-shell-executor": "./isolated-shell-executor.js",
+    "./execution-capability": "./execution-capability.js"
   }
 }

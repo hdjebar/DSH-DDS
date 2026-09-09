@@ -15,13 +15,21 @@ import {
   decryptSecret,
   handleVaultApiRequest,
   registerRbacInterceptor,
-  registerGatewayMiddleware
+  registerGatewayMiddleware,
+  deriveUserPartitionId,
+  legacyUserPartitionId
 } from '../packages/dsh-dds-core/index.js';
 import { EventEmitter } from 'node:events';
+
+const TEST_AUDIT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-multi-user-audit-'));
+process.env.DSH_AUDIT_LOG_FILE = path.join(TEST_AUDIT_ROOT, 'audit_grc.jsonl');
+process.env.DSH_AUDIT_INTEGRITY_KEY = 'multi-user-test-audit-integrity-key-32-bytes';
+test.after(() => fs.rmSync(TEST_AUDIT_ROOT, { recursive: true, force: true }));
 
 test('IAM Service: default fallback when unauthenticated in single-operator mode', () => {
   const result = extractUserFromHeaders({}, { authEnabled: false });
   assert.equal(result.id, 'default');
+  assert.match(result.partitionId, /^u2_[A-Za-z0-9_-]{43}$/);
   assert.equal(result.name, 'Default Operator');
   assert.deepEqual(result.roles, ['admin']);
   assert.deepEqual(result.permissions, ['*']);
@@ -45,6 +53,7 @@ test('IAM Service: extracts user identity from custom gateway headers only from 
   // Trusted gateway with trustProxyHeaders enabled -> Successfully extracts user identity
   const result = extractUserFromHeaders(headers, { authEnabled: false, trustProxyHeaders: true, remoteAddress: '127.0.0.1' });
   assert.equal(result.id, 'alice_99');
+  assert.equal(result.issuer, 'dsh-gateway');
   assert.equal(result.name, 'Alice Analyst');
   assert.deepEqual(result.roles, ['data-analyst', 'researcher']);
   assert.deepEqual(result.permissions, ['workspace:read', 'workspace:write']);
@@ -70,6 +79,7 @@ test('IAM Service: enforces bearer token validation when auth is enabled', () =>
 
   const authed = extractUserFromHeaders({ authorization: `Bearer ${token}` }, { authEnabled: true, authSecret: secret });
   assert.equal(authed.id, 'bob_sec');
+  assert.equal(authed.issuer, 'dsh-local');
   assert.equal(authed.name, 'Bob Auditor');
   assert.deepEqual(authed.roles, ['security-auditor']);
 
@@ -88,9 +98,9 @@ test('UserPartitionManager: generates scoped directories and enforces path bound
   try {
     const mgr = new UserPartitionManager({ userStateBase: userBase, workspaceBase: wsBase });
     const paths = mgr.getUserPaths('alice');
-    assert.equal(paths.userId, 'alice');
-    assert.equal(paths.sessions, path.join(userBase, 'alice', 'sessions'));
-    assert.equal(paths.workspace, path.join(wsBase, 'users', 'alice'));
+    assert.equal(paths.userId, deriveUserPartitionId('alice'));
+    assert.equal(paths.sessions, path.join(userBase, paths.userId, 'sessions'));
+    assert.equal(paths.workspace, path.join(wsBase, 'users', paths.userId));
     assert.equal(paths.sharedWorkspace, path.join(wsBase, 'shared'));
 
     // Admin user has global access
@@ -98,7 +108,7 @@ test('UserPartitionManager: generates scoped directories and enforces path bound
     assert.equal(adminCheck.allowed, true);
 
     // Alice accessing her own workspace
-    const aliceSelf = mgr.validatePathAccess(path.join(wsBase, 'users', 'alice', 'data.csv'), { id: 'alice', roles: ['user'] });
+    const aliceSelf = mgr.validatePathAccess(path.join(paths.workspace, 'data.csv'), { id: 'alice', roles: ['user'] });
     assert.equal(aliceSelf.allowed, true);
 
     // Alice accessing shared workspace
@@ -163,6 +173,168 @@ test('ByokVault: AES-256-GCM encryption and per-user key management', () => {
   }
 });
 
+test('Identity partitions: v2 IDs are versioned, issuer-bound, case-sensitive, and collision-resistant', () => {
+  const oldCollisionSet = [
+    'alice@example.com',
+    'alice+example.com',
+    'alice/example.com'
+  ];
+  assert.equal(new Set(oldCollisionSet.map(legacyUserPartitionId)).size, 1);
+  assert.equal(new Set(oldCollisionSet.map(id => deriveUserPartitionId(id))).size, oldCollisionSet.length);
+  assert.notEqual(deriveUserPartitionId('Alice'), deriveUserPartitionId('alice'));
+  assert.notEqual(
+    deriveUserPartitionId('alice', 'https://idp-a.example'),
+    deriveUserPartitionId('alice', 'https://idp-b.example')
+  );
+  assert.match(deriveUserPartitionId('alice'), /^u2_[A-Za-z0-9_-]{43}$/);
+});
+
+test('User partitions: legacy access is explicit and ambiguous migration maps fail closed', () => {
+  const alice = { id: 'alice@example.com', issuer: 'legacy-idp' };
+  const alicePartition = deriveUserPartitionId(alice.id, alice.issuer);
+  const legacyId = legacyUserPartitionId(alice.id);
+  const baseOptions = { userStateBase: '/state/users', workspaceBase: '/workspaces' };
+
+  const unmapped = new UserPartitionManager(baseOptions);
+  assert.equal(
+    unmapped.validatePathAccess(`/workspaces/users/${legacyId}/report.md`, { ...alice, roles: ['user'] }).allowed,
+    false
+  );
+
+  const mapped = new UserPartitionManager({
+    ...baseOptions,
+    legacyPartitionMap: { [alicePartition]: legacyId }
+  });
+  assert.equal(
+    mapped.validatePathAccess(`/workspaces/users/${legacyId}/report.md`, { ...alice, roles: ['user'] }).allowed,
+    true
+  );
+  assert.throws(() => new UserPartitionManager({
+    ...baseOptions,
+    legacyPartitionMap: {
+      [alicePartition]: legacyId,
+      [deriveUserPartitionId('alice+example.com', alice.issuer)]: legacyId
+    }
+  }), /Ambiguous legacy partition migration mapping/);
+});
+
+test('IAM Service: request identity is immutable and isolated across concurrent async contexts', async () => {
+  const iam = new IamService(null, { authEnabled: true });
+  const alice = { id: 'alice', issuer: 'idp', roles: ['user'] };
+  const bob = { id: 'bob', issuer: 'idp', roles: ['security-auditor'] };
+  let releaseAlice;
+  const aliceGate = new Promise(resolve => { releaseAlice = resolve; });
+
+  const aliceRequest = iam.runWithUser(alice, async () => {
+    assert.equal(iam.getCurrentUser().id, 'alice');
+    await aliceGate;
+    assert.equal(iam.getCurrentUser().id, 'alice');
+    assert.throws(() => { iam.getCurrentUser().roles.push('admin'); }, TypeError);
+  });
+  const bobRequest = iam.runWithUser(bob, async () => {
+    await Promise.resolve();
+    assert.equal(iam.getCurrentUser().id, 'bob');
+    releaseAlice();
+  });
+
+  await Promise.all([aliceRequest, bobRequest]);
+  assert.equal(iam.getCurrentUser(), null, 'authenticated mode must not retain a global user');
+});
+
+test('In-Line PEP: authenticated mode ignores mutable ctx.user fallback', async () => {
+  let beforeHook;
+  const mutableCtx = {
+    user: { id: 'bob', roles: ['admin'] },
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+  registerRbacInterceptor(mutableCtx, { enableToolRbac: true, authEnabled: true });
+  await assert.rejects(
+    beforeHook({ toolName: 'read_file', target: '/workspaces/shared/readme.md' }),
+    /Missing authenticated user identity context/
+  );
+});
+
+test('In-Line PEP: concurrent request contexts keep authorization principals isolated', async () => {
+  const iam = new IamService(null, { authEnabled: true });
+  let beforeHook;
+  const ctx = {
+    get(name) { return name === 'iam' ? iam : null; },
+    before(event, fn) { if (event === 'tool-execute') beforeHook = fn; }
+  };
+  const rbacEngine = {
+    enforceRbacPolicy() { return { allowed: true, role: 'user' }; },
+    logGrcAuditEvent() {}
+  };
+  registerRbacInterceptor(ctx, {
+    enableToolRbac: true,
+    authEnabled: true,
+    rbacEngine,
+    userStateBase: '/state/users',
+    workspaceBase: '/workspaces'
+  });
+
+  const alice = { id: 'alice', issuer: 'idp', roles: ['user'] };
+  const bob = { id: 'bob', issuer: 'idp', roles: ['user'] };
+  const aliceWorkspace = `/workspaces/users/${deriveUserPartitionId('alice', 'idp')}`;
+  const bobWorkspace = `/workspaces/users/${deriveUserPartitionId('bob', 'idp')}`;
+
+  await Promise.all([
+    iam.runWithUser(alice, async () => {
+      await Promise.resolve();
+      await assert.doesNotReject(beforeHook({ toolName: 'read_file', target: `${aliceWorkspace}/own.txt` }));
+      await assert.rejects(
+        beforeHook({ toolName: 'read_file', target: `${bobWorkspace}/secret.txt` }),
+        /Multi-tenant violation/
+      );
+    }),
+    iam.runWithUser(bob, async () => {
+      await Promise.resolve();
+      await assert.doesNotReject(beforeHook({ toolName: 'read_file', target: `${bobWorkspace}/own.txt` }));
+    })
+  ]);
+});
+
+test('BYOK Vault: legacy reads require an injective migration manifest and writes copy forward to v2', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-vault-migration-'));
+  const masterSecret = 'test-master-key-cryptographic-secret-32b';
+  const identity = { id: 'alice@example.com', issuer: 'legacy-idp' };
+  const partitionId = deriveUserPartitionId(identity.id, identity.issuer);
+  const legacyId = legacyUserPartitionId(identity.id);
+  const legacyPath = path.join(tmpDir, legacyId, 'storages', 'vault.enc.json');
+
+  try {
+    fs.mkdirSync(path.dirname(legacyPath), { recursive: true });
+    fs.writeFileSync(legacyPath, JSON.stringify({ openrouter: encryptSecret('legacy-secret', masterSecret) }));
+
+    const unmapped = new ByokVault({ masterSecret, userStateBase: tmpDir });
+    assert.equal(unmapped.getApiKey(identity, 'openrouter'), null);
+
+    const mapped = new ByokVault({
+      masterSecret,
+      userStateBase: tmpDir,
+      legacyPartitionMap: { [partitionId]: legacyId }
+    });
+    assert.equal(mapped.getApiKey(identity, 'openrouter'), 'legacy-secret');
+    mapped.setApiKey(identity, 'gemini', 'new-secret');
+    assert.ok(fs.existsSync(mapped.getVaultPath(identity)));
+    assert.ok(fs.existsSync(legacyPath), 'legacy source remains available for rollback');
+    assert.equal(mapped.getApiKey(identity, 'openrouter'), 'legacy-secret');
+
+    assert.throws(() => new ByokVault({
+      masterSecret,
+      userStateBase: tmpDir,
+      legacyPartitionMap: {
+        [partitionId]: legacyId,
+        [deriveUserPartitionId('alice+example.com', identity.issuer)]: legacyId
+      }
+    }), /Ambiguous legacy vault migration mapping/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('In-Line PEP: enforces multi-tenant workspace confinement during tool execution', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-pep-tenant-'));
   const realTmpDir = fs.realpathSync(tmpDir);
@@ -191,7 +363,7 @@ test('In-Line PEP: enforces multi-tenant workspace confinement during tool execu
         user: { id: 'alice', roles: ['user'] },
         toolName: 'read_file',
         action: 'read_file',
-        target: path.join(wsBase, 'users', 'alice', 'document.txt')
+        target: path.join(wsBase, 'users', deriveUserPartitionId('alice'), 'document.txt')
       });
     });
 
@@ -351,3 +523,39 @@ test('BYOK Vault Gateway Endpoint: returns 500 JSON when master key is missing w
   assert.match(json.message, /VAULT_MASTER_KEY_MISSING/);
 });
 
+test('BYOK Vault Gateway Endpoint: authenticated mode rejects missing request identity before vault access', async () => {
+  const routes = new Map();
+  let vaultAccessed = false;
+  const mockCtx = {
+    webServer: {
+      server: { prependListener() {} },
+      register(route) { routes.set(route.path, route); }
+    },
+    get(name) {
+      if (name === 'iam') return { getCurrentUser: () => null };
+      if (name === 'byokVault') {
+        vaultAccessed = true;
+        throw new Error('vault must not be opened before authentication');
+      }
+      return null;
+    }
+  };
+  registerGatewayMiddleware(mockCtx, { authEnabled: true });
+
+  const req = new EventEmitter();
+  req.method = 'GET';
+  req.url = '/dsh-dds/api/vault/keys';
+  req.headers = {};
+  let body = '';
+  const res = {
+    statusCode: 0,
+    headers: {},
+    setHeader(key, value) { this.headers[key] = value; },
+    end(value) { body = value; }
+  };
+
+  await routes.get('/dsh-dds/api/vault/keys').handler(req, res);
+  assert.equal(res.statusCode, 401);
+  assert.equal(JSON.parse(body).error, 'UNAUTHORIZED');
+  assert.equal(vaultAccessed, false);
+});
