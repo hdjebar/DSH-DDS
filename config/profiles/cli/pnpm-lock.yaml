@@ -15,8 +15,8 @@ importers:
         specifier: ^0.3.7
         version: 0.3.7(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-tools@0.1.0-rc.8(ac9081d1e007de8a90a707560a8ae1c3))
       dsh-mnemon:
-        specifier: ^0.4.4
-        version: 0.4.4(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^0.5.2
+        version: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       dsh-model-sync:
         specifier: ^0.1.6
         version: 0.1.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-credentials@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-settings@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1))(@deepseek-ai/schemastery@3.18.1)
@@ -287,10 +287,138 @@ packages:
       '@deepseek-ai/cordis': ^4.0.1
       '@deepseek-ai/dsh-tools': ^0.1.0-rc.6
 
-  dsh-mnemon@0.4.4:
-    resolution: {integrity: sha512-oasPSu019b4pK4O/IiO31iTcPwU/whLQ3y3j2m/78yPygMj1xZEuskCfL7tjYxMTt52683gH1qwI8F++6B3Ciw==}
+  dsh-mnemon-provider-byterover@0.5.2:
+    resolution: {integrity: sha512-HaPgC1kFLnV1BSTL88Fw8d/z1YDuK/whgHgL/XujVEEL7RRg4iPvNSmnWzu1K3e/6mK1/chFfl4UE7+IqABbrw==}
     engines: {node: '>=20'}
     peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-hindsight@0.5.2:
+    resolution: {integrity: sha512-l35BF5gfx7hPxbFho3nnGDrUUJHmNyDnpeo74KkuvfXctRaIF6dErHLyyxgTggtDeyUG8UZ83JKz/sjotaUPGg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-holographic@0.5.2:
+    resolution: {integrity: sha512-oyjzlPuBAR+YsydUlTFEKYzuKQBL1Osp1UNvpRUiyXNYOihtRmLg/gp+cO0jf6c71pJbD7yUKE0t+qvjzKnpqg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-honcho@0.5.2:
+    resolution: {integrity: sha512-aL6cxWQms++erpZ+TEq2iZW5YUezuv2EfIE4Noh1Z0SiStWiQwf6/YCiG1HwSyI/AmRVRfUvxyBbIOZzkfcbbg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-mem0@0.5.2:
+    resolution: {integrity: sha512-vhHrEgSmtrlg5HGtYcp1N4SZh02BXbObJmaKXdNIhgqxdV4yj2PXOOBKOcBoK1mhXh4W/xnnxwGKSdYsQQFnlw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-mnemon-native@0.5.2:
+    resolution: {integrity: sha512-RV2Umd7QiOe2P7XX3wL9n8yq9MSvXWABfbNCRUwN57zj+n9ztM8S3yJbXsRINxvT3/lDFppiOG83z0+4jLsafQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-openviking@0.5.2:
+    resolution: {integrity: sha512-aYsGTvV9q7ydE/jXuZPjqOdfGj4sYNJUb4zgplH9/00ZEqBT0VvIvhnfMSurQoqpcSGr0EgUiW50c6Le5DxT0Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-retaindb@0.5.2:
+    resolution: {integrity: sha512-Fx+z6uI/QkW0ylLasLCddR5Jh5Ac00/lQtO9DaYWgimGFSu/WZ9ar/3kLJNSv+Zr3xFUT+HFhIj3aqesrzo9zw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-provider-supermemory@0.5.2:
+    resolution: {integrity: sha512-y7sV9xxGoAbZ0WwwbGIA2kcZmZ3Lxc7uwOh3i62TDGAQJJORmgQ/aoSwAwJGeOmGf0Bf+hmq+54gD272y2YPPA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon-source-memory-spaces: ^0.5.1
+
+  dsh-mnemon-source-documents@0.5.2:
+    resolution: {integrity: sha512-l/e75uradm9i19Vfw4qRJ5ImMqA9IUs7kHsNvUziz/hD1omv6MWs2AUxsgSkdyzzhoHK5SFaVVhzD663b641+Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      react: ^18.2.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  dsh-mnemon-source-memory-spaces@0.5.2:
+    resolution: {integrity: sha512-D/eG8G8iMZu/t8mcVxeUlqNoWKcJaIoK/coa5NX9Wj0dacJjQdbbSWaaTFLr4eTjf9gbobPa60CQJx7x3W79bw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      react: ^18.2.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  dsh-mnemon-source-runtime@0.5.2:
+    resolution: {integrity: sha512-Y85h4SBWQMcIJApets9B5lU9BOy5HbDLwapc82J1y7ZFAjAs8RkedeRvBAnzrh8v2bkzBpsXRnb5868J5dSr2Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      react: ^18.2.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  dsh-mnemon-strategy-auto-capture@0.5.2:
+    resolution: {integrity: sha512-HMvmPOjrwOA3MybB/Wf6L5aLybKVkiO7XB/pIKA2V36kI8yyuFdnNctSXO9p5CTA3ouTqzK5O7dbNE7D98NSpg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      dsh-mnemon-strategy-default-three-tier: ^0.5.1
+
+  dsh-mnemon-strategy-default-three-tier@0.5.2:
+    resolution: {integrity: sha512-Om2w5Fe1Uuifa5/9o5uLVeFwc/Ue8kJblg8UNOP5lFz3QM6P9atzASm7Zx4N5AkFjqLt7a0Rm7gdAEsTTjXdaQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+
+  dsh-mnemon-strategy-light-context@0.5.2:
+    resolution: {integrity: sha512-OD+rjAY+lbExlbdyx4VhbleKuqhbwxUwFpYJtWpo934Tbfgh3B+DsL9qw06VizoZPLGS2v6RKxYBNNn2pDwmuA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      dsh-mnemon-strategy-default-three-tier: ^0.5.1
+
+  dsh-mnemon-strategy-scoped@0.5.2:
+    resolution: {integrity: sha512-ipI7GFNfMje59qjFMsfNAhPsNC5DcagB4FXM7oZMih+Sktpn+C7CM3Nz0Q8LUIFZMg7/Em1y2bKSOCLyVwXm+Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
+      dsh-mnemon: ^0.5.1
+      dsh-mnemon-strategy-default-three-tier: ^0.5.1
+
+  dsh-mnemon@0.5.2:
+    resolution: {integrity: sha512-EWjX0VDT6OQQsKF2qhbdPrR+T/KU88vbulkF6gzplWqppm8j4A0qIf+GgJM7bJ3xV4qZxfBhh+nuWzaQvqTu+Q==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.1
       '@deepseek-ai/dsh-client-ui-primitives': ^0.1.0-rc.6 || ^0.1.1-rc.1 || ^0.1.2-alpha.1
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -680,7 +808,7 @@ snapshots:
       '@deepseek-ai/dsh-session': 0.1.0-rc.8(fbdb1d988541b64ff002d18c4ded7293)
       '@deepseek-ai/dsh-system-prompt': 0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-scope@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))
       '@deepseek-ai/dsh-user-approval': 0.1.0-rc.8(380a43f4d6510c4a5dfadf54dc7f17a7)
-      '@deepseek-ai/schemastery': 3.18.1
+      '@deepseek-ai/schemastery': 3.18.2
 
   '@deepseek-ai/dsh-typert-protocol@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))':
     dependencies:
@@ -815,11 +943,120 @@ snapshots:
       '@deepseek-ai/cordis': 4.0.1
       '@deepseek-ai/dsh-tools': 0.1.0-rc.8(ac9081d1e007de8a90a707560a8ae1c3)
 
-  dsh-mnemon@0.4.4(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  dsh-mnemon-provider-byterover@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
     dependencies:
-      '@deepseek-ai/dsh-client-ui-primitives': 0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1)
-      fflate: 0.8.3
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-hindsight@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-holographic@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-honcho@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-mem0@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-mnemon-native@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-openviking@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-retaindb@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-provider-supermemory@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-source-documents@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       markdown-to-jsx: 7.7.17(react@18.3.1)
+      schemastery: 3.18.0
+    optionalDependencies:
+      react: 18.3.1
+
+  dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      schemastery: 3.18.0
+    optionalDependencies:
+      react: 18.3.1
+
+  dsh-mnemon-source-runtime@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      schemastery: 3.18.0
+    optionalDependencies:
+      react: 18.3.1
+
+  dsh-mnemon-strategy-auto-capture@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-strategy-default-three-tier: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+
+  dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+
+  dsh-mnemon-strategy-light-context@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-strategy-default-three-tier: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+
+  dsh-mnemon-strategy-scoped@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      dsh-mnemon: 0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-strategy-default-three-tier: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+
+  dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.1
+      '@deepseek-ai/dsh-client-ui-primitives': 0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1)
+      dsh-mnemon-provider-byterover: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-hindsight: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-holographic: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-honcho: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-mem0: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-mnemon-native: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-openviking: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-retaindb: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-provider-supermemory: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-source-memory-spaces@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-source-documents: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-source-memory-spaces: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-source-runtime: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      dsh-mnemon-strategy-auto-capture: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-strategy-default-three-tier: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-strategy-light-context: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      dsh-mnemon-strategy-scoped: 0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon-strategy-default-three-tier@0.5.2(@deepseek-ai/cordis@4.0.1)(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(dsh-mnemon@0.5.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-ui-primitives@0.1.2-alpha.4(@deepseek-ai/cordis@4.0.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      fflate: 0.8.3
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       schemastery: 3.18.0
