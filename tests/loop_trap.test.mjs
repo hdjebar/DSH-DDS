@@ -2,6 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DeclarativeWorkflowEngine } from '../config/declarative-orchestrator.mjs';
 
+function createEngineWithDeterministicProbe(meta) {
+  const engine = new DeclarativeWorkflowEngine(meta);
+  engine.registerAction('probe_services', async (step) => ({
+    status: 'success',
+    service_probe: {
+      target: step.target,
+      reachable: true,
+      status_code: 200
+    }
+  }));
+  return engine;
+}
+
 test('Loop Trap (Invariant 7): allows distinct sequential steps without false positives', async () => {
   const meta = {
     name: 'test-persona',
@@ -24,7 +37,7 @@ test('Loop Trap (Invariant 7): allows distinct sequential steps without false po
     }
   };
 
-  const engine = new DeclarativeWorkflowEngine(meta);
+  const engine = createEngineWithDeterministicProbe(meta);
   const result = await engine.executeWorkflow('distinct-steps');
   assert.equal(result.status, 'COMPLETED');
   assert.equal(result.executionLogs.length, 2);
@@ -54,7 +67,7 @@ test('Loop Trap (Invariant 7): deterministically rejects consecutive identical s
     }
   };
 
-  const engine = new DeclarativeWorkflowEngine(meta);
+  const engine = createEngineWithDeterministicProbe(meta);
   await assert.rejects(async () => {
     await engine.executeWorkflow('infinite-loop');
   }, (err) => {
@@ -91,7 +104,7 @@ test('Loop Trap (Invariant 7): loop detection triggers on_failure fallback recov
     }
   };
 
-  const engine = new DeclarativeWorkflowEngine(meta);
+  const engine = createEngineWithDeterministicProbe(meta);
   const result = await engine.executeWorkflow('loop-with-fallback');
   assert.equal(result.status, 'COMPLETED');
   assert.equal(result.executionLogs.length, 2);

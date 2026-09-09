@@ -13,7 +13,7 @@
     "visual-architecture:build": "node scripts/build_diagrams.mjs"
   },
   "dependencies": {
-    "yaml": "2.7.0"
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@tt-a1i/archify-dsh": "^0.1.0"
