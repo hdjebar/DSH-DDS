@@ -65,10 +65,10 @@ Still required before this epic can move to Done:
 * validate the isolated executor and its Landlock boundary in live Linux containers; the
   service intentionally refuses to start when the kernel reports partial or unavailable
   Landlock enforcement;
-* replace the shared executor PID namespace and UID with a per-invocation PID/user boundary.
-  Execution is serialized as immediate containment, preventing concurrent tenants, but a
-  command can still inspect or signal the long-lived same-UID executor process and cause a
-  service-level denial of service;
+* validate the per-invocation user/PID namespace boundary in live Linux containers. The
+  executor now wraps each command with `unshare --user --map-root-user --pid --mount-proc
+  --fork` and refuses to start without it; execution remains serialized as a conservative
+  availability control until live kernel support is confirmed;
 * bind validated DNS results to the actual outbound connection, or force all such traffic
   through an egress component that validates the resolved destination, to close the remaining
   DNS time-of-check/time-of-use rebinding window; the sandbox forces supported Node traffic

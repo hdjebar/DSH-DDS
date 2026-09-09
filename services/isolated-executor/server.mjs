@@ -113,6 +113,7 @@ function terminateGroup(child, signal = 'SIGKILL') {
 }
 
 export function executeConfined(payload, confinement) {
+  const processIsolation = confinement.processIsolation || '/usr/bin/unshare';
   const timeoutMs = boundedInteger(payload.timeoutMs, 60_000, MAX_TIMEOUT_MS);
   const outputCap = boundedInteger(payload.stdoutMaxBytes, 64 * 1024, MAX_OUTPUT_BYTES);
   if (typeof payload.command !== 'string' || !payload.command.trim() || Buffer.byteLength(payload.command) > MAX_COMMAND_BYTES) {
@@ -124,6 +125,8 @@ export function executeConfined(payload, confinement) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-exec-'));
   const cpuSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
   const limitedArgv = [
+    processIsolation,
+    '--user', '--map-root-user', '--pid', '--mount-proc', '--fork', '--',
     '/usr/bin/prlimit', '--nproc=32:32', '--nofile=128:128',
     '--fsize=16777216:16777216', `--cpu=${cpuSeconds}:${cpuSeconds}`, '--',
     '/bin/bash', '-c', payload.command
@@ -272,6 +275,10 @@ async function main() {
   if (enforcement !== 'full') {
     throw new Error(`Landlock enforcement is ${enforcement}; isolated executor requires full enforcement`);
   }
+  const processIsolation = '/usr/bin/unshare';
+  if (!fs.existsSync(processIsolation)) {
+    throw new Error('isolated executor requires /usr/bin/unshare for per-invocation user and PID namespaces');
+  }
   const socketDir = path.dirname(SOCKET_PATH);
   fs.mkdirSync(socketDir, { recursive: true, mode: 0o770 });
   try {
@@ -285,6 +292,7 @@ async function main() {
     launcher,
     grantArgs: addon.grantArgs,
     enforcement,
+    processIsolation,
     maxConcurrent: boundedInteger(process.env.DSH_EXECUTOR_MAX_CONCURRENT, 1, 1)
   });
   server.listen(SOCKET_PATH, () => fs.chmodSync(SOCKET_PATH, 0o660));

@@ -135,6 +135,8 @@ test('Compose isolates the executor network and excludes application state mount
   assert.ok(executor.environment.includes('DSH_EXECUTOR_MAX_CONCURRENT=1'));
   assert.ok(executor.volumes.includes('./workspaces/users:/workspaces/users:rw'));
   assert.ok(executor.volumes.every(value => !/audit|storages|sessions|docker\.sock/.test(String(value))));
+  assert.match(fs.readFileSync(new URL('../services/isolated-executor/server.mjs', import.meta.url), 'utf8'), /--map-root-user[\s\S]*--pid[\s\S]*--mount-proc/);
+  assert.match(fs.readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8'), /util-linux/);
 });
 
 test('workspace permission migration changes only executor-mounted roots and skips symlinks', () => {

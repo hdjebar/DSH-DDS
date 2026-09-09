@@ -284,10 +284,11 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 | **Developer Code Mounts** | **None (Immutable Image)** | **None (Immutable Image)** | **Live Mounts (`@dsh-dds/core`, `entrypoint.sh`)** |
 | **Compilers in Image** | **Purged (`make`, `g++` stripped)** | **Purged (`make`, `g++` stripped)** | Purged in runner stage |
 
-The executor currently serializes commands because its long-lived server and command children
-share UID 11000 and one PID namespace. Serialization prevents concurrent cross-tenant process
-interaction, but a command can still signal the same-UID server and cause a denial of service.
-Per-invocation PID and user namespaces remain a production multi-tenant release gate.
+The executor serializes commands as a conservative availability control and wraps each command
+in a per-invocation user/PID namespace (`unshare --user --map-root-user --pid --mount-proc
+--fork`) before applying Landlock. Live Linux validation remains a release gate because kernel
+user-namespace policy and Landlock behavior vary by host; the service refuses to start when
+either required primitive is unavailable.
 
 To destroy all transient sandbox session data:
 ```bash
