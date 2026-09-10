@@ -136,7 +136,7 @@ services:
       - PHOENIX_UPSTREAM_URL=http://phoenix:6006
       # Prefer a scoped Phoenix system key; retain API_KEY fallback for existing installs
       # until the operator provisions the scoped key and removes bootstrap credentials.
-      - PHOENIX_INGEST_TOKEN=${PHOENIX_INGEST_TOKEN:-${PHOENIX_API_KEY:-}}
+      - PHOENIX_INGEST_TOKEN=${PHOENIX_INGEST_TOKEN:-}
     tmpfs:
       - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
     healthcheck:

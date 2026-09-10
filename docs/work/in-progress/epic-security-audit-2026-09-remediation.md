@@ -62,7 +62,9 @@ Still required before this epic can move to Done:
   time-of-check/time-of-use rebinding. Sandbox traffic is forced through Envoy, but its dynamic
   resolver is not yet private-address pinned;
 * provision and activate a scoped Phoenix ingestion key, then remove the bootstrap administrator
-  credential from routine service configuration;
+  credential from routine service configuration. Compose no longer falls back to `PHOENIX_API_KEY`;
+  the remaining step is provisioning the key in the live Phoenix instance and rotating the bootstrap
+  admin secret.
 * publish audit checkpoints to remote or WORM storage if coordinated host compromise is in scope;
 * execute the migration workflow against representative real tenant data; and
 * run the new controls in live standard and sandbox containers when a Docker daemon is
