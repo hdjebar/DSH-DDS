@@ -121,8 +121,8 @@ As detailed in industry analysis (*"Why 'Everything is a Plugin' is Harder Than 
 ### How DSH-DDS Solves These Challenges (The SOTA AI Harness)
 
 Our repository directly remediates these architectural vulnerabilities through defense-in-depth:
-* **Kernel & Container Containment ([ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md))**: Linux Landlock LSM, complete capability dropping (`cap_drop: [ALL]`), and read-only root filesystems strictly contain the entire Cordis runtime. Even if a community plugin is compromised, it cannot escape into the host or modify container binaries.
-* **Authoritative Acyclic Policy Engine ([ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md))**: Centralized RBAC (`config/rbac-policy.mjs`) intercepts all file targets and MCP tool calls prior to execution, rejecting symlink pivot escapes (`checkSymlinkEscape`) and enforcing anti-self-mutation invariants.
+* **Kernel & Container Containment ([ADR 0004](../adr/0004-in-container-boundaries-and-strict-directory-containment.md))**: Linux Landlock LSM, complete capability dropping (`cap_drop: [ALL]`), and read-only root filesystems strictly contain the entire Cordis runtime. Even if a community plugin is compromised, it cannot escape into the host or modify container binaries.
+* **Authoritative Acyclic Policy Engine ([ADR 0001](../adr/0001-build-time-immutability-and-rbac.md), [ADR 0005](../adr/0005-remediation-of-audit-v3-findings.md))**: Centralized RBAC (`config/rbac-policy.mjs`) intercepts all file targets and MCP tool calls prior to execution, rejecting symlink pivot escapes (`checkSymlinkEscape`) and enforcing anti-self-mutation invariants.
 * **Local Observability & Audit Trails ([ADR 0002](../adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md))**: Arize Phoenix OpenTelemetry records distributed 128-bit span waterfalls across plugin boundaries, while the external audit-writer maintains a tamper-evident record of autonomous authorization decisions.
 
 For a full formal analysis, see the **[SOTA AI Harness Architecture](../architecture/sota-whitepaper.md)**.

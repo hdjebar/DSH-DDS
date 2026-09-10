@@ -97,7 +97,7 @@ The lowest layer of an AI Harness must enforce isolation through hardware and op
 3. **Immutable Root Filesystems & Memory Jails**:
    * *Standard*: The container root filesystem is mounted strictly read-only (`read_only: true`). All transient session allocations occur in memory-backed volatile `tmpfs` mounts, ensuring zero persistence of rogue artifacts.
 4. **Strict Fail-Closed Execution Perimeter**:
-   * *Reference*: [ADR 0004: In-Container Execution Boundaries](adr/0004-in-container-boundaries-and-strict-directory-containment.md).
+   * *Reference*: [ADR 0004: In-Container Execution Boundaries](../adr/0004-in-container-boundaries-and-strict-directory-containment.md).
    * *Mechanism*: CLI entrypoints (`./dsh.sh persona workflow`) must disallow ambient host fallback. If the hardened container stack is offline, execution fails closed rather than executing with invoking developer user privileges on the host OS.
 
 ---
@@ -107,7 +107,7 @@ The lowest layer of an AI Harness must enforce isolation through hardware and op
 A SOTA harness enforces that all automated multi-step actions execute via structured declarative recipes rather than dynamic shell scripting:
 
 1. **The Zero-Shell Invariant**:
-   * *Reference*: [ADR 0003: Authoritative Declarative Orchestrator](adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md).
+   * *Reference*: [ADR 0003: Authoritative Declarative Orchestrator](../adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md).
    * *Rule*: No executable scripts (`.sh`, `.bash`, arbitrary `.py`) are permitted inside persona packages. Persona workflows are declared 100% in structured YAML (`persona.yaml`).
 2. **Deterministic JavaScript Execution Engine**:
    * *Component*: [`config/declarative-orchestrator.mjs`](../config/declarative-orchestrator.mjs).
@@ -115,7 +115,7 @@ A SOTA harness enforces that all automated multi-step actions execute via struct
 3. **Adaptive Case Management (ACM) & Human-in-the-Loop Gates**:
    * *Mechanism*: Steps tagged with `approval_required: true` transition the execution state machine into `GATED`. The harness halts execution, generates a cryptographic decision token, and emits an event to the GRC audit ledger pending out-of-band human sign-off.
 4. **Truthful Capability Adapters**:
-   * *Reference*: [ADR 0005: Remediation of Audit v3 Findings](adr/0005-remediation-of-audit-v3-findings.md).
+   * *Reference*: [ADR 0005: Remediation of Audit v3 Findings](../adr/0005-remediation-of-audit-v3-findings.md).
    * *Standard*: Capability adapters must never return static mock successes. Operations perform verified cryptographic actions (e.g. SHA-256 computation on real filesystem bytes, active HTTP reachability probes with timeouts, and airgapped containment ledgers).
 
 ---
@@ -130,7 +130,7 @@ The harness treats every persona as an untrusted micro-identity subject to conti
 2. **Prior Concrete Scope Resolution**:
    * *Standard*: Logical scopes (e.g. `scope: recursive`, `scope: workspace`) must be canonically resolved into concrete filesystem paths (`resolvePath('/workspaces')`) **before** invoking policy checks, eliminating unverified directory reading.
 3. **Ancestor Canonicalization & Intermediate Symlink Defense**:
-   * *Reference*: [ADR 0005: Remediation of Audit v3 Findings](adr/0005-remediation-of-audit-v3-findings.md) (F-02).
+   * *Reference*: [ADR 0005: Remediation of Audit v3 Findings](../adr/0005-remediation-of-audit-v3-findings.md) (F-02).
    * *Mechanism*: To prevent symlink pivot attacks (where an attacker creates `allowed/pivot/escaped.json` pointing to `/etc/shadow`), the policy engine executes `canonicalizeWithAncestorRealpath()` to resolve the physical realpath of the nearest existing ancestor directory. It then walks every path segment via `checkSymlinkEscape()`, terminating with `RBAC_SYMLINK_ESCAPE` if any segment points outside the container perimeter.
 4. **Anti-Self-Mutation Invariant**:
    * *Rule*: All personas explicitly declare `config/personas/*` and administrative scripts (`reset.sh`, `install_dsh.sh`) in their `deny:` list, preventing an autonomous agent from rewriting its own constraints or tampering with adjacent personas.
@@ -170,7 +170,7 @@ An enterprise AI Harness must guarantee full visibility and legal auditability:
      - **Model Inference Egress (Cloud APIs vs. Air-Gapped)**: When configured with public cloud model APIs (OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompt context and tool parameters necessarily transit over TLS to the selected provider.
      - **True 100% Air-Gapped Sovereignty**: For regulated, defense, or high-compliance workloads (GDPR Art. 9, HIPAA), DSH-DDS routes seamlessly to local on-premise inference engines (Ollama, vLLM, llama.cpp, LocalAI) or private VPC endpoints, establishing absolute zero data egress across both the control plane and inference plane.
 2. **Tamper-Evident GRC Ledger (`audit_grc.jsonl`)**:
-   * *Reference*: [ADR 0002: Out-of-Band GRC Observability](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md), [ADR 0008: Sandbox Hardening](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md).
+   * *Reference*: [ADR 0002: Out-of-Band GRC Observability](../adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md), [ADR 0008: Sandbox Hardening](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md).
    * *Current deployment*: Every authorization check, gate suspension, and workflow outcome is sent as an authenticated receipt to the external audit-writer, which appends the structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted on the host at `./config/audit/audit_grc.jsonl`):
      ```json
      {
@@ -216,7 +216,7 @@ The positioning of **DSH-DDS** relative to the 2026 state of the art resolves fo
    * *DSH-DDS Lead*: Imposes a dual-boundary model—physical kernel sandboxing (Landlock LSM, dropped capabilities) and an authoritative acyclic policy engine—rendering modularity safe and contained.
 2. **Elimination of Remote Code Execution (RCE) Vectors**:
    * *Industry Vulnerability*: Traditional coding agents rely on arbitrary host shell subprocesses (`bash`, `sh`), enabling indirect prompt injection (OWASP LLM01 / ASI01) to pivot into host compromise.
-   * *DSH-DDS Lead*: Enforces a strict Zero-Shell Invariant ([ADR 0003](adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)), replacing fragile shell scripts with a typed, declarative finite state machine.
+   * *DSH-DDS Lead*: Enforces a strict Zero-Shell Invariant ([ADR 0003](../adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)), replacing fragile shell scripts with a typed, declarative finite state machine.
 3. **Sovereign Telemetry & Regulatory Compliance (EU AI Act & NIST AI RMF)**:
    * *Industry Vulnerability*: Commercial agent observability platforms (LangSmith, AgentOps, Datadog AI) require outbound cloud telemetry egress, violating enterprise data privacy mandates.
    * *DSH-DDS Lead*: Delivers on-premise OpenTelemetry distributed tracing via Arize Phoenix and writer-owned tamper-evident GRC logging (`audit_grc.jsonl`), with clear architectural separation between local telemetry and external model API inference.

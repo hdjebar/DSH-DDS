@@ -1,6 +1,6 @@
 # 🔬 Research Note: Theoretical Foundations & Architecture of AI Agent Personas
 
-> 🏛️ **Related SOTA Research**: For the holistic engineering specification of the 5-Pillar SOTA AI Harness enclosing these personas (Kernel Boundaries, Declarative Orchestration, Zero Trust RBAC, Protocol Bridges, and GRC Observability), see the **[State of the Art: AI Harness Architecture](ai-harness-architecture-sota.md)**.
+> 🏛️ **Related SOTA Research**: For the holistic engineering specification of the 5-Pillar SOTA AI Harness enclosing these personas (Kernel Boundaries, Declarative Orchestration, Zero Trust RBAC, Protocol Bridges, and GRC Observability), see the **[State of the Art: AI Harness Architecture](sota-whitepaper.md)**.
 
 This research note formalizes the concept of **AI Agent Personas** in modern agentic systems, synthesizing academic literature (Stanford, Google Research, Anthropic) and industry frameworks (CrewAI, Microsoft AutoGen, LangGraph, MetaGPT) to establish the design rationale for the **6-Layer Persona Architecture** implemented in this repository.
 
@@ -82,7 +82,7 @@ Different multi-agent frameworks operationalize agent roles through distinct eng
 | **Model Assignment** | Per-agent LLM parameter | Per-agent LLM configuration | Global configuration | **Multi-Model Task Matrix** (Default, Reasoning, Coding, Fast) |
 | **Tool Integration Model** | Python LangChain/Crew tools | Python functions / toolkits | Action classes | **Model Context Protocol (MCP)** via JSON-RPC / stdio |
 | **Execution Contexts** | In-process Python runtime | In-process / Docker sandbox | Local CLI process | **Execution Profile Matrix** (`web`, `headless`, `cli`, `sandbox`) |
-| **Security & Access Control (RBAC)** | Application prompt instructions | Python code constraints / Docker | Process-level sandbox | **In-Container Landlock LSM + Declarative Zero Trust RBAC + Symlink Pivot Rejection ([ADRs 0001–0005](adr/0005-remediation-of-audit-v3-findings.md))** |
+| **Security & Access Control (RBAC)** | Application prompt instructions | Python code constraints / Docker | Process-level sandbox | **In-Container Landlock LSM + Declarative Zero Trust RBAC + Symlink Pivot Rejection ([ADR 0005](../adr/0005-remediation-of-audit-v3-findings.md))** |
 | **GRC & Audit Traceability** | Ephemeral console logs | Console logs | Output files | **Tamper-evident writer-owned ledger (`audit_grc.jsonl`) + 128-bit OTel Correlation** |
 | **Observability Standard** | OpenTelemetry / AgentOps | OpenTelemetry / Console | Console / Logging | **100% Local Arize Phoenix OTel** (`http://localhost:6006`) |
 | **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Orchestrator |

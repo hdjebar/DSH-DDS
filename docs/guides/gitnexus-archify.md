@@ -65,7 +65,7 @@ Expose GitNexus to Antigravity so the agent can query symbols and relationships:
 
 ### 2. Archify Skill Setup
 
-Archify is installed in the project root under [.agents/skills/archify/](file:///Users/hdjebar/dshdds-imp/.agents/skills/archify):
+Archify is installed in the project root under [.agents/skills/archify](../../.agents/skills/archify):
 
 ```bash
 npx skills add tt-a1i/archify --yes
@@ -172,7 +172,7 @@ npx gitnexus detect-changes
 ---
 
 ## 🔗 Related Resources
-* [Visual Architecture Directory](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/README.md)
-* [System Runtime Diagram](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/system-runtime.architecture.html)
-* [Agent Trace Sequence Diagram](file:///Users/hdjebar/dshdds-imp/docs/visual-architecture/agent-trace.sequence.html)
-* [Agent Guidelines (AGENTS.md)](file:///Users/hdjebar/dshdds-imp/AGENTS.md)
+* [Visual Architecture Directory](../visual-architecture/README.md)
+* [System Runtime Diagram](../visual-architecture/system-runtime.architecture.html)
+* [Agent Trace Sequence Diagram](../visual-architecture/agent-trace.sequence.html)
+* [Agent Guidelines (AGENTS.md)](../../AGENTS.md)
