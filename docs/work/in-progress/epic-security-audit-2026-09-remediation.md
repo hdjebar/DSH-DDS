@@ -43,6 +43,9 @@ Implemented and regression-tested in the current worktree:
   new partition while preserving rollback data;
 * declarative outbound tools enforce host/protocol/port allowlists, private-address checks,
   redirect revalidation, timeouts, and bounded SDMX bodies;
+* outbound requests perform a second DNS resolution and fail closed on inconsistent answers
+  (`OUTBOUND_DNS_REBINDING`); this narrows the TOCTOU window but does not replace socket-level
+  destination pinning;
 * restart requires local transport, same origin, administrator role, and a CSRF token;
 * installer secrets use only cryptographic randomness and include restart, audit-writer,
   executor, and Phoenix authentication material;
@@ -58,9 +61,9 @@ Implemented and regression-tested in the current worktree:
 Still required before this epic can move to Done:
 
 * bind validated DNS results to the actual outbound connection, or force all such traffic
-  through an egress component that pins and rejects private destinations, to close DNS
-  time-of-check/time-of-use rebinding. Sandbox traffic is forced through Envoy, but its dynamic
-  resolver is not yet private-address pinned;
+  through an egress component that pins and rejects private destinations, to fully close DNS
+  time-of-check/time-of-use rebinding. The application now detects inconsistent answers, but
+  sandbox traffic through Envoy is not yet private-address pinned;
 * provision and activate a scoped Phoenix ingestion key, then remove the bootstrap administrator
   credential from routine service configuration. Compose no longer falls back to `PHOENIX_API_KEY`;
   the remaining step is provisioning the key in the live Phoenix instance and rotating the bootstrap
