@@ -182,6 +182,7 @@ jobs:
             -e DSH_RUNTIME_DIR=/run/dsh \
             -e DSH_SESSION_STATE_DIR=/var/lib/dsh-state \
             -e DSH_SESSIONS_DIR=/var/lib/dsh/sessions \
+            -e DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef \
             -v "$PWD/config:/opt/dsh-config:ro" \
             --tmpfs /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777 \
             --tmpfs /run:rw,size=32m,mode=1777 \
@@ -191,6 +192,8 @@ jobs:
       - name: Hardened Sandbox Compose Stack Integration Test
         run: |
           cp .env.example .env
+          echo 'DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef' >> .env
+          echo 'PHOENIX_INGEST_TOKEN=ci-only-phoenix-ingest-token-0123456789abcdef0123456789abcdef' >> .env
           mkdir -p workspaces/cases workspaces/artifacts config/phoenix config/sessions config/storages config/audit config/patch config/cache
           chmod -R 0777 config/phoenix config/sessions config/storages config/audit config/patch config/cache workspaces
 

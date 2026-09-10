@@ -771,7 +771,7 @@ fi
 if write_file_safe "$DSH_INSTALL/Dockerfile"; then
 cat << 'EOF' > "$DSH_INSTALL/Dockerfile"
 # ── Stage 1: Multi-Stage Builder with pnpm ───────────────────────
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS builder
+FROM node:26-bookworm-slim@sha256:cd9f682fa2885cd1056e830424764158570061c59736a1da836bc3d73df095ae AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
@@ -794,7 +794,7 @@ RUN mkdir -p /home/dsh/.local/share/pnpm/store/v11 \
     && rm -rf /root/.cache /root/.npm
 
 # ── Stage 2: Hardened Minimal Production Runtime ───────────────────
-FROM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS runner
+FROM node:26-bookworm-slim@sha256:cd9f682fa2885cd1056e830424764158570061c59736a1da836bc3d73df095ae AS runner
 
 # Copy static Astral uv and uvx binaries for lightweight Python MCP execution
 COPY --from=ghcr.io/astral-sh/uv:0.6.5@sha256:562193a4a9d398f8aedddcb223e583da394ee735de36b5815f8f1d22cb49be15 /uv /uvx /bin/
@@ -1087,7 +1087,7 @@ services:
       - PHOENIX_UPSTREAM_URL=http://phoenix:6006
       # Prefer a scoped Phoenix system key; retain API_KEY fallback for existing installs
       # until the operator provisions the scoped key and removes bootstrap credentials.
-      - PHOENIX_INGEST_TOKEN=${PHOENIX_INGEST_TOKEN:-${PHOENIX_API_KEY:-}}
+      - PHOENIX_INGEST_TOKEN=${PHOENIX_INGEST_TOKEN:-}
     tmpfs:
       - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=0700,uid=1000,gid=1000
     healthcheck:
