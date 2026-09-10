@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@liustack/modsearch':
-        specifier: ^5.10.0
-        version: 5.10.0
+        specifier: ^5.10.1
+        version: 5.10.1
       dsh-find-plugin:
         specifier: ^0.3.7
         version: 0.3.7(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-tools@0.1.0-rc.8(ac9081d1e007de8a90a707560a8ae1c3))
@@ -169,8 +169,8 @@ packages:
   '@deepseek-ai/schemastery@3.18.2':
     resolution: {integrity: sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ==}
 
-  '@liustack/modsearch@5.10.0':
-    resolution: {integrity: sha512-ew9VoL4dqdRn2/qzaU0hm97jdDeuJPkgTgPVBF+8jBHluNPuOY3TpHA9ir62U+CeuuVhwzsCRCNRd7plWlczQg==}
+  '@liustack/modsearch@5.10.1':
+    resolution: {integrity: sha512-9u2BmoHxXl3/lCYnFUuFjUAS7XBfFClUxFRSBB1pT+nkRz5JZava+jTMhndf67WyF/zTZPeOEKDv3hu/GGmo4Q==}
     engines: {node: '>=22.13'}
     hasBin: true
 
@@ -648,8 +648,8 @@ packages:
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
 
-  undici@7.29.0:
-    resolution: {integrity: sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==}
+  undici@7.29.1:
+    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
     engines: {node: '>=20.18.1'}
 
   unist-util-is@6.0.1:
@@ -837,10 +837,10 @@ snapshots:
       '@deepseek-ai/cosmokit': 1.8.3
       '@standard-schema/spec': 1.1.0
 
-  '@liustack/modsearch@5.10.0':
+  '@liustack/modsearch@5.10.1':
     dependencies:
       commander: 13.1.0
-      undici: 7.29.0
+      undici: 7.29.1
 
   '@shikijs/core@4.4.3':
     dependencies:
@@ -1499,7 +1499,7 @@ snapshots:
 
   trim-lines@3.0.1: {}
 
-  undici@7.29.0: {}
+  undici@7.29.1: {}
 
   unist-util-is@6.0.1:
     dependencies:

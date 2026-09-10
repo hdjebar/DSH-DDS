@@ -2,7 +2,7 @@
   "name": "dsh-profile-cli",
   "private": true,
   "dependencies": {
-    "@liustack/modsearch": "^5.10.0",
+    "@liustack/modsearch": "^5.10.1",
     "dsh-find-plugin": "^0.3.7",
     "dsh-mnemon": "^0.5.2",
     "dsh-model-sync": "^0.1.6"
