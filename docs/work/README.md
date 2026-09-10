@@ -1,5 +1,7 @@
 # 📋 DSH-DDS Agile Kanban Work Hub
 
+> The board graphic contains historical sprint snapshot counts; current regression status is maintained in `docs/work/testing/README.md` (213/213 passing).
+
 Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages the engineering lifecycle, sprint backlogs, in-flight technical initiatives, and verified delivery records following modern Agile and Kanban principles.
 
 ---
