@@ -116,7 +116,7 @@ While numerous open-source repositories address individual aspects of generative
 * **Repository:** [`guardrails-ai/guardrails`](https://github.com/guardrails-ai/guardrails)
 * **Focus:** Structural schema validation, Pydantic type checking, and regex guards on LLM outputs.
 * **Comparison with DSH-DDS:**
-  * Guardrails AI ensures valid data structures from LLMs. DSH-DDS integrates structured capability validation while also enforcing container boundary containment, egress network filtering, and immutable GRC ledgers.
+  * Guardrails AI ensures valid data structures from LLMs. DSH-DDS integrates structured capability validation while also enforcing container boundary containment, egress network filtering, and a writer-owned tamper-evident GRC ledger.
 
 ---
 

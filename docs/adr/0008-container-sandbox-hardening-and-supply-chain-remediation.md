@@ -1,5 +1,7 @@
 # ADR 0008: Container Sandbox Hardening, Supply Chain Integrity, and Credential Isolation
 
+> **Historical decision record:** The direct audit-mount design described below has been superseded by the external `audit-writer` boundary documented in [`docs/architecture/security-model.md`](../architecture/security-model.md). Retain this ADR as remediation history; do not use its direct-mount instructions for new deployments.
+
 * **Status**: Accepted & Implemented
 * **Date**: 2026-09-07
 * **Deciders**: DeepSeek Harness Architecture & Security Team (`DSH-DDS`)

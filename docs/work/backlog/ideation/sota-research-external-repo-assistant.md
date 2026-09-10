@@ -14,7 +14,7 @@
 
 In modern AI-assisted software engineering (AI-SWE), an **AI Assistant** must not only synthesize code but also navigate complex dependencies, calculate mutation blast radiuses, evaluate architectural invariants, and execute tests safely.
 
-However, in sovereign, security-critical systems like **DeepSeek Harness (`DSH-DDS`)**, where the runtime is an unprivileged, sandboxed dual-container Docker stack, a critical architectural decision arises:
+However, in sovereign, security-critical systems like **DeepSeek Harness (`DSH-DDS`)**, where the runtime is an unprivileged, sandboxed multi-service Docker stack, a critical architectural decision arises:
 
 $$\textbf{Where does the repository-intelligence assistant execute?}$$
 
@@ -220,7 +220,7 @@ sequenceDiagram
     Archify-->>HostAssistant: Verified compliant with ADR 0007
     HostAssistant->>Worktree: Create ephemeral staging branch (worktree-104)
     HostAssistant->>Container: docker compose exec dsh npm test
-    Container-->>HostAssistant: 169/169 tests passed (0 failures)
+    Container-->>HostAssistant: 213/213 tests passed (0 failures)
     HostAssistant->>Worktree: Fast-forward merge to canonical branch
     HostAssistant-->>Dev: Verified clean mutation, 0 regressions
 ```

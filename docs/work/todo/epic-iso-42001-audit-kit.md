@@ -9,7 +9,7 @@
 
 ## 🎯 Objective
 
-Automate the extraction and formatting of machine-readable compliance packages from the immutable GRC audit ledger (`config/audit/audit_grc.jsonl`) and Arize Phoenix trace databases into formal audit artifacts required by **ISO/IEC 42001 (AIMS)** and **EU AI Act Article 12 (Automatic Logging & Record-Keeping)**.
+Automate the extraction and formatting of machine-readable compliance packages from the writer-owned, tamper-evident GRC audit ledger (`config/audit/audit_grc.jsonl`) and Arize Phoenix trace databases into formal audit artifacts required by **ISO/IEC 42001 (AIMS)** and **EU AI Act Article 12 (Automatic Logging & Record-Keeping)**.
 
 ---
 
