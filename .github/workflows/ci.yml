@@ -195,6 +195,13 @@ jobs:
           cp .env.example .env
           phoenix_secret="$(openssl rand -hex 32)"
           export PHOENIX_SECRET="$phoenix_secret"
+          phoenix_override="$(mktemp)"
+          printf '%s\n' \
+            'services:' \
+            '  phoenix:' \
+            '    environment:' \
+            "      PHOENIX_SECRET: $phoenix_secret" > "$phoenix_override"
+          compose=(docker compose -f docker-compose.yml -f docker-compose.sandbox.yml -f "$phoenix_override")
           sed -i 's|^DSH_EXECUTOR_CAPABILITY_KEY=.*|DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef|' .env
           sed -i 's|^PHOENIX_INGEST_TOKEN=.*|PHOENIX_INGEST_TOKEN=ci-only-phoenix-ingest-token-0123456789abcdef0123456789abcdef|' .env
           sed -i "s|^PHOENIX_SECRET=.*|PHOENIX_SECRET=$phoenix_secret|" .env
@@ -204,21 +211,22 @@ jobs:
           chmod -R 0777 config/phoenix config/sessions config/storages config/audit config/patch config/cache workspaces
 
           cleanup() {
-            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
+            "${compose[@]}" down -v
+            rm -f "$phoenix_override"
           }
           trap cleanup EXIT
 
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d || {
+          "${compose[@]}" up -d || {
             echo "❌ Docker Compose up failed! Printing container status and logs:"
-            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps -a
-            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml logs
+            "${compose[@]}" ps -a
+            "${compose[@]}" logs
             exit 1
           }
           
           echo "Waiting for DSH sandbox service to report healthy..."
           healthy=0
           for i in $(seq 1 90); do
-            if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
+            if "${compose[@]}" ps dsh | grep -q "healthy"; then
               echo "✅ DSH sandbox container is healthy!"
               healthy=1
               break
@@ -226,20 +234,20 @@ jobs:
             sleep 1
           done
           if [ "$healthy" -ne 1 ]; then
-            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps
-            docker compose -f docker-compose.yml -f docker-compose.sandbox.yml logs dsh
+            "${compose[@]}" ps
+            "${compose[@]}" logs dsh
             exit 1
           fi
           
           echo "Asserting sandbox read-only mounts..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /opt/dsh-config/test.txt 2>/dev/null && exit 1 || echo "✅ /opt/dsh-config is read-only"'
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is read-only"'
+          "${compose[@]}" exec -T dsh sh -c 'touch /opt/dsh-config/test.txt 2>/dev/null && exit 1 || echo "✅ /opt/dsh-config is read-only"'
+          "${compose[@]}" exec -T dsh sh -c 'touch /workspaces/test.txt 2>/dev/null && exit 1 || echo "✅ /workspaces is read-only"'
 
           echo "Asserting zero-egress network isolation..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh node -e "fetch('https://example.com', { signal: AbortSignal.timeout(2000) }).then(()=>process.exit(1)).catch(()=>process.exit(0))"
+          "${compose[@]}" exec -T dsh node -e "fetch('https://example.com', { signal: AbortSignal.timeout(2000) }).then(()=>process.exit(1)).catch(()=>process.exit(0))"
 
           echo "Asserting Phoenix observability connectivity..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh node -e "
+          "${compose[@]}" exec -T dsh node -e "
             (async () => {
               for (let i = 0; i < 30; i++) {
                 try {
@@ -257,12 +265,12 @@ jobs:
           "
 
           echo "Asserting session state persists across a sandbox restart..."
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /var/lib/dsh/sessions/ci-marker'
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh sh -c 'echo persisted > /var/lib/dsh/storages/ci-marker'
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml restart dsh
+          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh/sessions/ci-marker'
+          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh/storages/ci-marker'
+          "${compose[@]}" restart dsh
           healthy=0
           for i in $(seq 1 90); do
-            if docker compose -f docker-compose.yml -f docker-compose.sandbox.yml ps dsh | grep -q "healthy"; then
+            if "${compose[@]}" ps dsh | grep -q "healthy"; then
               echo "✅ DSH sandbox container is healthy!"
               healthy=1
               break
@@ -270,5 +278,5 @@ jobs:
             sleep 1
           done
           [ "$healthy" -eq 1 ]
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /var/lib/dsh/sessions/ci-marker
-          docker compose -f docker-compose.yml -f docker-compose.sandbox.yml exec -T dsh grep -q persisted /var/lib/dsh/storages/ci-marker
+          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh/sessions/ci-marker
+          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh/storages/ci-marker
