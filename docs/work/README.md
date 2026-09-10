@@ -64,7 +64,7 @@ A task or epic can graduate from `backlog/` to `todo/` and into `in-progress/` o
 ### 3. Definition of Done (DoD)
 A task or epic can graduate from `testing/` to `done/` only when:
 * Code implementation is complete, non-breaking, and adheres to non-root execution guidelines.
-* All Five Quality Gates pass (169/169 tests, installer parity, visual models compiled, AST checks).
+* All Five Quality Gates pass (213/213 tests, installer parity, visual models compiled, AST checks).
 * GitNexus pre-commit check (`npx gitnexus detect-changes`) passes with zero unmapped symbol mutations.
 * Core documentation, CHANGELOG, and ADR references are updated.
 

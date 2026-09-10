@@ -8,7 +8,7 @@ This document provides a reference for everyday operations, CLI commands, headle
 
 | Command | Action |
 | :--- | :--- |
-| **`./dsh.sh up`** | Starts DSH and Arize Phoenix containers in the background. |
+| **`./dsh.sh up`** | Starts the DSH application, isolated executor, audit-writer, telemetry gateway, Envoy, and Arize Phoenix services in the background. |
 | **`./dsh.sh down`** | Stops all containers gracefully. |
 | **`./dsh.sh restart`** | Restarts the complete container stack. |
 | **`./dsh.sh logs`** | Streams unified real-time logs from all containers. |
