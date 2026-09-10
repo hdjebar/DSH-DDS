@@ -67,6 +67,14 @@ jobs:
       - name: Dependency Vulnerability Audit
         run: npm audit --audit-level=high
 
+      - name: Production Web Profile Dependency Audit
+        run: |
+          corepack enable
+          pnpm --dir config/profiles/web audit --prod
+
+      - name: Installer Parity Check
+        run: npm run verify:installer
+
       - name: Shell Syntax Validation
         run: |
           bash -n dsh.sh install_dsh.sh reset.sh
@@ -83,6 +91,14 @@ jobs:
           node --check config/phoenix-evals.mjs
           node --check config/rbac-policy.mjs
           node --check config/worktree-staging.mjs
+          node --check config/audit-client.mjs
+          node --check config/audit-writer-core.mjs
+          node --check config/audit-writer.mjs
+          node --check config/outbound-security.mjs
+          node --check config/telemetry-gateway.mjs
+          node --check services/isolated-executor/server.mjs
+          node --check scripts/migrate_tenant_partitions.mjs
+          node --check scripts/prepare_executor_workspaces.mjs
 
       - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |
