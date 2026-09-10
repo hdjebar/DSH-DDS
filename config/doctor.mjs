@@ -13,6 +13,8 @@ const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const GITHUB_TOKEN = (process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN || '').trim();
 const PHOENIX_URL = process.env.PHOENIX_URL || 'http://phoenix:6006';
 const PHOENIX_API_KEY = process.env.PHOENIX_API_KEY || '';
+const PHOENIX_INGEST_TOKEN = process.env.PHOENIX_INGEST_TOKEN || '';
+const PHOENIX_ADMIN_SECRET = process.env.PHOENIX_ADMIN_SECRET || '';
 
 function getPhoenixHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
@@ -65,15 +67,18 @@ function checkSecretPermissions() {
     pass('BYOK Vault Master Key', `Configured (${vaultKey.length} chars)`);
   }
 
-  // GRC audit durability: the getGrcAuditLogPath() fallback (/var/log/dsh) is
-  // container-internal and does not survive `docker compose up --force-recreate`.
+  // GRC audit durability is owned by the external writer. The application container
+  // intentionally has no ledger mount or integrity key.
   const auditLogFile = process.env.DSH_AUDIT_LOG_FILE;
-  if (!auditLogFile) {
-    if (process.env.DSH_SANDBOX === '1') {
-      warn('GRC Audit Trail', 'DSH_AUDIT_LOG_FILE unset; the JSONL trail buffers to tmpfs by design and durability rests on the Phoenix OTel export.');
+  const auditWriterUrl = process.env.DSH_AUDIT_WRITER_URL || '';
+  if (auditWriterUrl) {
+    if (process.env.DSH_AUDIT_WRITER_TOKEN && process.env.DSH_AUDIT_WRITER_TOKEN.length >= 32) {
+      pass('GRC Audit Writer', 'External writer configured; application has no ledger mount');
     } else {
-      fail('GRC Audit Trail', 'DSH_AUDIT_LOG_FILE is not set. The JSONL trail falls back to the container-internal /var/log/dsh and is destroyed on recreate; only the lossy Phoenix span export survives.');
+      fail('GRC Audit Writer', 'External writer token is missing or too short');
     }
+  } else if (!auditLogFile) {
+    fail('GRC Audit Trail', 'Neither an external audit writer nor a durable audit path is configured');
   } else {
     const auditDir = path.dirname(auditLogFile);
     if (!fs.existsSync(auditDir)) {
@@ -86,6 +91,14 @@ function checkSecretPermissions() {
         fail('GRC Audit Trail', `${auditDir} is not writable; the JSONL trail will silently divert to the fallback path.`);
       }
     }
+  }
+
+  if (!PHOENIX_INGEST_TOKEN) {
+    warn('Phoenix Ingestion Credential', 'PHOENIX_INGEST_TOKEN is unset; bootstrap API key fallback remains active');
+  } else if (PHOENIX_ADMIN_SECRET && PHOENIX_INGEST_TOKEN === PHOENIX_ADMIN_SECRET) {
+    warn('Phoenix Ingestion Credential', 'Ingestion token equals PHOENIX_ADMIN_SECRET; provision a scoped system key and rotate the bootstrap secret');
+  } else {
+    pass('Phoenix Ingestion Credential', 'A separate ingestion token is configured');
   }
 
   const hostEnvStatus = process.env.DSH_HOST_ENV_STATUS;

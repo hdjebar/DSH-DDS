@@ -144,6 +144,10 @@ Configuration parameters are loaded on boot from `.env` on the host:
 | `PHOENIX_API_KEY` | **Optional** | API key for programmatic OTel query endpoints. |
 | `PHOENIX_INGEST_TOKEN` | **Recommended after bootstrap** | Scoped Phoenix system key used by the telemetry gateway. If unset, the gateway temporarily falls back to `PHOENIX_API_KEY`. |
 
+Run `./dsh.sh doctor` after configuring Phoenix. It warns if the ingestion token is still the
+bootstrap administrator secret and verifies that the application is using the external audit
+writer rather than a local ledger path.
+
 > [!NOTE]
 > **Provider Requirement**: At least one model provider (`GEMINI_API_KEY` or `OPENROUTER_API_KEY`) must be configured for personas to run.
 > 
