@@ -390,7 +390,7 @@ Every production persona declares the following non-negotiable security blacklis
 
 Workflows defined in `persona.yaml` replace imperative shell scripts (`workflow.sh`) with safe, typed steps:
 
-* **`approval_required: true`**: Declares that an action (such as isolating an artifact or modifying production files) cannot proceed autonomously. The workflow halts in state `GATED` and logs an immutable audit event in `config/audit/audit_grc.jsonl`.
+* **`approval_required: true`**: Declares that an action (such as isolating an artifact or modifying production files) cannot proceed autonomously. The workflow halts in state `GATED` and sends an authenticated audit receipt to the external writer; the application cannot write the protected ledger directly.
 * **Typed Capability Adapters**: Steps must use vetted action verbs (e.g., `fetch_sources`, `evaluate_incident`, `forensic_investigation`, `contain_threat`, `write_report`). Any unhandled or arbitrary action causes immediate termination (`status: 'FAILED'`).
 * **Environment Indirection in `mcpServers:`**: No raw API keys or tokens can be committed to `persona.yaml`. All sensitive credentials must use `${ENVIRONMENT_VARIABLE}` syntax.
 
@@ -491,7 +491,7 @@ flowchart TD
 ### 4. Human-in-the-Loop Gates (ACM) & Truthful Adapters
 * **Approval Gates**: High-impact steps declaring `approval_required: true` suspend execution, log a `GATED` audit event, and halt subsequent steps until human authorization.
 * **Truthful Capabilities**: All capability adapters perform real operations (e.g., real SHA-256 cryptographic hashing in `forensic_investigation`, active HTTP reachability checks in `verify_endpoint`, and isolated persistent containment ledgers in `contain_threat`).
-* **Non-Repudiable GRC Logging**: Every decision (`GRANTED`, `DENIED`, `GATED`) is recorded in `config/audit/audit_grc.jsonl` with cryptographic OpenTelemetry 128-bit trace and span correlation IDs.
+* **Tamper-Evident GRC Logging**: Every decision (`GRANTED`, `DENIED`, `GATED`) is recorded by the external audit-writer in `config/audit/audit_grc.jsonl` with cryptographic OpenTelemetry 128-bit trace and span correlation IDs.
 
 ---
 

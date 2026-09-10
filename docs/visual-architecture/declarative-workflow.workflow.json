@@ -56,8 +56,8 @@
     { "id": "completed", "lane": "orchestrator", "col": 5, "type": "backend", "label": "Step Complete", "sublabel": "state advance" },
     { "id": "loop_detected", "lane": "exceptions", "col": 2, "type": "security", "label": "Loop Trap", "sublabel": "LOOP_DETECTED" },
     { "id": "rejected", "lane": "exceptions", "col": 3, "type": "security", "label": "Gate Rejected", "sublabel": "invalid signature" },
-    { "id": "checkpoint", "lane": "telemetry", "col": 4, "type": "database", "label": "State Sync", "sublabel": "checkpoint.json" },
-    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix OTel", "sublabel": "waterfall spans" }
+    { "id": "checkpoint", "lane": "telemetry", "col": 4, "type": "database", "label": "Checkpoint", "sublabel": "writer-owned chain head" },
+    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix OTel", "sublabel": "authenticated gateway" }
   ],
   "edges": [
     { "id": "step-to-hash", "from": "step_in", "to": "sig_hash", "variant": "default" },
@@ -68,7 +68,7 @@
     { "id": "ring-to-loop-err", "from": "loop_check", "to": "loop_detected", "label": "3 repeats", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
     { "id": "gate-to-rej", "from": "acm_gate", "to": "rejected", "label": "denied", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
     { "id": "adapter-to-ckpt", "from": "adapter_exec", "to": "checkpoint", "fromSide": "bottom", "toSide": "top", "route": "drop" },
-    { "id": "ckpt-to-phx", "from": "checkpoint", "to": "phoenix", "label": "spans", "variant": "dashed" }
+    { "id": "ckpt-to-phx", "from": "checkpoint", "to": "phoenix", "variant": "dashed" }
   ],
   "cards": [
     {
@@ -94,7 +94,7 @@
       "title": "Transactional Capabilities",
       "items": [
         "15 typed capability adapters with real cryptographic execution",
-        "Rollback on failure with immutable GRC audit logging",
+        "Rollback on failure with writer-owned tamper-evident audit logging",
         "Arize Phoenix OpenTelemetry tracing on every transition"
       ]
     }

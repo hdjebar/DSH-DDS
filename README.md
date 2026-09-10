@@ -84,7 +84,7 @@ Four properties, each verifiable in this repository:
 | :--- | :--- | :--- |
 | **Local telemetry invariant** | All spans, trajectories and GRC audit records remain on the host. Unlike SaaS agent observability platforms, zero trace data or prompt history is exported. | [`docs/architecture/security-model.md`](docs/architecture/security-model.md) |
 | **Kernel-level confinement** | Landlock LSM, `cap_drop: ALL`, read-only root filesystem, `no-new-privileges`, non-root execution (UID 1000), and filtered egress through a hardened Envoy sidecar on an internal-only bridge. | [`docker-compose.sandbox.yml`](docker-compose.sandbox.yml) · [Threat model](#️-threat-model--security-boundaries) |
-| **Non-repudiable audit trail** | `audit_grc.jsonl` on a privileged isolated path (mode `0600`), recording timestamp, persona, role, action, decision and reason. Append-only, surviving sandbox teardown. Aligned to EU AI Act Article 12 record-keeping. | [`docs/architecture/guardrails-owasp.md`](docs/architecture/guardrails-owasp.md) · [ADR 0002](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md) |
+| **Tamper-evident audit trail** | Authenticated decision receipts are accepted by the external `audit-writer`, which alone owns the HMAC-chained `audit_grc.jsonl` ledger and checkpoint mount. The application cannot rewrite protected audit storage. | [`docs/architecture/security-model.md`](docs/architecture/security-model.md) · [ADR 0002](docs/adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md) |
 | **Fail-closed RBAC** | Per-persona filesystem and MCP permissions enforced at an in-line Policy Enforcement Point, with explicit deny lists and symlink ancestor canonicalisation. | [ADR 0003](docs/adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md) · [ADR 0005](docs/adr/0005-remediation-of-audit-v3-findings.md) |
 
 > [!IMPORTANT]
@@ -192,7 +192,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 * **Credential isolation** — explicitly blanks provider API keys inside the untrusted container to eliminate exfiltration paths.
 * **Zero-trust filtered egress** — isolates DSH and Phoenix on an internal bridge network (`internal: true`), with outbound traffic restricted through a hardened Envoy proxy sidecar enforcing strict destination allowlists.
 * **Persistent session isolation** — preserves transcripts and JSON storage in a dedicated `sandbox-session-state` volume, preventing contamination of trusted host session directories.
-* **Audit trail retention** — persists GRC audit logs to `./config/audit`, preserving non-repudiation records after sandbox teardown.
+* **Audit trail retention** — the external audit-writer persists tamper-evident GRC receipts to `./config/audit` after sandbox teardown; independent remote/WORM checkpoints remain a deployment control.
 * **Resource caps** — 2 CPUs, 2 GB RAM, 150 PIDs.
 
 Destroy all transient sandbox session data:
@@ -270,7 +270,7 @@ Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 * 🧠 **[GitNexus & Archify Workflow Guide](docs/guides/gitnexus-archify.md)** — coordinated code intelligence, AST knowledge graph, blast radius analysis, and interactive diagram compilation.
 
 ### 🏛️ Architecture & security specifications (Explanations)
-* 🏛️ **[System Architecture Overview](docs/architecture/system-overview.md)** — dual-container topology, kernel proxy, OTel trace pipelines.
+* 🏛️ **[System Architecture Overview](docs/architecture/system-overview.md)** — multi-service runtime, isolated executor, audit-writer boundary, and telemetry/egress pipelines.
 * 🏛️ **[SOTA AI Harness Architecture](docs/architecture/sota-whitepaper.md)** — whitepaper: five architectural pillars, theoretical foundations, NIST/OWASP/EU AI Act alignment, comparative benchmarks.
 * 🔒 **[Security & Sandbox Guide](docs/architecture/security-model.md)** — filesystem boundaries, Zero Trust persona RBAC, network isolation.
 * 🛡️ **[AI Guardrails & OWASP Agentic Security](docs/architecture/guardrails-owasp.md)** — four deterministic guardrail layers, Invariant 7 loop trap, asymmetric approval gates, OWASP LLM/ASI alignment.
@@ -280,7 +280,7 @@ Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 ### 📚 Technical reference & catalogs
 * 🎭 **[AI Agent Personas Guide](docs/reference/personas.md)** — multi-model task matrix, session recording, automated persona distillation.
 * 🔌 **[Plugins & MCP Reference](docs/reference/plugins.md)** — active plugins catalog and pre-configured MCP tool suite.
-* 📜 **[Architecture Decision Records (ADR 0001–0008)](docs/adr/)** — build-time immutability and RBAC, out-of-band GRC, declarative orchestration and capability adapters, in-container containment, audit v3 remediation, non-root refactoring, rejection of in-container Antigravity CLI, sandbox hardening and supply-chain remediation.
+* 📜 **[Architecture Decision Records (ADR 0001–0009)](docs/adr/)** — build-time immutability and RBAC, out-of-band GRC, declarative orchestration and capability adapters, in-container containment, audit v3 remediation, non-root refactoring, rejection of in-container Antigravity CLI, sandbox hardening/supply-chain remediation, and the external audit-writer boundary.
 * 🗺️ **[Visual Architecture Journey](docs/visual-architecture/README.md)** — explore the architecture interactively: standalone HTML web apps with dark/light toggles, route tracing, and deep state inspection: [System Runtime Topology](docs/visual-architecture/system-runtime.architecture.html), [Zero-Trust PEP Pipeline](docs/visual-architecture/security-pipeline.workflow.html), [Declarative Loop Trap](docs/visual-architecture/declarative-workflow.workflow.html), and [Agent Trace Sequence](docs/visual-architecture/agent-trace.sequence.html).
 
 ### 📋 Agile engineering & roadmap

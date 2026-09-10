@@ -2,9 +2,9 @@
   "schema_version": 1,
   "diagram_type": "sequence",
   "meta": {
-    "title": "Agent Execution & OTLP Telemetry Sequence",
+    "title": "Agent Execution, Audit Receipt & OTLP Sequence",
     "output": "agent-trace.sequence.html",
-    "viewBox": [820, 780],
+    "viewBox": [920, 780],
     "quality_profile": "showcase",
     "views": [
       {
@@ -34,7 +34,8 @@
     { "id": "vault", "type": "security", "label": "BYOK Vault", "sublabel": "AES-256-GCM" },
     { "id": "llm", "type": "cloud", "label": "LLM Bridge", "sublabel": "Gemini & DeepSeek" },
     { "id": "pep", "type": "security", "label": "In-Line PEP", "sublabel": "RBAC Filter" },
-    { "id": "phoenix", "type": "database", "label": "Arize Phoenix", "sublabel": "OTLP :6006" }
+    { "id": "phoenix", "type": "database", "label": "Arize Phoenix", "sublabel": "authenticated gateway" },
+    { "id": "audit_writer", "type": "security", "label": "Audit Writer", "sublabel": "receipt + HMAC ledger" }
   ],
   "segments": [
     { "from": 150, "to": 310, "label": "Authentication & Key Lookup" },
@@ -52,9 +53,10 @@
     { "id": "pep-allow", "from": "pep", "to": "kernel", "y": 460, "label": "allow execution", "variant": "return" },
     { "id": "llm-synth", "from": "kernel", "to": "llm", "y": 495, "label": "synthesize findings", "variant": "emphasis" },
     { "id": "llm-reply", "from": "llm", "to": "kernel", "y": 535, "label": "agent response", "variant": "return" },
-    { "id": "otel-export", "from": "kernel", "to": "phoenix", "y": 585, "label": "export OTLP spans", "variant": "dashed" },
-    { "id": "otel-ack", "from": "phoenix", "to": "kernel", "y": 620, "label": "200 OTLP ack", "variant": "return" },
-    { "id": "reply-gw", "from": "kernel", "to": "gateway", "y": 655, "label": "stream response", "variant": "return" },
+    { "id": "audit-receipt", "from": "kernel", "to": "audit_writer", "y": 570, "label": "authenticated receipt", "variant": "security" },
+    { "id": "otel-export", "from": "kernel", "to": "phoenix", "y": 605, "label": "OTLP via gateway", "variant": "dashed" },
+    { "id": "otel-ack", "from": "phoenix", "to": "kernel", "y": 640, "label": "200 OTLP ack", "variant": "return" },
+    { "id": "reply-gw", "from": "kernel", "to": "gateway", "y": 665, "label": "stream response", "variant": "return" },
     { "id": "reply-user", "from": "gateway", "to": "user", "y": 690, "label": "complete answer", "variant": "return" }
   ],
   "activations": [

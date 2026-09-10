@@ -2,85 +2,47 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DeepSeek Harness Runtime Architecture",
+    "title": "DSH-DDS Multi-Service Security Runtime",
     "output": "system-runtime.architecture.html",
     "quality_profile": "showcase",
     "views": [
-      {
-        "id": "agent-dispatch",
-        "label": "Agent Dispatch Path",
-        "focus": ["browser", "gateway", "dsh_kernel", "pep_interceptor", "envoy_proxy", "external_llm"],
-        "note": "Trace an agent query from user browser through the gateway, PEP interceptor, and Envoy egress proxy to external LLMs."
-      },
-      {
-        "id": "security-governance",
-        "label": "Zero-Trust Security & BYOK",
-        "focus": ["byok_vault", "gateway", "pep_interceptor", "envoy_proxy"],
-        "note": "Isolate the AES-256-GCM BYOK vault, in-line policy enforcement point, and Envoy egress proxy."
-      },
-      {
-        "id": "telemetry-loop",
-        "label": "Local Observability Waterfall",
-        "focus": ["dsh_kernel", "otel_exporter", "phoenix", "browser"],
-        "note": "Observe OTLP trace emission and local Arize Phoenix trace storage with 0% data leakage."
-      }
+      {"id":"request-path","label":"Request and execution","focus":["browser","dsh","pep","executor"],"note":"Follow an authenticated request through policy enforcement into the isolated command executor."},
+      {"id":"audit-boundary","label":"Audit trust boundary","focus":["dsh","pep","audit_writer","audit_ledger","checkpoint"],"note":"The application submits receipts; only the writer owns the HMAC ledger and checkpoint mounts."},
+      {"id":"telemetry-egress","label":"Telemetry and egress","focus":["dsh","telemetry_gateway","phoenix","envoy","llm"],"note":"Telemetry uses a fixed-route gateway; sandbox model and web traffic use controlled egress."}
     ]
   },
   "components": [
-    { "id": "browser", "type": "external", "label": "User Browser", "sublabel": "Web UI :3080 / OTel :6006", "pos": [40, 300], "size": [140, 60] },
-    { "id": "gateway", "type": "security", "label": "WebServer Gateway", "sublabel": "@dsh-dds/core (Origin Filter)", "pos": [250, 300], "size": [160, 60] },
-    { "id": "dsh_kernel", "type": "backend", "label": "DSH Microkernel", "sublabel": "Cordis IoC (Node 24 UID 1000)", "pos": [480, 300], "size": [160, 60] },
-    { "id": "byok_vault", "type": "security", "label": "BYOK Keystore", "sublabel": "AES-256-GCM Vault", "pos": [480, 150], "size": [160, 60], "tag": "Partitioned" },
-    { "id": "pep_interceptor", "type": "security", "label": "In-Line PEP", "sublabel": "Dynamic Tool & Path RBAC", "pos": [710, 300], "size": [160, 60], "tag": "Fail-Closed" },
-    { "id": "envoy_proxy", "type": "security", "label": "Envoy Egress Proxy", "sublabel": "v1.31 Sidecar :10000", "pos": [940, 300], "size": [160, 60], "tag": "ADR 0008" },
-    { "id": "external_llm", "type": "cloud", "label": "LLM Gateways", "sublabel": "Gemini & OpenRouter", "pos": [1170, 300], "size": [150, 60] },
-    { "id": "mcp_servers", "type": "backend", "label": "MCP Tool Suite", "sublabel": "Fetch / SQLite / GitHub", "pos": [710, 450], "size": [160, 60] },
-    { "id": "otel_exporter", "type": "messagebus", "label": "OTel Exporter", "sublabel": "TraceContext Client", "pos": [480, 450], "size": [160, 60] },
-    { "id": "phoenix", "type": "database", "label": "Arize Phoenix", "sublabel": "Collector & SQLite :6006", "pos": [250, 450], "size": [160, 60], "tag": "100% Local" }
+    {"id":"browser","type":"external","label":"User Browser","sublabel":"loopback UI :3080","pos":[40,300],"size":[150,64]},
+    {"id":"dsh","type":"backend","label":"DSH Application","sublabel":"Node 24 · UID 1000","tag":"no audit mount","pos":[250,300],"size":[170,64]},
+    {"id":"pep","type":"security","label":"Policy Enforcement","sublabel":"identity · RBAC · capability","tag":"fail closed","pos":[480,300],"size":[180,64]},
+    {"id":"executor","type":"security","label":"Isolated Executor","sublabel":"UID 11000 · Landlock · unshare","tag":"network none","pos":[720,300],"size":[190,64]},
+    {"id":"audit_writer","type":"security","label":"Audit Writer","sublabel":"internal network · bearer auth","tag":"sole owner","pos":[480,470],"size":[180,64]},
+    {"id":"audit_ledger","type":"database","label":"HMAC Audit Ledger","sublabel":"./config/audit · fsync","pos":[720,470],"size":[180,64]},
+    {"id":"checkpoint","type":"database","label":"Audit Checkpoints","sublabel":"separate mount · chain head","pos":[950,470],"size":[180,64]},
+    {"id":"telemetry_gateway","type":"security","label":"Telemetry Gateway","sublabel":"POST /v1/traces only","tag":"credential inject","pos":[480,140],"size":[190,64]},
+    {"id":"phoenix","type":"database","label":"Arize Phoenix","sublabel":"authenticated · internal network","tag":"loopback UI :6006","pos":[720,140],"size":[190,64]},
+    {"id":"envoy","type":"security","label":"Envoy Egress","sublabel":"sandbox filtered proxy :10000","tag":"zero direct egress","pos":[950,300],"size":[180,64]},
+    {"id":"llm","type":"cloud","label":"Approved External APIs","sublabel":"LLM / web allowlists","pos":[1180,300],"size":[170,64]}
   ],
   "boundaries": [
-    { "kind": "region", "label": "DSH Container Sandbox (UID 1000:1000, cap_drop: ALL)", "wraps": ["gateway", "dsh_kernel", "byok_vault", "pep_interceptor", "otel_exporter"] },
-    { "kind": "security-group", "label": "Local Host Boundary (127.0.0.1)", "wraps": ["browser", "phoenix"] }
+    {"kind":"region","label":"Application runtime · dsh-runtime","wraps":["dsh","pep","telemetry_gateway","envoy"]},
+    {"kind":"security-group","label":"Dedicated executor · network_mode: none","wraps":["executor"]},
+    {"kind":"security-group","label":"Audit internal · writer-only storage","wraps":["audit_writer","audit_ledger","checkpoint"]},
+    {"kind":"security-group","label":"Phoenix internal · authenticated management plane","wraps":["phoenix"]}
   ],
   "connections": [
-    { "id": "browser-to-gateway", "from": "browser", "to": "gateway", "label": "HTTP :3080", "variant": "emphasis" },
-    { "id": "gateway-to-kernel", "from": "gateway", "to": "dsh_kernel", "label": "normalize" },
-    { "id": "kernel-vault-lookup", "from": "dsh_kernel", "to": "byok_vault", "label": "keys", "variant": "security", "fromSide": "top", "toSide": "bottom", "labelDy": -45 },
-    { "id": "kernel-to-pep", "from": "dsh_kernel", "to": "pep_interceptor", "label": "tool exec", "variant": "emphasis" },
-    { "id": "pep-to-envoy", "from": "pep_interceptor", "to": "envoy_proxy", "label": "egress", "variant": "security" },
-    { "id": "envoy-to-llm", "from": "envoy_proxy", "to": "external_llm", "label": "mTLS / API", "variant": "emphasis" },
-    { "id": "pep-to-mcp", "from": "pep_interceptor", "to": "mcp_servers", "label": "sandboxed", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 45 },
-    { "id": "kernel-to-otel", "from": "dsh_kernel", "to": "otel_exporter", "label": "spans", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 45 },
-    { "id": "otel-to-phoenix", "from": "otel_exporter", "to": "phoenix", "label": "OTLP :6006", "variant": "emphasis", "fromSide": "left", "toSide": "right" },
-    { "id": "browser-to-phoenix", "from": "browser", "to": "phoenix", "label": "UI :6006", "variant": "dashed", "fromSide": "bottom", "toSide": "left" }
+    {"id":"browser-dsh","from":"browser","to":"dsh","variant":"emphasis"},
+    {"id":"dsh-pep","from":"dsh","to":"pep","variant":"security"},
+    {"id":"pep-executor","from":"pep","to":"executor","variant":"security"},
+    {"id":"pep-audit","from":"pep","to":"audit_writer","variant":"security"},
+    {"id":"audit-ledger","from":"audit_writer","to":"audit_ledger","variant":"emphasis"},
+    {"id":"dsh-telemetry","from":"dsh","to":"telemetry_gateway","variant":"dashed"},
+    {"id":"gateway-phoenix","from":"telemetry_gateway","to":"phoenix","variant":"security"},
+    {"id":"envoy-llm","from":"envoy","to":"llm","variant":"emphasis"}
   ],
   "cards": [
-    {
-      "dot": "cyan",
-      "title": "Container Hardening & Non-Root",
-      "items": [
-        "User browser binds strictly to 127.0.0.1:3080 with trusted peer header verification",
-        "Non-root UID 1000 with root:root 755 /app immutable code protection",
-        "Strict cgroup resource limits and dropped Linux capabilities (cap_drop: ALL)"
-      ]
-    },
-    {
-      "dot": "rose",
-      "title": "Zero-Trust Enforcement & Egress",
-      "items": [
-        "In-Line PEP maps tool verbs to policy actions and validates tenant paths",
-        "BYOK Vault encrypts keys with fail-closed master key (AES-256-GCM v2)",
-        "Envoy sidecar digest-pinned, enforces DNS caching and egress lockdown"
-      ]
-    },
-    {
-      "dot": "emerald",
-      "title": "Air-Gapped Telemetry & Audit",
-      "items": [
-        "Arize Phoenix runs 100% on-premise on loopback :6006",
-        "GRC audit trail in ./config/audit persists across container lifecycles",
-        "Dedicated sandbox-session-state named volume for untrusted code"
-      ]
-    }
+    {"dot":"rose","title":"Execution boundary","items":["PEP issues short-lived workdir-bound capabilities","Executor has no network and no audit, vault, or application-state mounts","Landlock and per-invocation user/PID namespaces require live Linux validation"]},
+    {"dot":"violet","title":"Accountability boundary","items":["DSH cannot rewrite the ledger or checkpoint files","Writer receipts make protected grants fail closed","Remote/WORM checkpoints remain required for host-compromise independence"]},
+    {"dot":"cyan","title":"Telemetry boundary","items":["Phoenix is authenticated and isolated from the DSH service network","Gateway exposes only OTLP trace ingestion","DNS rebinding remains open until proxy resolution pins validated destinations"]}
   ]
 }

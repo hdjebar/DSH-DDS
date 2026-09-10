@@ -19,7 +19,7 @@ flowchart TD
     subgraph Host ["💻 Host Environment (127.0.0.1)"]
         ENV[".env Configuration\n(Keys, Ports, Tokens)"]
         VOL_ETC["📁 ./config (Mounted to /etc/dsh :ro)"]
-        VOL_AUDIT["📁 ./config/audit (Mounted to /var/lib/dsh/audit :rw)"]
+        VOL_AUDIT["📁 ./config/audit (Mounted to audit-writer only :rw)"]
         VOL_STATE["📁 ./config/{sessions,storages,cache}\n(Mounted to /var/lib/dsh/... :rw)"]
         VOL_PHX["📁 ./config/phoenix\n(Mounted to /home/phoenix/.phoenix :rw)"]
         VOL_WS["📁 ./workspaces\n(Mounted to /workspaces :ro / :rw)"]
@@ -140,14 +140,14 @@ flowchart TD
 ### 4. Authoritative Declarative Orchestrator & Acyclic Policy Engine (`config/`)
 * **`DeclarativeWorkflowEngine` ([declarative-orchestrator.mjs](../config/declarative-orchestrator.mjs))**: Evaluates 100% declarative workflow recipes defined in `persona.yaml` natively in JavaScript. Implements 15 typed capability adapters with real cryptographic SHA-256 hashing, real HTTP endpoint reachability probes, and airgap containment ledgers.
 * **Acyclic Policy Engine ([rbac-policy.mjs](../config/rbac-policy.mjs))**: Single source of truth for Zero Trust RBAC policy enforcement, canonical path resolution (`resolvePath`), strict directory containment (`isContainedWithin`), symlink ancestor canonicalization (`canonicalizeWithAncestorRealpath`), and escape detection (`checkSymlinkEscape`).
-* **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: Records structured decision lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel parent-child span correlation (`AgentPhoenixTracer`), persisted to `./config/audit` across both standard and sandbox executions.
+* **Multi-State GRC Audit Trail (`config/audit/audit_grc.jsonl`)**: The application sends authenticated decision receipts to the external `audit-writer`; it records structured lifecycle events (`POLICY_DECISION`, `STEP_GATED`, `STEP_COMPLETED`, `STEP_FAILED`) with 128-bit OTel correlation. Only the writer mounts `./config/audit` and checkpoint storage.
 * **In-Container Execution Boundary ([dsh.sh](../dsh.sh))**: Dispatches workflow execution directly into the running container (`docker compose exec dsh`), enforcing container Landlock LSM confinement, dropped capabilities (`cap_drop: ALL`), and non-root execution.
 
 ### 5. Archify Verifiable Architecture Visualizations (`docs/visual-architecture/`)
 The repository includes deterministic, interactive visual maps compiled via **[Archify](https://github.com/tt-a1i/archify)** (`@tt-a1i/archify-dsh`). All diagrams are validated against typed JSON schemas with 100% showcase quality:
 
 1. **[System Runtime Architecture](../visual-architecture/system-runtime.architecture.html)** (`docs/visual-architecture/system-runtime.architecture.json`):
-   - Maps the dual-container topology, non-root user confinement (`1000:1000`), `@dsh-dds/core` Gateway, BYOK Vault, Envoy v1.31 egress proxy sidecar ([ADR 0007](../adr/0007-rejection-of-in-container-antigravity-and-credential-isolation.md), [ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)), and Arize Phoenix storage.
+   - Maps the multi-service topology, non-root user confinement (`1000:1000`), fail-closed PEP, dedicated executor (`network_mode: none`), external audit-writer, Envoy filtered egress, telemetry gateway, and authenticated Arize Phoenix ([security model](security-model.md)).
 2. **[Zero-Trust PEP & Dynamic RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)** (`docs/visual-architecture/security-pipeline.workflow.json`):
    - Details the in-line interceptor lifecycle, persona read/write allowlists, ancestor canonicalization symlink escape detection (F-02), and immutable GRC audit logging.
 3. **[Declarative Workflow & Invariant 7 Loop Trap](../visual-architecture/declarative-workflow.workflow.html)** (`docs/visual-architecture/declarative-workflow.workflow.json`):
@@ -159,5 +159,4 @@ To recompile or validate visual architecture artifacts:
 ```bash
 npm run visual-architecture:build
 ```
-
 

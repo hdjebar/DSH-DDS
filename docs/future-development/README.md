@@ -10,7 +10,7 @@ This directory houses the foundational research, capability maturity audits, eng
 
 | Document | Primary Focus | Target Audience |
 | :--- | :--- | :--- |
-| 📜 **[Engineering Roadmap & Sprints](ROADMAP.md)** | Phased milestones (**v1.11.0**, **v1.12.0**, **v2.0.0**), dual-container task breakdowns (`dsh` + `phoenix`), issue checklists, and release gates. | Core Developers, Maintainers |
+| 📜 **[Engineering Roadmap & Sprints](ROADMAP.md)** | Phased milestones (**v1.11.0**, **v1.12.0**, **v2.0.0**), multi-service task breakdowns (application, executor, audit-writer, telemetry), issue checklists, and release gates. | Core Developers, Maintainers |
 | 🏛️ **[SOTA Research Report & Architecture Blueprint](SOTA-ResearchReport-ProductionArch.md)** | Master consolidated audit: 5-level Capability Maturity Model, 17-layer harness audit, threat models, and 6 Node.js Cordis blueprints. | Systems Architects, Security Auditors |
 
 ---
@@ -51,7 +51,7 @@ Level 4: High-Assurance      -> MicroVMs (Firecracker/gVisor), Dual-LLM quaranti
 
 ## 🏛️ Dual-Container Architectural Topology
 
-`DSH-DDS` operates as a cohesive dual-container stack:
+`DSH-DDS` operates as a cohesive multi-service stack:
 
 ```mermaid
 graph LR

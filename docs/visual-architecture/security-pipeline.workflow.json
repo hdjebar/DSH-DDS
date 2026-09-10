@@ -51,18 +51,18 @@
     { "id": "pep_gate", "lane": "pep", "col": 1, "type": "security", "label": "PEP Gate", "sublabel": "in-line hook", "tag": "Intercept" },
     { "id": "rbac_eval", "lane": "policy", "col": 2, "type": "security", "label": "RBAC Matrix", "sublabel": "allowlist check" },
     { "id": "path_eval", "lane": "policy", "col": 3, "type": "security", "label": "Path Boundary", "sublabel": "symlink check", "tag": "Fail-Closed" },
-    { "id": "sandbox", "lane": "sandbox_lane", "col": 4, "type": "backend", "label": "Sandbox Run", "sublabel": "UID 1000 dropped", "tag": "Isolated" },
+    { "id": "sandbox", "lane": "sandbox_lane", "col": 4, "type": "backend", "label": "Executor", "sublabel": "UID 11000 · no net", "tag": "Landlock + unshare" },
     { "id": "blocked", "lane": "exceptions", "col": 2, "type": "security", "label": "Access Denied", "sublabel": "RBAC violation" },
     { "id": "quarantine", "lane": "exceptions", "col": 3, "type": "security", "label": "SOC Alert", "sublabel": "halt workflow" },
     { "id": "result", "lane": "agent", "col": 5, "type": "backend", "label": "Clean Output", "sublabel": "tool result" },
-    { "id": "audit", "lane": "telemetry", "col": 4, "type": "database", "label": "GRC Ledger", "sublabel": "audit_grc.jsonl" },
-    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix Trace", "sublabel": "OTel waterfall" }
+    { "id": "audit", "lane": "telemetry", "col": 4, "type": "database", "label": "Audit Writer", "sublabel": "HMAC ledger" },
+    { "id": "phoenix", "lane": "telemetry", "col": 5, "type": "database", "label": "Phoenix", "sublabel": "auth · OTel" }
   ],
   "edges": [
     { "id": "req-to-pep", "from": "caller", "to": "pep_gate", "label": "intercept", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
     { "id": "pep-to-rbac", "from": "pep_gate", "to": "rbac_eval", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
     { "id": "rbac-to-path", "from": "rbac_eval", "to": "path_eval", "variant": "default" },
-    { "id": "path-to-sandbox", "from": "path_eval", "to": "sandbox", "variant": "emphasis", "fromSide": "bottom", "toSide": "left", "route": "drop" },
+    { "id": "path-to-sandbox", "from": "path_eval", "to": "sandbox", "variant": "emphasis", "route": "drop" },
     { "id": "sandbox-to-result", "from": "sandbox", "to": "result", "label": "result", "variant": "emphasis", "role": "return", "fromSide": "right", "toSide": "right", "route": "outside-right", "width": 1.2 },
     { "id": "path-to-blocked", "from": "path_eval", "to": "blocked", "label": "denied", "variant": "security", "role": "error", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1, "labelDy": 24 },
     { "id": "blocked-to-quarantine", "from": "blocked", "to": "quarantine", "variant": "dashed", "role": "branch" },
@@ -89,7 +89,7 @@
     },
     {
       "dot": "emerald",
-      "title": "Zero-Leakage Observability",
+      "title": "Writer-Owned Accountability",
       "items": [
         "Structured GRC audit trail persisted to ./config/audit",
         "Correlated 128-bit OTel parent-child span emission to Phoenix"

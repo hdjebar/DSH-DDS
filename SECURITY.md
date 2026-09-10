@@ -31,7 +31,7 @@ All reports will be acknowledged within 48 hours, and patches will be deployed f
 
 ### 1. Container & Filesystem Isolation
 * **Linux FHS Segregation**: Normal workloads mount `./config` read-only at `/etc/dsh:ro` and mutable state at `/var/lib/dsh:rw` (UID 1000, `cap_drop: ALL`, `no-new-privileges: true`, 2 CPU / 4GB cgroup limits). Developer live mounts are isolated to `docker-compose.dev.yml`.
-* **Sandbox Mode**: Sandbox workloads mount configuration read-only at `/opt/dsh-config:ro`, enforce a read-only rootfs (`read_only: true`), keep workspaces strictly read-only (`./workspaces:ro`), persist GRC compliance audit logs to `./config/audit:/var/lib/dsh/audit:rw`, and isolate session state to the dedicated named volume `sandbox-session-state`. All frontier credentials are explicitly blanked out.
+* **Sandbox Mode**: Sandbox workloads mount configuration read-only at `/opt/dsh-config:ro`, enforce a read-only rootfs (`read_only: true`), keep workspaces strictly read-only (`./workspaces:ro`), run with `network_mode: none`, and isolate session state to the dedicated named volume `sandbox-session-state`. The DSH application has no audit mount; authenticated receipts are sent to the external `audit-writer`, which alone owns `./config/audit` and checkpoint storage. All frontier credentials are explicitly blanked out.
 
 ### 2. Credential & Token Protection
 * **Environment Indirection**: All Model Context Protocol (MCP) server definitions in `persona.yaml` or `cordis.patch.yml` must reference credentials via `${VAR_NAME}` syntax rather than literal values.

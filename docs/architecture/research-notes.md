@@ -83,7 +83,7 @@ Different multi-agent frameworks operationalize agent roles through distinct eng
 | **Tool Integration Model** | Python LangChain/Crew tools | Python functions / toolkits | Action classes | **Model Context Protocol (MCP)** via JSON-RPC / stdio |
 | **Execution Contexts** | In-process Python runtime | In-process / Docker sandbox | Local CLI process | **Execution Profile Matrix** (`web`, `headless`, `cli`, `sandbox`) |
 | **Security & Access Control (RBAC)** | Application prompt instructions | Python code constraints / Docker | Process-level sandbox | **In-Container Landlock LSM + Declarative Zero Trust RBAC + Symlink Pivot Rejection ([ADRs 0001–0005](adr/0005-remediation-of-audit-v3-findings.md))** |
-| **GRC & Audit Traceability** | Ephemeral console logs | Console logs | Output files | **Immutable Non-Repudiable Ledger (`audit_grc.jsonl`) + 128-bit OTel Correlation** |
+| **GRC & Audit Traceability** | Ephemeral console logs | Console logs | Output files | **Tamper-evident writer-owned ledger (`audit_grc.jsonl`) + 128-bit OTel Correlation** |
 | **Observability Standard** | OpenTelemetry / AgentOps | OpenTelemetry / Console | Console / Logging | **100% Local Arize Phoenix OTel** (`http://localhost:6006`) |
 | **Workflow Lifecycle** | Programmatic pipeline | Conversational group chat | SOP sequence | **Two-Way DAG Canvas** (`deepseek-flow`) & Declarative Orchestrator |
 
@@ -152,7 +152,7 @@ DeepSeek Harness implements a multi-tier defense-in-depth model that replaces re
 * Steps run with dropped Linux capabilities (`cap_drop: [ALL]`), read-only root filesystems, and Landlock LSM sandbox limits. 
 * If the container is offline, execution strictly fails closed, preventing accidental leakage into the invoking host user's environment.
 
-### D. Non-Repudiable GRC Audit Trails & OTel Trace Correlation
+### D. Tamper-Evident GRC Audit Trails & OTel Trace Correlation
 * Enterprise governance requires verifiable traceability for autonomous decisions.
-* Every authorization check, adaptive case management gate (`GATED`), and workflow completion is appended to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted to host `./config/audit`).
+* Every authorization check, adaptive case management gate (`GATED`), and workflow completion is submitted as an authenticated receipt to the external writer, which appends `/var/lib/dsh/audit/audit_grc.jsonl` (persisted to host `./config/audit`).
 * Audit records embed 128-bit trace and span correlation IDs, enabling cryptographic auditing and forensic reconstruction within Arize Phoenix.

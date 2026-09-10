@@ -187,7 +187,7 @@ Even if an agent bypassed software checks, the container boundary confines the b
 
 Every guardrail enforcement decision is recorded in two audit channels:
 
-1. **Immutable GRC Audit Ledger** (`config/audit/audit_grc.jsonl`):
+1. **Tamper-evident GRC Audit Ledger** (`config/audit/audit_grc.jsonl`):
    ```json
    {
      "timestamp": "2026-09-07T06:15:22.104Z",
@@ -242,7 +242,7 @@ Autonomous agents introduce multi-step reasoning, tool execution, and state pers
 | **ASI07** | **Confused Deputy & SSRF** | Agent coerced into probing internal Docker bridge networks or cloud metadata (`169.254.169.254`). | **Envoy Egress Proxy Lockdown (ADR 0007)**: In sandbox profiles, containers route outbound HTTP/mTLS traffic strictly through loopback Envoy (`127.0.0.1:10000`) with strict DNS cache TTLs, blocking direct IP access and metadata endpoints. | ✅ **Covered** |
 | **ASI08** | **Supply Chain & Untrusted Subagent Compromise** | Malicious subagent, tool, or plugin compromises the host environment. | **Hermetic Packaging & CI Scanners**: Pinned SHA-256 releases, read-only mounted personas/skills (`:ro`), and automated Hadolint/Trivy/Gitleaks CI scanning. Subagents execute with strict capability boundaries. | ✅ **Covered** |
 | **ASI09** | **Cascading Multi-Agent Failures** | Failure in one agent step propagates uncontrolled failures across the entire system. | **Transactional Worktrees & Fallback Recovery**: Isolated sub-process boundaries, explicit `on_failure: "escalate_to_soc"` fallback paths, and atomic Git worktree rollbacks (`withTransactionalWorktree`). | ✅ **Covered** |
-| **ASI10** | **Insecure Auditability & Trajectory Drift** | Post-incident investigations cannot determine what reasoning or tool sequence caused an unauthorized change. | **Immutable GRC Audit Ledger & OTel Traces**: Every authorization, symlink check, and step execution is logged to `config/audit/audit_grc.jsonl` and correlated with 128-bit W3C TraceContext spans in Arize Phoenix. | ✅ **Covered** |
+| **ASI10** | **Insecure Auditability & Trajectory Drift** | Post-incident investigations cannot determine what reasoning or tool sequence caused an unauthorized change. | **Tamper-evident audit-writer ledger & OTel traces**: Authorization, symlink checks, and step execution are submitted as authenticated receipts to the writer and correlated with 128-bit W3C TraceContext spans in Arize Phoenix. | ✅ **Covered within the service trust boundary** |
 
 ---
 
@@ -309,7 +309,7 @@ The European Union Artificial Intelligence Act establishes mandatory compliance 
 | Article | Legal Requirement | `DSH-DDS` Architectural Control |
 | :--- | :--- | :--- |
 | **Article 9** | **Risk Management System**: Continuous, iterative risk management system active throughout the AI system life cycle. | **Real-Time PEP Interceptor**: Every tool call is intercepted by `@dsh-dds/core` and verified against directory containment allowlists and symlink escape checks (F-02). |
-| **Article 12** | **Record-Keeping & Automated Logging**: High-risk AI systems must implement automated logging of events to ensure traceability. | **On-Premise Non-Repudiable Ledger**: All policy decisions, approval tokens, and step executions are stored in local append-only `audit_grc.jsonl` and Phoenix SQLite storage. |
+| **Article 12** | **Record-Keeping & Automated Logging**: High-risk AI systems must implement automated logging of events to ensure traceability. | **Writer-owned tamper-evident ledger**: Policy decisions, approval tokens, and step executions are stored through authenticated receipts in `audit_grc.jsonl` and Phoenix storage; independent WORM retention is a deployment control. |
 | **Article 14** | **Human Oversight**: AI systems must be designed to allow natural persons to oversee, intervene, or halt autonomous operation. | **Asymmetric Ed25519 Approval Gates**: Autonomous execution halts at sensitive milestones, requiring an out-of-band operator signature (`./dsh.sh approve <id>`). |
 | **Article 15** | **Accuracy, Robustness & Cybersecurity**: Resilience against unauthorized third-party exploitation, prompt manipulation, and data poisoning. | **Defense-in-Depth Container Sandbox**: Non-root execution (`1000:1000`), stripped Linux capabilities (`cap_drop: ALL`), read-only FHS mounts, and loopback Envoy egress filtering. |
 

@@ -10,7 +10,7 @@
 
 ## 📑 Abstract
 
-Early deployments of Large Language Models (LLMs) in software engineering relied heavily on prompt tuning, unstructured context concatenation, and unconfined host subprocesses. In real-world enterprise environments, this paradigm fails catastrophically due to non-deterministic execution, prompt injection vulnerabilities, tool selection entropy, and lack of non-repudiable audit trails.
+Early deployments of Large Language Models (LLMs) in software engineering relied heavily on prompt tuning, unstructured context concatenation, and unconfined host subprocesses. In real-world enterprise environments, this paradigm fails catastrophically due to non-deterministic execution, prompt injection vulnerabilities, tool selection entropy, and lack of tamper-evident audit trails.
 
 This document formalizes the **State of the Art (SOTA) in AI Harness Architecture**—the engineering discipline of constructing deterministic, zero-trust runtime scaffolds, kernel sandboxes, and policy interceptors around stochastic foundation models. We synthesize theoretical foundations from Stanford, Anthropic, Google Research, and NIST, establish the **5 Architectural Pillars of a SOTA AI Harness**, and provide an empirical comparative benchmark contrasting this repository's implementation against mainstream agent frameworks (CrewAI, Microsoft AutoGen, MetaGPT, LangGraph).
 
@@ -55,7 +55,7 @@ Where:
 * $\mathcal{O}_{\text{declarative}}$ represents the **Declarative Orchestration Engine** (acyclic execution graphs, typed capability adapters, zero-shell invariant).
 * $\mathcal{P}_{\text{RBAC}}$ represents the **Zero Trust Policy Interceptor** (principle of least privilege, canonical realpath resolution, anti-symlink pivot rejection).
 * $\mathcal{V}_{\text{tools}}$ represents **Tool Virtualization & Protocol Bridges** (scoped Model Context Protocol servers, cryptographic thought-signature preservation).
-* $\mathcal{G}_{\text{observability}}$ represents the **GRC Governance & FinOps Engine** (immutable non-repudiable audit logs, distributed OpenTelemetry trace waterfalls).
+* $\mathcal{G}_{\text{observability}}$ represents the **GRC Governance & FinOps Engine** (writer-owned tamper-evident audit logs, distributed OpenTelemetry trace waterfalls).
 
 ```mermaid
 flowchart TD
@@ -169,9 +169,9 @@ An enterprise AI Harness must guarantee full visibility and legal auditability:
      - **Local Telemetry & Workspace Boundary**: The harness guarantees that all telemetry traces, prompt histories, evaluation scores, and codebase files remain strictly host-confined. Unlike SaaS observability platforms (LangSmith, Datadog AI, AgentOps), zero observability data leaves the local perimeter.
      - **Model Inference Egress (Cloud APIs vs. Air-Gapped)**: When configured with public cloud model APIs (OpenRouter, DeepSeek API, Anthropic Claude, Google Gemini), prompt context and tool parameters necessarily transit over TLS to the selected provider.
      - **True 100% Air-Gapped Sovereignty**: For regulated, defense, or high-compliance workloads (GDPR Art. 9, HIPAA), DSH-DDS routes seamlessly to local on-premise inference engines (Ollama, vLLM, llama.cpp, LocalAI) or private VPC endpoints, establishing absolute zero data egress across both the control plane and inference plane.
-2. **Immutable Non-Repudiable GRC Ledger (`audit_grc.jsonl`)**:
+2. **Tamper-Evident GRC Ledger (`audit_grc.jsonl`)**:
    * *Reference*: [ADR 0002: Out-of-Band GRC Observability](adr/0002-out-of-band-grc-and-deterministic-e2e-sandbox.md), [ADR 0008: Sandbox Hardening](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md).
-   * *Standard*: Every authorization check, gate suspension, and workflow outcome appends a structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted on the host at `./config/audit/audit_grc.jsonl`):
+   * *Current deployment*: Every authorization check, gate suspension, and workflow outcome is sent as an authenticated receipt to the external audit-writer, which appends the structured JSON Lines record to `/var/lib/dsh/audit/audit_grc.jsonl` (persisted on the host at `./config/audit/audit_grc.jsonl`):
      ```json
      {
        "timestamp": "2026-09-03T14:10:22.185Z",
@@ -219,7 +219,7 @@ The positioning of **DSH-DDS** relative to the 2026 state of the art resolves fo
    * *DSH-DDS Lead*: Enforces a strict Zero-Shell Invariant ([ADR 0003](adr/0003-authoritative-declarative-orchestrator-and-capability-adapters.md)), replacing fragile shell scripts with a typed, declarative finite state machine.
 3. **Sovereign Telemetry & Regulatory Compliance (EU AI Act & NIST AI RMF)**:
    * *Industry Vulnerability*: Commercial agent observability platforms (LangSmith, AgentOps, Datadog AI) require outbound cloud telemetry egress, violating enterprise data privacy mandates.
-   * *DSH-DDS Lead*: Delivers 100% on-premise OpenTelemetry distributed tracing via Arize Phoenix and non-repudiable GRC logging (`audit_grc.jsonl`), with clear architectural separation between local telemetry and external model API inference.
+   * *DSH-DDS Lead*: Delivers on-premise OpenTelemetry distributed tracing via Arize Phoenix and writer-owned tamper-evident GRC logging (`audit_grc.jsonl`), with clear architectural separation between local telemetry and external model API inference.
 4. **Boot-Time FinOps & Multi-Model Calibration**:
    * *Industry Vulnerability*: Static model bindings lead to vendor lock-in and uncontrolled token cost inflation.
    * *DSH-DDS Lead*: Synchronizes live pricing across 420+ models at boot (`sync_models.mjs`), dynamically calibrating execution across 4 task-specific tiers (Default, Reasoning, Fast, Multimodal).
@@ -243,7 +243,7 @@ flowchart TD
         C1["Zero Trust Persona RBAC Matrix (PoLP)"]
         C2["Acyclic Policy Engine & Anti-Symlink Pivot Rejection"]
         C3["Landlock LSM & Dropped Linux Capabilities Sandbox"]
-        C4["Immutable Non-Repudiable GRC Audit Ledger (audit_grc.jsonl)"]
+        C4["Writer-Owned Tamper-Evident Ledger (audit_grc.jsonl)"]
         C5["Multi-Model Cost & Latency OpenTelemetry Telemetry"]
     end
 
