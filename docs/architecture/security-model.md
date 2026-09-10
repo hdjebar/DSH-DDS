@@ -37,10 +37,10 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 | **SEC-10** | **Execution Boundary** | **PENDING LIVE TEST** | Ambient Process Execution | The PEP defaults closed and routes approved shell calls to a networkless, unprivileged executor with workspace-only mounts and resource limits. |
 | **SEC-11** | **Web Agent Confinement** | **PARTIAL** | Indirect Prompt Injection & Cloud Metadata SSRF | Declarative requests validate destinations and sandbox Node traffic uses filtered proxy egress. DNS resolution is not yet pinned to the validated address. |
 | **SEC-12** | **Threat Model Demarcation** | **PASS** | Boundary Confusion between Node PEP and Kernel Sandbox | Explicitly demarcated: `loader.mjs` is an internal engine PEP shim; process containment is enforced by Linux kernel cgroups, namespaces, Landlock LSM, and read-only rootfs ([ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md)). |
-| **SEC-13** | **Cryptographic Integrity** | **PASS** | Default BYOK Master Key Fallback | Remediated: fail-closed master key enforcement (`DSH_VAULT_MASTER_KEY >= 32` chars), payload v2 format, 64KB body limit ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
-| **SEC-14** | **Identity Spoofing** | **PASS** | Unvalidated Header Trust in Reverse Proxy Mode | Remediated: `x-dsh-user-id` and `x-dsh-user-roles` require `DSH_TRUST_PROXY_HEADERS=true` and trusted socket peer validation via `isTrustedGatewayIp()`; JWT pinned to `HS256` ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-13** | **Cryptographic Integrity** | **PASS** | Default BYOK Master Key Fallback | Remediated: fail-closed master key enforcement (`DSH_VAULT_MASTER_KEY >= 32` chars), payload v2 format, 64KB body limit ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-14** | **Identity Spoofing** | **PASS** | Unvalidated Header Trust in Reverse Proxy Mode | Remediated: `x-dsh-user-id` and `x-dsh-user-roles` require `DSH_TRUST_PROXY_HEADERS=true` and trusted socket peer validation via `isTrustedGatewayIp()`; JWT pinned to `HS256` ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 | **SEC-15** | **Policy Enforcement** | **PENDING LIVE TEST** | PEP Mapping, Identity, and Shell Dispatch | Tool mapping and missing identity fail closed; request identity is immutable and request-scoped; approved shell calls require short-lived workdir-bound capabilities accepted only by the isolated executor. |
-| **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` owned by `root:root` (`0755`) and the `@dsh-dds` scope in the writable profile tree likewise, so the unprivileged `dsh:dsh` agent can tamper with neither the `--import` loader path nor the plugin as resolved by bare specifier. The rest of the profile tree stays writable for profile installs; other bare specifiers are contained by the read-only rootfs in sandbox mode only ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
+| **SEC-16** | **Host Immutability** | **PASS** | In-Container Code Modification by Agent Process | Remediated: `/app` owned by `root:root` (`0755`) and the `@dsh-dds` scope in the writable profile tree likewise, so the unprivileged `dsh:dsh` agent can tamper with neither the `--import` loader path nor the plugin as resolved by bare specifier. The rest of the profile tree stays writable for profile installs; other bare specifiers are contained by the read-only rootfs in sandbox mode only ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md)). |
 
 ---
 
@@ -58,7 +58,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 2. [SEC-02] Process Privileges & Host Configuration Mount (Remediated)
 * **Threat Model & Prior Vulnerability**:
   - Prior architectures executed as `root` (UID 0) and mounted `./config` as read-write, risking host file clobbering and container escape.
-* **Hardened Architecture & Remediation ([ADR 0006](adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
+* **Hardened Architecture & Remediation ([ADR 0006](../adr/0006-global-refactoring-non-root-fhs-cordis-plugin.md), [ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
   - **Non-Root Service Execution**: `dsh`, `audit-writer`, `telemetry-gateway`, and `phoenix` run as UID/GID 1000; `isolated-executor` uses distinct UID 11000.
   - **Kernel Privilege Stripping**: `cap_drop: [ALL]` drops all Linux capabilities; `security_opt: [no-new-privileges:true]` blocks privilege escalation.
   - **Resource Cgroups**: Standard DSH limits CPU and memory; the writer, gateway, and executor also have explicit PID, CPU, and memory limits. Sandbox DSH tightens memory and sets a 150-process limit.
@@ -73,7 +73,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 * **Threat Model**:
   - Sensitive frontier keys (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`) are injected into the application container in standard mode and remain visible to trusted in-process plugins.
   - Shell tools previously inherited that environment and could inspect application process state.
-* **Hardening Guideline & Remediation ([ADR 0008](adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
+* **Hardening Guideline & Remediation ([ADR 0008](../adr/0008-container-sandbox-hardening-and-supply-chain-remediation.md))**:
   - The turnkey installer enforces `chmod 0600 $DSH_INSTALL/.env` to prevent unauthorized local file reads.
   - In every mode, approved shell commands execute in a separate networkless service with an explicit environment allowlist and no vault, audit, session, application, or Docker-socket mounts.
   - In **Sandbox Mode** (`docker-compose.sandbox.yml`), provider API keys and tokens are additionally blanked in the application container.
@@ -113,7 +113,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 * **Hardening Guideline & Enforcement**:
   - Every persona manifest (`persona.yaml`) declares a strict `rbac:` policy specifying allowed roles, readable/writable filesystem paths, allowed MCP tools, and explicit `deny` paths.
   - The authoritative policy engine intercepts every workflow step using an immutable request-scoped principal, performs canonical containment and symlink checks, and fails closed if identity, audit receipt, policy, or isolated execution is unavailable.
-  - See [ADR 0001](adr/0001-build-time-immutability-and-rbac.md), [ADR 0004](adr/0004-in-container-boundaries-and-strict-directory-containment.md), and [ADR 0005](adr/0005-remediation-of-audit-v3-findings.md).
+  - See [ADR 0001](../adr/0001-build-time-immutability-and-rbac.md), [ADR 0004](../adr/0004-in-container-boundaries-and-strict-directory-containment.md), and [ADR 0005](../adr/0005-remediation-of-audit-v3-findings.md).
 
 ### 7. [SEC-08] Build-Time Immutability vs. Runtime Monkey-Patching
 * **Threat Model**:
@@ -225,7 +225,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 12. [SEC-13] Cryptographic Integrity & Fail-Closed BYOK Vault
 * **Threat Model & Prior Vulnerability**:
   - `packages/dsh-dds-core/byok-vault.js` fell back to a default constant string when `DSH_VAULT_MASTER_KEY` was missing, leaving encrypted user API keys vulnerable to decryption with public repository knowledge.
-* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+* **Remediation & Hardening ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
   - `ByokVault` strictly requires `DSH_VAULT_MASTER_KEY >= 32` characters; missing or short secrets fail closed with `VAULT_MASTER_KEY_MISSING`.
   - Payloads upgraded to `version: 2`; `decryptSecret` refuses legacy v1 blobs.
   - REST API `/dsh-dds/api/vault/keys` enforces a 64 KB maximum payload limit and socket destruction on overflow.
@@ -234,7 +234,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 13. [SEC-14] Identity Spoofing & Gateway Peer Verification
 * **Threat Model & Prior Vulnerability**:
   - Reverse proxy identity headers (`x-dsh-user-id`, `x-dsh-user-roles: admin`) were accepted without checking the requesting socket peer address.
-* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+* **Remediation & Hardening ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
   - Extracted network peer trust verification into `packages/dsh-dds-core/net-trust.js`.
   - Reverse proxy headers are ignored unless `DSH_TRUST_PROXY_HEADERS=true` and `isTrustedGatewayIp(remoteAddress)` verifies the caller is loopback or an internal Docker bridge.
   - JWT bearer token authentication strictly enforces `alg: HS256`.
@@ -243,7 +243,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 * **Threat Model & Prior Vulnerability**:
   - Raw tool names (`bash`, `write_file`, `edit_file`) diverged from declarative workflow verbs (`run_shell`, `create_file`, `modify_file`), resulting in unmapped actions defaulting to unclassified execution.
   - In-line PEP granted admin role when caller user context was omitted.
-* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+* **Remediation & Hardening ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
   - `TOOL_ACTION_MAP` maps agent tool names directly to policy verbs.
   - `run_shell` is classified as a write action in `config/rbac-policy.mjs`, enforcing strict directory boundaries on shell operations.
   - Missing identity context immediately fails closed with `[Zero-Trust RBAC Violation] Missing authenticated user identity context`.
@@ -252,7 +252,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 ### 15. [SEC-16] Container Application Code Immutability
 * **Threat Model & Prior Vulnerability**:
   - Although the process executed as unprivileged `dsh:dsh` (UID 1000), `dsh` owned `/app`, allowing an in-container compromise to rewrite `NODE_OPTIONS` loader shims or policy enforcement points.
-* **Remediation & Hardening ([ADR 0009](adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
+* **Remediation & Hardening ([ADR 0009](../adr/0009-vault-fail-closed-identity-peer-trust-and-pep-mapping.md))**:
   - In `Dockerfile`, `/app` is chowned to `root:root` with permissions `chmod -R 755 /app`.
   - The runtime process (`dsh:dsh`) can read and execute application files, but cannot modify in-memory interception or policy validation code on disk.
 
