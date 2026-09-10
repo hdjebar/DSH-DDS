@@ -193,11 +193,11 @@ jobs:
       - name: Hardened Sandbox Compose Stack Integration Test
         run: |
           cp .env.example .env
-          echo 'DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef' >> .env
-          echo 'PHOENIX_INGEST_TOKEN=ci-only-phoenix-ingest-token-0123456789abcdef0123456789abcdef' >> .env
-          echo 'PHOENIX_SECRET=ci-only-phoenix-secret-0123456789abcdef0123456789abcdef' >> .env
-          echo 'DSH_AUDIT_INTEGRITY_KEY=ci-only-audit-integrity-key-0123456789abcdef0123456789abcdef' >> .env
-          echo 'DSH_AUDIT_WRITER_TOKEN=ci-only-audit-writer-token-0123456789abcdef0123456789abcdef' >> .env
+          sed -i 's|^DSH_EXECUTOR_CAPABILITY_KEY=.*|DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef|' .env
+          sed -i 's|^PHOENIX_INGEST_TOKEN=.*|PHOENIX_INGEST_TOKEN=ci-only-phoenix-ingest-token-0123456789abcdef0123456789abcdef|' .env
+          sed -i 's|^PHOENIX_SECRET=.*|PHOENIX_SECRET=ci-only-phoenix-secret-0123456789abcdef0123456789abcdef|' .env
+          sed -i 's|^DSH_AUDIT_INTEGRITY_KEY=.*|DSH_AUDIT_INTEGRITY_KEY=ci-only-audit-integrity-key-0123456789abcdef0123456789abcdef|' .env
+          sed -i 's|^DSH_AUDIT_WRITER_TOKEN=.*|DSH_AUDIT_WRITER_TOKEN=ci-only-audit-writer-token-0123456789abcdef0123456789abcdef|' .env
           mkdir -p workspaces/cases workspaces/artifacts config/phoenix config/sessions config/storages config/audit config/patch config/cache
           chmod -R 0777 config/phoenix config/sessions config/storages config/audit config/patch config/cache workspaces
 
