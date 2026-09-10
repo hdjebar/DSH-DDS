@@ -39,6 +39,14 @@ test('Outbound security revalidates redirect destinations', async () => {
   }), (error) => error instanceof OutboundSecurityError && error.code === 'OUTBOUND_PROTOCOL_DENIED');
 });
 
+test('Outbound security rejects inconsistent DNS answers before connecting', async () => {
+  let calls = 0;
+  const rotatingLookup = async () => [{ address: calls++ === 0 ? '93.184.216.34' : '10.0.0.7', family: 4 }];
+  await assert.rejects(secureFetch('https://api.example.test/start', {
+    allowedHosts: ['api.example.test'], lookup: rotatingLookup, fetchImpl: async () => new Response('unexpected')
+  }), (error) => error.code === 'OUTBOUND_DNS_REBINDING');
+});
+
 test('Outbound security bounds streamed and declared response bodies', async () => {
   const declared = new Response('small', { headers: { 'content-length': '1000' } });
   await assert.rejects(readResponseBodyLimited(declared, 10),

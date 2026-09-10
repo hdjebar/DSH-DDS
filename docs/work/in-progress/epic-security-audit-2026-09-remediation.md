@@ -69,7 +69,7 @@ Still required before this epic can move to Done:
   available, including namespace, Landlock, audit-tamper, telemetry-auth, timeout, output-bomb,
   cancellation, and rollback probes.
 
-Current automated verification: **213/213 tests pass**. Installer parity, JavaScript/shell syntax,
+Current automated verification: **214/214 tests pass**. Installer parity, JavaScript/shell syntax,
 schema parsing, whitespace checks, both Compose configurations, root and production-web dependency
 audits, and CI workflow parsing pass. GitNexus classifies the combined change set as **Critical**:
 191 changed symbols affect 29 execution flows. This requires staged review and rollout.

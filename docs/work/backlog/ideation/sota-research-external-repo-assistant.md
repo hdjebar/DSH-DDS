@@ -220,7 +220,7 @@ sequenceDiagram
     Archify-->>HostAssistant: Verified compliant with ADR 0007
     HostAssistant->>Worktree: Create ephemeral staging branch (worktree-104)
     HostAssistant->>Container: docker compose exec dsh npm test
-    Container-->>HostAssistant: 213/213 tests passed (0 failures)
+    Container-->>HostAssistant: 214/214 tests passed (0 failures)
     HostAssistant->>Worktree: Fast-forward merge to canonical branch
     HostAssistant-->>Dev: Verified clean mutation, 0 regressions
 ```

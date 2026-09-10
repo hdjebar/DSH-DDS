@@ -23,7 +23,7 @@ Every initiative in `testing/` must satisfy the **Five Quality Gates** before pr
 
 | Gate | Verification Command | Objective | Passing Standard |
 | :--- | :--- | :--- | :--- |
-| **1. Unit & Integration** | `npm test` | Regression testing across all components | 100% pass rate (213/213 tests) |
+| **1. Unit & Integration** | `npm test` | Regression testing across all components | 100% pass rate (214/214 tests) |
 | **2. Supply Chain & Installer** | `npm run verify:installer` | Zero drift between installer and source files | Parity verified |
 | **3. Visual Architecture** | `npm run visual-architecture:build` | Archify showcase quality certification | 9/9 checks passed, 0 errors |
 | **4. AST Blast Radius** | `npx gitnexus detect-changes` | Verify only intended symbols were touched | Low risk, 0 unmapped mutations |

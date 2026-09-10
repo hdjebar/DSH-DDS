@@ -51,6 +51,24 @@ function isBlockedIp(address) {
   return mapped ? isBlockedIpv4(mapped[1]) : false;
 }
 
+async function resolveOutboundAddresses(hostname, lookup) {
+  if (net.isIP(hostname)) return [{ address: hostname }];
+  try {
+    const addresses = await (lookup || dns.lookup)(hostname, { all: true, verbatim: true });
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+      throw new OutboundSecurityError('OUTBOUND_DNS_FAILED', `Outbound host '${hostname}' resolved to no addresses`);
+    }
+    return addresses;
+  } catch (error) {
+    if (error instanceof OutboundSecurityError) throw error;
+    throw new OutboundSecurityError('OUTBOUND_DNS_FAILED', `Could not resolve outbound host '${hostname}': ${error.message}`);
+  }
+}
+
+function addressSet(addresses) {
+  return addresses.map(({ address }) => String(address).toLowerCase()).sort().join(',');
+}
+
 export async function validateOutboundUrl(input, options = {}) {
   let parsed;
   try {
@@ -78,19 +96,7 @@ export async function validateOutboundUrl(input, options = {}) {
   }
   const allowPrivate = (options.allowPrivateHosts || []).map((host) => String(host).toLowerCase())
     .some((host) => hostMatches(hostname, host));
-  let addresses;
-  if (net.isIP(hostname)) {
-    addresses = [{ address: hostname }];
-  } else {
-    try {
-      addresses = await (options.lookup || dns.lookup)(hostname, { all: true, verbatim: true });
-    } catch (error) {
-      throw new OutboundSecurityError('OUTBOUND_DNS_FAILED', `Could not resolve outbound host '${hostname}': ${error.message}`);
-    }
-  }
-  if (!Array.isArray(addresses) || addresses.length === 0) {
-    throw new OutboundSecurityError('OUTBOUND_DNS_FAILED', `Outbound host '${hostname}' resolved to no addresses`);
-  }
+  const addresses = await resolveOutboundAddresses(hostname, options.lookup);
   if (!allowPrivate && addresses.some(({ address }) => isBlockedIp(address))) {
     throw new OutboundSecurityError('OUTBOUND_ADDRESS_DENIED', `Outbound host '${hostname}' resolves to a non-public address`);
   }
@@ -106,7 +112,23 @@ export async function secureFetch(input, options = {}) {
 
   let current = String(input);
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
-    const parsed = await validateOutboundUrl(current, { allowedHosts, allowPrivateHosts, allowedPorts, protocols, lookup });
+    let preflightAddresses;
+    let preflightHost;
+    try { preflightHost = new URL(current).hostname.toLowerCase().replace(/^\[|\]$/g, ''); } catch { /* validator emits the canonical error */ }
+    if (lookup && preflightHost && !net.isIP(preflightHost)) preflightAddresses = await resolveOutboundAddresses(preflightHost, lookup);
+    const parsed = await validateOutboundUrl(current, {
+      allowedHosts, allowPrivateHosts, allowedPorts, protocols,
+      lookup: preflightAddresses ? async () => preflightAddresses : lookup
+    });
+    if (lookup && !net.isIP(parsed.hostname)) {
+      const second = await resolveOutboundAddresses(parsed.hostname, lookup);
+      if (addressSet(preflightAddresses) !== addressSet(second)) {
+        throw new OutboundSecurityError('OUTBOUND_DNS_REBINDING', `Outbound host '${parsed.hostname}' returned inconsistent DNS answers`);
+      }
+      if (!(allowPrivateHosts || []).some((host) => hostMatches(parsed.hostname.toLowerCase(), String(host).toLowerCase())) && preflightAddresses.some(({ address }) => isBlockedIp(address))) {
+        throw new OutboundSecurityError('OUTBOUND_ADDRESS_DENIED', `Outbound host '${parsed.hostname}' resolved to a non-public address`);
+      }
+    }
     const response = await fetchImpl(parsed, { ...fetchOptions, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) });
     if (!REDIRECT_STATUSES.has(response.status)) return response;
     if (redirectCount === maxRedirects) throw new OutboundSecurityError('OUTBOUND_REDIRECT_LIMIT', `Too many redirects fetching '${input}'`);
