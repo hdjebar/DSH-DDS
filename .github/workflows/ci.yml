@@ -187,7 +187,8 @@ jobs:
             --tmpfs /var/lib/dsh:rw,nosuid,nodev,size=512m,mode=1777 \
             --tmpfs /run:rw,size=32m,mode=1777 \
             --tmpfs /var/lib/dsh-state:rw,size=32m,mode=1777 \
-            dsh-local:latest sh -c 'test -f /opt/dsh-config/personas/sdmx-expert/persona.yaml'
+            --entrypoint /bin/sh \
+            dsh-local:latest -c 'test -f /opt/dsh-config/personas/sdmx-expert/persona.yaml'
 
       - name: Hardened Sandbox Compose Stack Integration Test
         run: |
