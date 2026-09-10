@@ -62,6 +62,7 @@ services:
       - GITHUB_PERSONAL_ACCESS_TOKEN=
       - GITHUB_TOKEN=
       - PHOENIX_API_KEY=
+      - PHOENIX_INGEST_TOKEN=
       - PHOENIX_SECRET=
       - NODE_USE_ENV_PROXY=1
       - HTTP_PROXY=http://egress-filter:10000

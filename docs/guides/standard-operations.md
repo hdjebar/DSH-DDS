@@ -142,6 +142,7 @@ Configuration parameters are loaded on boot from `.env` on the host:
 | `PHOENIX_ENABLE_AUTH` | **Optional** | `true`/`false`. Enables login authentication on Phoenix UI (`127.0.0.1:6006`). |
 | `PHOENIX_SECRET` | **Optional** | Secret for cookie encryption when `PHOENIX_ENABLE_AUTH=true`. |
 | `PHOENIX_API_KEY` | **Optional** | API key for programmatic OTel query endpoints. |
+| `PHOENIX_INGEST_TOKEN` | **Recommended after bootstrap** | Scoped Phoenix system key used by the telemetry gateway. If unset, the gateway temporarily falls back to `PHOENIX_API_KEY`. |
 
 > [!NOTE]
 > **Provider Requirement**: At least one model provider (`GEMINI_API_KEY` or `OPENROUTER_API_KEY`) must be configured for personas to run.
@@ -149,4 +150,3 @@ Configuration parameters are loaded on boot from `.env` on the host:
 > **No Registration for `DSH_APPROVAL_SECRET`**: You do not need to sign up for any service. It is an internal secret automatically generated on install with `openssl rand -hex 32`.
 > 
 > **File Security**: Always run `chmod 0600 .env` so credentials cannot be read by other local users. Check status anytime with `./dsh.sh doctor`.
-

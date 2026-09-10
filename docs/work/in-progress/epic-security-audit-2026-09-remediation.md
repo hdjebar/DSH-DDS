@@ -1,5 +1,5 @@
 # 📋 Epic: September 2026 Security Audit Remediation
-
+con
 * **Status**: In Progress / Security Remediation
 * **Priority**: Critical
 * **Category**: Security, Multi-Tenancy & Runtime Isolation
@@ -45,56 +45,27 @@ Implemented and regression-tested in the current worktree:
 * declarative outbound tools enforce host/protocol/port allowlists, private-address checks,
   redirect revalidation, timeouts, and bounded SDMX bodies;
 * restart requires local transport, same origin, administrator role, and a CSRF token;
-* installer secrets use only cryptographic randomness and include restart, audit-writer,
-  executor, audit-integrity, and Phoenix authentication material;
-* a separate audit-writer service exclusively owns the ledger, integrity key, and checkpoint
-  mounts; authorization grants require its synchronous receipt, and its sequence-linked
-  SHA-256/HMAC chain detects modification, deletion, downgrade, and tail truncation;
-* shell calls are routed over a Unix socket to a networkless, unprivileged executor service;
-  the PEP issues short-lived workdir-bound HMAC capabilities, and the executor applies
-  full-enforcement Landlock rules, environment/output/time/process limits, and workspace-only
-  host mounts before running a command;
-* tenant migration tooling inventories legacy partitions, requires explicit collision
-  adjudication, creates fingerprints and backups, supports dry-run/apply/verify, and produces
-  a reversible rollback manifest; and
-* Phoenix authentication is enabled, application telemetry crosses a fixed-route gateway that
-  injects the ingestion credential, and Phoenix is isolated on an internal management network.
+* installer secrets use only cryptographic randomness and include restart and audit keys; and
+* audit entries have an inter-process append lock plus a sequence-linked SHA-256/HMAC chain
+  with fail-closed tamper and downgrade detection.
 
 Still required before this epic can move to Done:
 
-* validate the isolated executor and its Landlock boundary in live Linux containers; the
-  service intentionally refuses to start when the kernel reports partial or unavailable
-  Landlock enforcement;
-* validate the per-invocation user/PID namespace boundary in live Linux containers. The
-  executor now wraps each command with `unshare --user --map-root-user --pid --mount-proc
-  --fork` and refuses to start without it; execution remains serialized as a conservative
-  availability control until live kernel support is confirmed;
+* replace the temporary shell gate with a separately isolated command executor;
+* move audit ownership and its HMAC/signing key into an external writer, with independently
+  stored checkpoints capable of detecting tail truncation;
+* ship inventory, backup, execution, verification, and rollback tooling for existing tenant
+  partition migrations;
 * bind validated DNS results to the actual outbound connection, or force all such traffic
-  through an egress component that validates the resolved destination, to close the remaining
-  DNS time-of-check/time-of-use rebinding window; the sandbox forces supported Node traffic
-  through Envoy, but Envoy's dynamic resolution is not yet private-address pinned;
-* replace the Phoenix bootstrap administrator token with a scoped system ingestion key after
-  first login, then remove the administrator secret from routine service configuration;
-* archive or explicitly migrate any unhashed legacy audit ledger before first writer startup;
-  the external writer refuses to treat an unanchored legacy prefix as protected history;
-* place audit checkpoints on remote or WORM storage if the threat model includes coordinated
-  compromise of the Docker host, writer service, ledger, checkpoint, and signing key; and
+  through an egress component that does so, to close DNS time-of-check/time-of-use rebinding;
+* complete the Phoenix authentication and management-plane network separation; and
 * run the new controls in live standard and sandbox containers when a Docker daemon is
-  available, including cross-tenant, socket-replay, timeout, output-bomb, and cancellation
-  probes.
+  available.
 
-Existing workspace permissions must be inventoried before enabling the executor. Run
-`node scripts/prepare_executor_workspaces.mjs --root ./workspaces --gid "${DSH_GID:-1000}"`
-for a dry-run report, review every path, then repeat with `--apply`. The tool changes only
-`workspaces/users`, `workspaces/cases`, and `workspaces/shared`, never vault, session, audit,
-or application-state paths; it does not follow symbolic links.
-
-Current automated verification: **213/213 tests pass**. Installer parity, JavaScript and shell
-syntax, JSON schema parsing, whitespace checks, and both Compose configurations pass. Root and
-production-web dependency audits report no known vulnerabilities. Live Docker and Landlock
-validation remains a release gate. Final GitNexus change detection classifies the patch as
-**Critical**: 191 changed symbols affect 29 execution flows across authorization, identity,
-workflow, migration, audit, and execution. This requires staged review and rollout.
+Current automated verification: **188/188 tests pass**, installer parity passes, both Compose
+configurations validate, and root plus production-web dependency audits report no known
+vulnerabilities. GitNexus classifies the combined change set as **Critical** because it changes
+102 symbols across 27 execution flows; this requires staged review and rollout.
 
 ## Change-risk warning
 

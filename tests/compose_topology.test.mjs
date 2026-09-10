@@ -193,6 +193,7 @@ test('Phoenix authentication and management-plane isolation are enabled by defau
   assert.deepEqual(phoenix.networks, ['phoenix-internal']);
   assert.ok(gateway.networks.includes('dsh-runtime'));
   assert.ok(gateway.networks.includes('phoenix-internal'));
+  assert.ok(gateway.environment.some(value => String(value).includes('PHOENIX_INGEST_TOKEN=')));
   assert.ok(!gateway.volumes, 'telemetry gateway must use immutable image code without the full config mount');
   assert.equal(compose.networks['phoenix-internal'].internal, true);
   assert.ok(dsh.environment.includes('DSH_TELEMETRY_OTLP_URL=http://telemetry-gateway:4318/v1/traces'));
