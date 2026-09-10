@@ -45,27 +45,35 @@ Implemented and regression-tested in the current worktree:
 * declarative outbound tools enforce host/protocol/port allowlists, private-address checks,
   redirect revalidation, timeouts, and bounded SDMX bodies;
 * restart requires local transport, same origin, administrator role, and a CSRF token;
-* installer secrets use only cryptographic randomness and include restart and audit keys; and
-* audit entries have an inter-process append lock plus a sequence-linked SHA-256/HMAC chain
-  with fail-closed tamper and downgrade detection.
+* installer secrets use only cryptographic randomness and include restart, audit-writer,
+  executor, and Phoenix authentication material;
+* the external audit-writer exclusively owns the HMAC ledger and checkpoint mounts, requires
+  authenticated receipts for grants, rejects unanchored legacy records, and recovers a single
+  verified ledger-ahead crash state;
+* shell calls run through a networkless UID 11000 executor with short-lived capabilities,
+  full-enforcement Landlock, resource limits, and per-invocation user/PID namespaces via
+  `unshare` (with conservative serialization); and
+* tenant migration tooling inventories, fingerprints, backs up, applies, verifies, and retries
+  reversible partition migrations with runtime UUID and path-containment checks.
 
 Still required before this epic can move to Done:
 
-* replace the temporary shell gate with a separately isolated command executor;
-* move audit ownership and its HMAC/signing key into an external writer, with independently
-  stored checkpoints capable of detecting tail truncation;
-* ship inventory, backup, execution, verification, and rollback tooling for existing tenant
-  partition migrations;
 * bind validated DNS results to the actual outbound connection, or force all such traffic
-  through an egress component that does so, to close DNS time-of-check/time-of-use rebinding;
-* complete the Phoenix authentication and management-plane network separation; and
+  through an egress component that pins and rejects private destinations, to close DNS
+  time-of-check/time-of-use rebinding. Sandbox traffic is forced through Envoy, but its dynamic
+  resolver is not yet private-address pinned;
+* provision and activate a scoped Phoenix ingestion key, then remove the bootstrap administrator
+  credential from routine service configuration;
+* publish audit checkpoints to remote or WORM storage if coordinated host compromise is in scope;
+* execute the migration workflow against representative real tenant data; and
 * run the new controls in live standard and sandbox containers when a Docker daemon is
-  available.
+  available, including namespace, Landlock, audit-tamper, telemetry-auth, timeout, output-bomb,
+  cancellation, and rollback probes.
 
-Current automated verification: **188/188 tests pass**, installer parity passes, both Compose
-configurations validate, and root plus production-web dependency audits report no known
-vulnerabilities. GitNexus classifies the combined change set as **Critical** because it changes
-102 symbols across 27 execution flows; this requires staged review and rollout.
+Current automated verification: **213/213 tests pass**. Installer parity, JavaScript/shell syntax,
+schema parsing, whitespace checks, both Compose configurations, root and production-web dependency
+audits, and CI workflow parsing pass. GitNexus classifies the combined change set as **Critical**:
+191 changed symbols affect 29 execution flows. This requires staged review and rollout.
 
 ## Change-risk warning
 
