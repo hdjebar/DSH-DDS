@@ -195,12 +195,14 @@ jobs:
           cp .env.example .env
           phoenix_secret="$(openssl rand -hex 32)"
           export PHOENIX_SECRET="$phoenix_secret"
+          export PHOENIX_ADMIN_SECRET="$phoenix_secret"
           phoenix_override="$(mktemp)"
           printf '%s\n' \
             'services:' \
             '  phoenix:' \
             '    environment:' \
-            "      PHOENIX_SECRET: $phoenix_secret" > "$phoenix_override"
+            "      PHOENIX_SECRET: $phoenix_secret" \
+            "      PHOENIX_ADMIN_SECRET: $phoenix_secret" > "$phoenix_override"
           compose=(docker compose -f docker-compose.yml -f docker-compose.sandbox.yml -f "$phoenix_override")
           sed -i 's|^DSH_EXECUTOR_CAPABILITY_KEY=.*|DSH_EXECUTOR_CAPABILITY_KEY=ci-only-capability-key-0123456789abcdef0123456789abcdef|' .env
           sed -i 's|^PHOENIX_INGEST_TOKEN=.*|PHOENIX_INGEST_TOKEN=ci-only-phoenix-ingest-token-0123456789abcdef0123456789abcdef|' .env
