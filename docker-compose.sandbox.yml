@@ -67,7 +67,7 @@ services:
       - NODE_USE_ENV_PROXY=1
       - HTTP_PROXY=http://egress-filter:10000
       - HTTPS_PROXY=http://egress-filter:10000
-      - NO_PROXY=localhost,127.0.0.1,dsh,audit-writer,telemetry-gateway,phoenix
+      - NO_PROXY=localhost,127.0.0.1,dsh,audit-writer,telemetry-gateway
     networks: !override
       - dsh-internal
       - audit-internal
