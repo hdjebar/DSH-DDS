@@ -268,8 +268,8 @@ jobs:
           "
 
           echo "Asserting session state persists across a sandbox restart..."
-          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh/sessions/ci-marker'
-          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh/storages/ci-marker'
+          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh-state/sessions/ci-marker'
+          "${compose[@]}" exec -T dsh sh -c 'echo persisted > /var/lib/dsh-state/storages/ci-marker'
           "${compose[@]}" restart dsh
           healthy=0
           for i in $(seq 1 90); do
@@ -281,5 +281,5 @@ jobs:
             sleep 1
           done
           [ "$healthy" -eq 1 ]
-          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh/sessions/ci-marker
-          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh/storages/ci-marker
+          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh-state/sessions/ci-marker
+          "${compose[@]}" exec -T dsh grep -q persisted /var/lib/dsh-state/storages/ci-marker
