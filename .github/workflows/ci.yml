@@ -249,20 +249,20 @@ jobs:
           echo "Asserting zero-egress network isolation..."
           "${compose[@]}" exec -T dsh node -e "fetch('https://example.com', { signal: AbortSignal.timeout(2000) }).then(()=>process.exit(1)).catch(()=>process.exit(0))"
 
-          echo "Asserting Phoenix observability connectivity..."
-          "${compose[@]}" exec -T -e NO_PROXY=localhost,127.0.0.1,phoenix dsh node -e "
+          echo "Asserting telemetry gateway connectivity to the healthy Phoenix stack..."
+          "${compose[@]}" exec -T dsh node -e "
             (async () => {
               for (let i = 0; i < 30; i++) {
                 try {
-                  const r = await fetch('http://phoenix:6006/');
+                  const r = await fetch('http://telemetry-gateway:4318/health');
                   if (r.status === 200) {
-                    console.log('✅ Connected to Arize Phoenix!');
+                    console.log('✅ Connected to the Phoenix telemetry gateway!');
                     process.exit(0);
                   }
                 } catch {}
                 await new Promise(res => setTimeout(res, 1000));
               }
-              console.error('❌ Failed to connect to Arize Phoenix after 30s');
+              console.error('❌ Failed to connect to the Phoenix telemetry gateway after 30s');
               process.exit(1);
             })();
           "
