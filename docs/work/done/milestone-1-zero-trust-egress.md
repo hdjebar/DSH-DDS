@@ -10,7 +10,7 @@
 ## 🎯 Objectives Delivered
 
 1. **Envoy Egress Forward Proxy Sidecar**:
-   * Hardened Envoy v1.31 sidecar in `docker-compose.sandbox.yml` with strict domain allowlists (ADR 0007 / ADR 0008).
+   * Hardened Envoy sidecar in `docker-compose.sandbox.yml` with strict domain allowlists (ADR 0007 / ADR 0008). The milestone originally shipped v1.31; the current runtime uses digest-pinned v1.39.1 with connection-time CIDR filtering.
    * Restricts `mcp-fetch` to HTTP `GET`/`HEAD` methods with 10s timeouts; drops unauthorized subshell exfiltration with HTTP 403.
    * Prohibits access to cloud metadata endpoints (`169.254.169.254`) and Google OAuth endpoints.
 

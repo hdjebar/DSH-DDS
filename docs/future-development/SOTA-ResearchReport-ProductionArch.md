@@ -427,92 +427,15 @@ The following blueprints represent the implementation designs ready to be commit
 
 ### 8.1 Network Egress Proxy Configuration with Antigravity Support (`config/network/envoy-egress.yaml`)
 
-```yaml
-static_resources:
-  listeners:
-  - name: egress_proxy_listener
-    address:
-      socket_address: { address: 0.0.0.0, port_value: 10000 }
-    filter_chains:
-    - filters:
-      - name: envoy.filters.network.http_connection_manager
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-          stat_prefix: egress_harness
-          route_config:
-            name: egress_routes
-            virtual_hosts:
-            
-            # -------------------------------------------------------------
-            # TIER 1: TRUSTED APIS (LLMs, GitHub, Registries - ADR 0007)
-            # -------------------------------------------------------------
-            - name: trusted_apis
-              domains:
-              # Model Endpoints (API key authenticated only; zero OAuth tokens)
-              - "generativelanguage.googleapis.com"
-              - "generativelanguage.googleapis.com:443"
-              - "openrouter.ai"
-              - "openrouter.ai:443"
-              # GitHub & Registries
-              - "api.github.com"
-              - "api.github.com:443"
-              - "github.com"
-              - "github.com:443"
-              - "objects.githubusercontent.com:443"
-              - "registry.npmjs.org"
-              - "registry.npmjs.org:443"
-              - "pypi.org"
-              - "pypi.org:443"
-              - "files.pythonhosted.org:443"
-              routes:
-              - match: { prefix: "/" }
-                route: { cluster: dynamic_forward_proxy_cluster }
-
-            # -------------------------------------------------------------
-            # TIER 2: ARBITRARY WEB FETCH (mcp-fetch ONLY: GET/HEAD)
-            # -------------------------------------------------------------
-            - name: public_web_fetch
-              domains: ["*"]
-              routes:
-              - match:
-                  prefix: "/"
-                  headers:
-                  - name: ":method"
-                    string_match: { safe_regex: { regex: "^(GET|HEAD)$" } }
-                route:
-                  cluster: dynamic_forward_proxy_cluster
-                  timeout: 10s
-              - match: { prefix: "/" }
-                direct_response:
-                  status: 403
-                  body: { inline_string: "DSH-DDS Egress Violation: Direct mutation/upload to untrusted domains is forbidden.\n" }
-
-          http_filters:
-          - name: envoy.filters.http.dynamic_forward_proxy
-            typed_config:
-              "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.FilterConfig
-              dns_cache_config:
-                name: dynamic_forward_proxy_cache_config
-                dns_lookup_family: V4_ONLY
-                dns_resolution_config:
-                  resolvers:
-                  - socket_address: { address: "1.1.1.1", port_value: 53 }
-          - name: envoy.filters.http.router
-            typed_config:
-              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-
-  clusters:
-  - name: dynamic_forward_proxy_cluster
-    connect_timeout: 5s
-    lb_policy: CLUSTER_PROVIDED
-    cluster_type:
-      name: envoy.clusters.dynamic_forward_proxy
-      typed_config:
-        "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
-        dns_cache_config:
-          name: dynamic_forward_proxy_cache_config
-
-```
+The implemented configuration is maintained directly in
+[`config/network/envoy-egress.yaml`](../../config/network/envoy-egress.yaml); duplicating the full
+YAML here previously allowed the blueprint to drift from production. The current boundary uses
+digest-pinned Envoy 1.39.1 and identical filter/cluster DNS-cache policies. Its
+`resolved_address_filter` removes private, reserved, loopback, link-local, multicast,
+documentation, and mapped-address ranges before the upstream socket is selected. Trusted API and
+SDMX domains may use HTTPS CONNECT; arbitrary CONNECT is denied because tunneled HTTP methods are
+not observable. Public plain-HTTP traffic remains limited to `GET` and `HEAD` with a 10-second
+timeout, and all other methods receive `403`.
 
 ---
 
@@ -720,7 +643,7 @@ networks:
 
 services:
   egress-filter:
-    image: envoyproxy/envoy:v1.31-latest
+    image: envoyproxy/envoy:v1.39.1@sha256:57e14a549d7bd43c8d3f6d03e8cfa653e037d4b38e133acd9b54f38c524401b4
     container_name: dsh-egress-filter
     volumes:
       - ./config/network/envoy-egress.yaml:/etc/envoy/envoy.yaml:ro

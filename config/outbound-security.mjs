@@ -1,5 +1,8 @@
 import dns from 'node:dns/promises';
+import http from 'node:http';
+import https from 'node:https';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -69,6 +72,61 @@ function addressSet(addresses) {
   return addresses.map(({ address }) => String(address).toLowerCase()).sort().join(',');
 }
 
+function responseHeaders(rawHeaders = []) {
+  const headers = new Headers();
+  for (let index = 0; index < rawHeaders.length; index += 2) {
+    headers.append(rawHeaders[index], rawHeaders[index + 1]);
+  }
+  return headers;
+}
+
+function fetchPinned(parsed, addresses, options = {}) {
+  const { body, headers, method = 'GET', signal } = options;
+  if (body != null && !(typeof body === 'string' || Buffer.isBuffer(body) || body instanceof Uint8Array)) {
+    throw new OutboundSecurityError('OUTBOUND_BODY_UNSUPPORTED', 'Pinned outbound requests require a string or byte-array body');
+  }
+  const approved = addresses.map(({ address, family }) => ({
+    address: String(address),
+    family: Number(family) || net.isIP(String(address))
+  }));
+  if (approved.length === 0 || approved.some(({ family }) => family !== 4 && family !== 6)) {
+    throw new OutboundSecurityError('OUTBOUND_DNS_FAILED', `Outbound host '${parsed.hostname}' has no usable addresses`);
+  }
+
+  const requestImpl = parsed.protocol === 'https:' ? https.request : http.request;
+  return new Promise((resolve, reject) => {
+    const request = requestImpl(parsed, {
+      agent: false,
+      headers,
+      method,
+      signal,
+      lookup(_hostname, lookupOptions, callback) {
+        if (lookupOptions?.all) return callback(null, approved);
+        return callback(null, approved[0].address, approved[0].family);
+      }
+    }, (incoming) => {
+      const status = incoming.statusCode || 500;
+      const responseBody = method.toUpperCase() === 'HEAD' || status === 204 || status === 205 || status === 304
+        ? null
+        : Readable.toWeb(incoming);
+      resolve(new Response(responseBody, {
+        status,
+        statusText: incoming.statusMessage,
+        headers: responseHeaders(incoming.rawHeaders)
+      }));
+    });
+    request.on('error', reject);
+    request.end(body);
+  });
+}
+
+function sandboxProxyConfigured(protocol) {
+  const proxy = protocol === 'https:'
+    ? (process.env.https_proxy || process.env.HTTPS_PROXY)
+    : (process.env.http_proxy || process.env.HTTP_PROXY);
+  return process.env.NODE_USE_ENV_PROXY === '1' && Boolean(proxy);
+}
+
 export async function validateOutboundUrl(input, options = {}) {
   let parsed;
   try {
@@ -113,23 +171,41 @@ export async function secureFetch(input, options = {}) {
   let current = String(input);
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
     let preflightAddresses;
-    let preflightHost;
-    try { preflightHost = new URL(current).hostname.toLowerCase().replace(/^\[|\]$/g, ''); } catch { /* validator emits the canonical error */ }
-    if (lookup && preflightHost && !net.isIP(preflightHost)) preflightAddresses = await resolveOutboundAddresses(preflightHost, lookup);
+    const resolver = lookup || dns.lookup;
     const parsed = await validateOutboundUrl(current, {
       allowedHosts, allowPrivateHosts, allowedPorts, protocols,
-      lookup: preflightAddresses ? async () => preflightAddresses : lookup
+      lookup: async (hostname) => {
+        preflightAddresses = await resolveOutboundAddresses(hostname, resolver);
+        return preflightAddresses;
+      }
     });
-    if (lookup && !net.isIP(parsed.hostname)) {
-      const second = await resolveOutboundAddresses(parsed.hostname, lookup);
+    let connectionAddresses = [{ address: parsed.hostname, family: net.isIP(parsed.hostname) }];
+    if (!net.isIP(parsed.hostname)) {
+      const second = await resolveOutboundAddresses(parsed.hostname, resolver);
       if (addressSet(preflightAddresses) !== addressSet(second)) {
         throw new OutboundSecurityError('OUTBOUND_DNS_REBINDING', `Outbound host '${parsed.hostname}' returned inconsistent DNS answers`);
       }
       if (!(allowPrivateHosts || []).some((host) => hostMatches(parsed.hostname.toLowerCase(), String(host).toLowerCase())) && preflightAddresses.some(({ address }) => isBlockedIp(address))) {
         throw new OutboundSecurityError('OUTBOUND_ADDRESS_DENIED', `Outbound host '${parsed.hostname}' resolved to a non-public address`);
       }
+      connectionAddresses = second;
     }
-    const response = await fetchImpl(parsed, { ...fetchOptions, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) });
+    const privateAllowed = (allowPrivateHosts || [])
+      .some((host) => hostMatches(parsed.hostname.toLowerCase(), String(host).toLowerCase()));
+    const signal = fetchOptions.signal
+      ? AbortSignal.any([fetchOptions.signal, AbortSignal.timeout(timeoutMs)])
+      : AbortSignal.timeout(timeoutMs);
+    let response;
+    if (fetchImpl !== globalThis.fetch) {
+      response = await fetchImpl(parsed, { ...fetchOptions, redirect: 'manual', signal });
+    } else if (process.env.DSH_SANDBOX === '1' && !privateAllowed) {
+      if (!sandboxProxyConfigured(parsed.protocol)) {
+        throw new OutboundSecurityError('OUTBOUND_PROXY_REQUIRED', 'Sandbox outbound requests require the configured egress proxy');
+      }
+      response = await fetchImpl(parsed, { ...fetchOptions, redirect: 'manual', signal });
+    } else {
+      response = await fetchPinned(parsed, connectionAddresses, { ...fetchOptions, signal });
+    }
     if (!REDIRECT_STATUSES.has(response.status)) return response;
     if (redirectCount === maxRedirects) throw new OutboundSecurityError('OUTBOUND_REDIRECT_LIMIT', `Too many redirects fetching '${input}'`);
     const location = response.headers.get('location');

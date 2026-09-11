@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import os from 'node:os';
 import yaml from 'yaml';
@@ -11,7 +12,7 @@ import {
   runWithExecutionCapability,
   verifyExecutionCapability
 } from '../packages/dsh-dds-core/execution-capability.js';
-import { authorizeExecutionRequest, validateWorkspaceClaim } from '../services/isolated-executor/server.mjs';
+import { authorizeExecutionRequest, createExecutorServer, validateWorkspaceClaim } from '../services/isolated-executor/server.mjs';
 import { enforceRbacPolicy } from '../config/rbac-policy.mjs';
 import { registerRbacInterceptor } from '../packages/dsh-dds-core/rbac-interceptor.js';
 import { prepareExecutorWorkspaces } from '../scripts/prepare_executor_workspaces.mjs';
@@ -130,12 +131,17 @@ test('Compose isolates the executor network and excludes application state mount
   assert.equal(executor.network_mode, 'none');
   assert.match(executor.user, /^11000:/);
   assert.deepEqual(executor.cap_drop, ['ALL']);
+  assert.deepEqual(executor.cap_add, ['SYS_ADMIN']);
   assert.equal(executor.read_only, true);
   assert.equal(executor.pids_limit, 64);
   assert.ok(executor.environment.includes('DSH_EXECUTOR_MAX_CONCURRENT=1'));
   assert.ok(executor.volumes.includes('./workspaces/users:/workspaces/users:rw'));
   assert.ok(executor.volumes.every(value => !/audit|storages|sessions|docker\.sock/.test(String(value))));
-  assert.match(fs.readFileSync(new URL('../services/isolated-executor/server.mjs', import.meta.url), 'utf8'), /--map-root-user[\s\S]*--pid[\s\S]*--mount-proc/);
+  const executorSource = fs.readFileSync(new URL('../services/isolated-executor/server.mjs', import.meta.url), 'utf8');
+  assert.match(executorSource, /processIsolation, '--user', '--map-root-user', '--pid', '--fork', '--kill-child=SIGKILL'[\s\S]*\.\.\.limitedArgv/);
+  assert.match(executorSource, /const limitedArgv = \[\s*confinement\.launcher/);
+  assert.doesNotMatch(executorSource, /--mount-proc/);
+  assert.match(executorSource, /isolated executor namespace\/Landlock probe failed/);
   assert.match(fs.readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8'), /util-linux/);
 });
 
@@ -174,6 +180,54 @@ test('executor service authenticates a capability and rejects its replay', () =>
       /already been used/
     );
   } finally {
+    if (previousKey === undefined) delete process.env.DSH_EXECUTOR_CAPABILITY_KEY;
+    else process.env.DSH_EXECUTOR_CAPABILITY_KEY = previousKey;
+  }
+});
+
+test('executor cancels a running command when the client socket closes', async () => {
+  const previousKey = process.env.DSH_EXECUTOR_CAPABILITY_KEY;
+  process.env.DSH_EXECUTOR_CAPABILITY_KEY = CAPABILITY_KEY;
+  const workdir = `/workspaces/users/${deriveUserPartitionId('cancel-probe', 'idp')}`;
+  let signalAborted;
+  const aborted = new Promise(resolve => { signalAborted = resolve; });
+  const server = createExecutorServer({
+    launcher: '/unused',
+    grantArgs: () => [],
+    enforcement: 'full',
+    validateWorkspace: value => ({ workdir: value, root: value, writable: true }),
+    execute: (_payload, confinement) => new Promise(resolve => {
+      confinement.signal.addEventListener('abort', () => {
+        signalAborted();
+        resolve({ aborted: true });
+      }, { once: true });
+    })
+  });
+  const socketPath = path.join(os.tmpdir(), `dsh-executor-test-${process.pid}-${Date.now()}.sock`);
+  try {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(socketPath, resolve);
+    });
+    const capability = issueExecutionCapability({
+      user: { id: 'cancel-probe', issuer: 'idp', roles: ['user'] },
+      workdir
+    });
+    const req = http.request({
+      socketPath,
+      path: '/v1/execute',
+      method: 'POST'
+    });
+    req.on('error', () => {});
+    req.end(JSON.stringify({ capability, command: 'sleep 60', workdir }));
+    await new Promise(resolve => setTimeout(resolve, 20));
+    req.destroy();
+    await Promise.race([
+      aborted,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('executor abort signal was not delivered')), 1_000))
+    ]);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
     if (previousKey === undefined) delete process.env.DSH_EXECUTOR_CAPABILITY_KEY;
     else process.env.DSH_EXECUTOR_CAPABILITY_KEY = previousKey;
   }

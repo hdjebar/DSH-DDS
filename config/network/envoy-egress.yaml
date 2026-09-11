@@ -1,4 +1,4 @@
-# ── DSH-DDS Hardened Network Egress Proxy (Envoy v1.31) ──
+# ── DSH-DDS Hardened Network Egress Proxy (Envoy v1.39.1) ──
 # Enforces Invariant 3 (Zero-Trust Egress) and ADR 0007 (Credential Isolation)
 #
 # Listens on 0.0.0.0:10000.
@@ -43,7 +43,20 @@ static_resources:
               - "pypi.org"
               - "pypi.org:443"
               - "files.pythonhosted.org:443"
+              # Declarative SDMX adapter (application allowlist remains authoritative).
+              - "lustat.statec.lu"
+              - "lustat.statec.lu:443"
               routes:
+              # HTTPS proxying requires CONNECT. Keep tunnelling limited to this exact
+              # domain allowlist because methods inside TLS cannot be inspected here.
+              - match:
+                  connect_matcher: {}
+                route:
+                  cluster: dynamic_forward_proxy_cluster
+                  timeout: 10s
+                  upgrade_configs:
+                  - upgrade_type: CONNECT
+                    connect_config: {}
               - match: { prefix: "/" }
                 route: { cluster: dynamic_forward_proxy_cluster }
 
@@ -53,6 +66,11 @@ static_resources:
             - name: public_web_fetch
               domains: ["*"]
               routes:
+              - match:
+                  connect_matcher: {}
+                direct_response:
+                  status: 403
+                  body: { inline_string: "DSH-DDS Egress Violation: HTTPS tunnels require an explicitly trusted destination.\n" }
               - match:
                   prefix: "/"
                   headers:
@@ -73,9 +91,39 @@ static_resources:
               dns_cache_config:
                 name: dynamic_forward_proxy_cache_config
                 dns_lookup_family: V4_ONLY
-                dns_resolution_config:
-                  resolvers:
-                  - socket_address: { address: "1.1.1.1", port_value: 53 }
+                # Filter inside Envoy's DNS cache so the address actually selected for
+                # the upstream socket cannot be a private/reserved rebinding result.
+                resolved_address_filter:
+                  ranges:
+                  - { address_prefix: "0.0.0.0", prefix_len: 8 }
+                  - { address_prefix: "10.0.0.0", prefix_len: 8 }
+                  - { address_prefix: "100.64.0.0", prefix_len: 10 }
+                  - { address_prefix: "127.0.0.0", prefix_len: 8 }
+                  - { address_prefix: "169.254.0.0", prefix_len: 16 }
+                  - { address_prefix: "172.16.0.0", prefix_len: 12 }
+                  - { address_prefix: "192.0.0.0", prefix_len: 24 }
+                  - { address_prefix: "192.0.2.0", prefix_len: 24 }
+                  - { address_prefix: "192.168.0.0", prefix_len: 16 }
+                  - { address_prefix: "198.18.0.0", prefix_len: 15 }
+                  - { address_prefix: "198.51.100.0", prefix_len: 24 }
+                  - { address_prefix: "203.0.113.0", prefix_len: 24 }
+                  - { address_prefix: "224.0.0.0", prefix_len: 4 }
+                  - { address_prefix: "240.0.0.0", prefix_len: 4 }
+                  - { address_prefix: "::", prefix_len: 128 }
+                  - { address_prefix: "::1", prefix_len: 128 }
+                  - { address_prefix: "::ffff:0:0", prefix_len: 96 }
+                  - { address_prefix: "64:ff9b::", prefix_len: 96 }
+                  - { address_prefix: "100::", prefix_len: 64 }
+                  - { address_prefix: "2001:db8::", prefix_len: 32 }
+                  - { address_prefix: "fc00::", prefix_len: 7 }
+                  - { address_prefix: "fe80::", prefix_len: 10 }
+                  - { address_prefix: "ff00::", prefix_len: 8 }
+                typed_dns_resolver_config:
+                  name: envoy.network.dns_resolver.cares
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.network.dns_resolver.cares.v3.CaresDnsResolverConfig
+                    resolvers:
+                    - socket_address: { address: "1.1.1.1", port_value: 53 }
           - name: envoy.filters.http.router
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -91,6 +139,34 @@ static_resources:
         dns_cache_config:
           name: dynamic_forward_proxy_cache_config
           dns_lookup_family: V4_ONLY
-          dns_resolution_config:
-            resolvers:
-            - socket_address: { address: "1.1.1.1", port_value: 53 }
+          resolved_address_filter:
+            ranges:
+            - { address_prefix: "0.0.0.0", prefix_len: 8 }
+            - { address_prefix: "10.0.0.0", prefix_len: 8 }
+            - { address_prefix: "100.64.0.0", prefix_len: 10 }
+            - { address_prefix: "127.0.0.0", prefix_len: 8 }
+            - { address_prefix: "169.254.0.0", prefix_len: 16 }
+            - { address_prefix: "172.16.0.0", prefix_len: 12 }
+            - { address_prefix: "192.0.0.0", prefix_len: 24 }
+            - { address_prefix: "192.0.2.0", prefix_len: 24 }
+            - { address_prefix: "192.168.0.0", prefix_len: 16 }
+            - { address_prefix: "198.18.0.0", prefix_len: 15 }
+            - { address_prefix: "198.51.100.0", prefix_len: 24 }
+            - { address_prefix: "203.0.113.0", prefix_len: 24 }
+            - { address_prefix: "224.0.0.0", prefix_len: 4 }
+            - { address_prefix: "240.0.0.0", prefix_len: 4 }
+            - { address_prefix: "::", prefix_len: 128 }
+            - { address_prefix: "::1", prefix_len: 128 }
+            - { address_prefix: "::ffff:0:0", prefix_len: 96 }
+            - { address_prefix: "64:ff9b::", prefix_len: 96 }
+            - { address_prefix: "100::", prefix_len: 64 }
+            - { address_prefix: "2001:db8::", prefix_len: 32 }
+            - { address_prefix: "fc00::", prefix_len: 7 }
+            - { address_prefix: "fe80::", prefix_len: 10 }
+            - { address_prefix: "ff00::", prefix_len: 8 }
+          typed_dns_resolver_config:
+            name: envoy.network.dns_resolver.cares
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.network.dns_resolver.cares.v3.CaresDnsResolverConfig
+              resolvers:
+              - socket_address: { address: "1.1.1.1", port_value: 53 }

@@ -1117,14 +1117,18 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # UID 11000 has no effective capabilities. Keeping SYS_ADMIN only in its bounding set
+    # lets Docker's default seccomp policy admit unshare(CLONE_NEWUSER); capabilities gained
+    # after mapping root exist only inside the disposable nested user namespace.
+    cap_add:
+      - SYS_ADMIN
     pids_limit: 64
     mem_limit: 512m
     cpus: 1.0
     environment:
       - DSH_EXECUTOR_SOCKET=/run/dsh-executor/executor.sock
       - DSH_EXECUTOR_CAPABILITY_KEY=${DSH_EXECUTOR_CAPABILITY_KEY:-}
-      # Commands share the executor PID namespace; serialize until per-invocation PID
-      # namespaces are available so tenants never execute concurrently.
+      # Serialize commands as an additional conservative availability control.
       - DSH_EXECUTOR_MAX_CONCURRENT=1
     volumes:
       - executor-socket:/run/dsh-executor:rw

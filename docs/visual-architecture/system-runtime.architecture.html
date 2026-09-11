@@ -5045,8 +5045,8 @@
         <text data-detail="fine" x="815" y="196" class="t-database" font-size="7" text-anchor="middle">loopback UI :6006</text>
         </g>
 
-        <g id="node-envoy" data-node-id="envoy" data-node-label="Envoy Egress" tabindex="0" role="button" aria-label="Focus Envoy Egress, sandbox filtered proxy :10000, Application runtime · dsh-runtime" aria-pressed="false" data-node-kind="security" data-node-sublabel="sandbox filtered proxy :10000" data-node-tag="zero direct egress" data-node-context="Application runtime · dsh-runtime">
-          <title>Envoy Egress · sandbox filtered proxy :10000 · Application runtime · dsh-runtime · zero direct egress</title>
+        <g id="node-envoy" data-node-id="envoy" data-node-label="Envoy Egress" tabindex="0" role="button" aria-label="Focus Envoy Egress, v1.39.1 · filtered proxy :10000, Application runtime · dsh-runtime" aria-pressed="false" data-node-kind="security" data-node-sublabel="v1.39.1 · filtered proxy :10000" data-node-tag="DNS CIDR pinned" data-node-context="Application runtime · dsh-runtime">
+          <title>Envoy Egress · v1.39.1 · filtered proxy :10000 · Application runtime · dsh-runtime · DNS CIDR pinned</title>
           <rect x="950" y="300" width="180" height="64" rx="6" class="c-mask"/>
           <rect x="950" y="300" width="180" height="64" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(956 306) scale(0.6875)">
@@ -5054,8 +5054,8 @@
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-detail-anchor x="1040" y="330" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Envoy Egress</text>
-        <text data-detail="context" x="1040" y="346" class="t-muted" font-size="9" text-anchor="middle">sandbox filtered proxy :10000</text>
-        <text data-detail="fine" x="1040" y="356" class="t-security" font-size="7" text-anchor="middle">zero direct egress</text>
+        <text data-detail="context" x="1040" y="346" class="t-muted" font-size="9" text-anchor="middle">v1.39.1 · filtered proxy :10000</text>
+        <text data-detail="fine" x="1040" y="356" class="t-security" font-size="7" text-anchor="middle">DNS CIDR pinned</text>
         </g>
 
         <g id="node-llm" data-node-id="llm" data-node-label="Approved External APIs" tabindex="0" role="button" aria-label="Focus Approved External APIs, LLM / web allowlists, Architecture component" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="LLM / web allowlists" data-node-context="Architecture component">
@@ -5313,12 +5313,12 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Telemetry boundary</h3>
+          <h3>Telemetry and egress boundary</h3>
         </div>
         <ul>
           <li>&bull; Phoenix is authenticated and isolated from the DSH service network</li>
           <li>&bull; Gateway exposes only OTLP trace ingestion</li>
-          <li>&bull; DNS rebinding remains open until proxy resolution pins validated destinations</li>
+          <li>&bull; Direct requests pin validated addresses; Envoy rejects private and reserved upstream DNS results</li>
         </ul>
       </div>
     </div>

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import {
@@ -124,20 +124,25 @@ export function executeConfined(payload, confinement) {
   }
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-exec-'));
   const cpuSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
-  const limitedArgv = [
-    processIsolation,
-    '--user', '--map-root-user', '--pid', '--mount-proc', '--fork', '--',
-    '/usr/bin/prlimit', '--nproc=32:32', '--nofile=128:128',
-    '--fsize=16777216:16777216', `--cpu=${cpuSeconds}:${cpuSeconds}`, '--',
-    '/bin/bash', '-c', payload.command
-  ];
   const grants = {
-    readOnly: ['/usr', '/bin', '/lib', '/lib64', '/etc/ld.so.cache', '/dev/null'].filter(candidate => fs.existsSync(candidate)),
-    readWrite: [tempDir]
+    readOnly: ['/usr', '/bin', '/lib', '/lib64', '/etc/ld.so.cache'].filter(candidate => fs.existsSync(candidate)),
+    readWrite: [tempDir, '/dev/null'].filter(candidate => fs.existsSync(candidate))
   };
   if (confinement.writable) grants.readWrite.push(confinement.root);
   else grants.readOnly.push(confinement.root);
-  const argv = [confinement.launcher, ...confinement.grantArgs(grants), '--', ...limitedArgv];
+  const limitedArgv = [
+    confinement.launcher, ...confinement.grantArgs(grants), '--',
+    '/usr/bin/prlimit', '--nproc=32:32', '--nofile=128:128',
+    '--fsize=16777216:16777216', `--cpu=${cpuSeconds}:${cpuSeconds}`, '--',
+    '/bin/bash', '--noprofile', '--norc', '-c', payload.command
+  ];
+  // Enter the user/PID namespaces before installing Landlock. Applying Landlock first
+  // denies the uid_map write that an unprivileged user namespace requires. We deliberately
+  // do not remount procfs: Landlock denies /proc entirely, avoiding exposure of the executor
+  // service environment while preserving a PID-namespace-local PID 1 for the command.
+  const argv = [
+    processIsolation, '--user', '--map-root-user', '--pid', '--fork', '--kill-child=SIGKILL', '--', ...limitedArgv
+  ];
 
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
@@ -161,8 +166,7 @@ export function executeConfined(payload, confinement) {
     const abortExecution = () => {
       if (settled) return;
       aborted = true;
-      terminateGroup(child, 'SIGTERM');
-      setTimeout(() => terminateGroup(child), 1000).unref();
+      terminateGroup(child);
     };
     confinement.signal?.addEventListener('abort', abortExecution, { once: true });
     const onData = (state, chunk) => {
@@ -253,8 +257,14 @@ export function createExecutorServer({
       const controller = new AbortController();
       const cancel = () => controller.abort();
       res.once('close', cancel);
+      req.once('aborted', cancel);
+      req.socket.once('end', cancel);
+      req.socket.once('close', cancel);
       const result = await execute(payload, { ...workspace, launcher, grantArgs, enforcement, signal: controller.signal });
       res.removeListener('close', cancel);
+      req.removeListener('aborted', cancel);
+      req.socket.removeListener('end', cancel);
+      req.socket.removeListener('close', cancel);
       res.writeHead(200).end(JSON.stringify(result));
     } catch (error) {
       if (!res.headersSent) res.writeHead(403);
@@ -278,6 +288,18 @@ async function main() {
   const processIsolation = '/usr/bin/unshare';
   if (!fs.existsSync(processIsolation)) {
     throw new Error('isolated executor requires /usr/bin/unshare for per-invocation user and PID namespaces');
+  }
+  const probeGrants = {
+    readOnly: ['/usr', '/bin', '/lib', '/lib64', '/etc/ld.so.cache'].filter(candidate => fs.existsSync(candidate)),
+    readWrite: ['/tmp', '/dev/null'].filter(candidate => fs.existsSync(candidate))
+  };
+  const namespaceProbe = spawnSync(processIsolation, [
+    '--user', '--map-root-user', '--pid', '--fork', '--kill-child=SIGKILL', '--',
+    launcher, ...addon.grantArgs(probeGrants), '--', '/bin/true'
+  ], { encoding: 'utf8', timeout: 2_000 });
+  if (namespaceProbe.status !== 0) {
+    const reason = namespaceProbe.stderr?.trim() || namespaceProbe.error?.message || `exit ${namespaceProbe.status}`;
+    throw new Error(`isolated executor namespace/Landlock probe failed: ${reason}`);
   }
   const socketDir = path.dirname(SOCKET_PATH);
   fs.mkdirSync(socketDir, { recursive: true, mode: 0o770 });

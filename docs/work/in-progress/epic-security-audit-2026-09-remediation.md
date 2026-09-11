@@ -29,7 +29,7 @@ or attacker-controlled URLs.
 | Medium | Installer secret generation can fall back to predictable timestamp-derived material. | Secret generation uses a cryptographic RNG and fails closed when none is available. |
 | Low | The PEP creates a work directory before identity and authorization succeed. | Denied and malformed requests cause no filesystem mutation. |
 
-## Implementation status — 10 September 2026
+## Implementation status — 11 September 2026
 
 Implemented and regression-tested in the current worktree:
 
@@ -44,8 +44,9 @@ Implemented and regression-tested in the current worktree:
 * declarative outbound tools enforce host/protocol/port allowlists, private-address checks,
   redirect revalidation, timeouts, and bounded SDMX bodies;
 * outbound requests perform a second DNS resolution and fail closed on inconsistent answers
-  (`OUTBOUND_DNS_REBINDING`); this narrows the TOCTOU window but does not replace socket-level
-  destination pinning;
+  (`OUTBOUND_DNS_REBINDING`); standard-mode connections receive only that validated address set,
+  while sandbox public traffic uses Envoy 1.39.1 `resolved_address_filter` in the DNS cache that
+  selects the actual upstream socket;
 * restart requires local transport, same origin, administrator role, and a CSRF token;
 * installer secrets use only cryptographic randomness and include restart, audit-writer,
   executor, and Phoenix authentication material;
@@ -53,31 +54,32 @@ Implemented and regression-tested in the current worktree:
   authenticated receipts for grants, rejects unanchored legacy records, and recovers a single
   verified ledger-ahead crash state;
 * shell calls run through a networkless UID 11000 executor with short-lived capabilities,
-  full-enforcement Landlock, resource limits, and per-invocation user/PID namespaces via
-  `unshare` (with conservative serialization); and
+  namespace-first full-enforcement Landlock, resource limits, and per-invocation user/PID
+  namespaces via `unshare` (with a fail-closed startup probe and conservative serialization); and
 * tenant migration tooling inventories, fingerprints, backs up, applies, verifies, and retries
   reversible partition migrations with runtime UUID and path-containment checks.
 
 Still required before this epic can move to Done:
 
-* bind validated DNS results to the actual outbound connection, or force all such traffic
-  through an egress component that pins and rejects private destinations, to fully close DNS
-  time-of-check/time-of-use rebinding. The application now detects inconsistent answers, but
-  sandbox traffic through Envoy is not yet private-address pinned;
 * provision and activate a scoped Phoenix ingestion key, then remove the bootstrap administrator
   credential from routine service configuration. Compose no longer falls back to `PHOENIX_API_KEY`;
   the remaining step is provisioning the key in the live Phoenix instance and rotating the bootstrap
   admin secret.
 * publish audit checkpoints to remote or WORM storage if coordinated host compromise is in scope;
 * execute the migration workflow against representative real tenant data; and
-* run the new controls in live standard and sandbox containers when a Docker daemon is
-  available, including namespace, Landlock, audit-tamper, telemetry-auth, timeout, output-bomb,
-  cancellation, and rollback probes.
+* complete the remaining live audit-tamper and migration-rollback probes. CI has passed the
+  standard/sandbox Compose, container, offline MCP, persistence, zero-egress, and
+  telemetry-gateway smoke paths. Live executor probes now confirm nested user/PID namespaces,
+  Landlock write denial, timeout termination, output-bomb termination/truncation, and
+  client-disconnect cancellation; a live Envoy 1.39.1 probe also confirms trusted HTTPS succeeds
+  while untrusted CONNECT and metadata destinations are denied.
 
-Current automated verification: **214/214 tests pass**. Installer parity, JavaScript/shell syntax,
+Current automated verification: **218/218 tests pass**. Installer parity, JavaScript/shell syntax,
 schema parsing, whitespace checks, both Compose configurations, root and production-web dependency
-audits, and CI workflow parsing pass. GitNexus classifies the combined change set as **Critical**:
-191 changed symbols affect 29 execution flows. This requires staged review and rollout.
+audits, and CI workflow parsing pass. After refreshing the index, GitNexus classifies the combined
+DNS-pinning and executor-hardening worktree as **High**: 39 changed symbols affect 9 execution
+flows. This patch therefore requires focused review of outbound validation, executor startup,
+client cancellation, and process termination before rollout.
 
 ## Change-risk warning
 

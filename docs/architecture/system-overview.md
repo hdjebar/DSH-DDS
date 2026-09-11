@@ -68,7 +68,7 @@ flowchart TD
     end
 
     subgraph Egress_Sidecar ["🔒 Egress Filter Sidecar (ADR 0007 / ADR 0008)"]
-        ENVOY["🛡️ Envoy Proxy Sidecar v1.31\n(Strict DNS Caching & Egress Lockdown)"]
+        ENVOY["🛡️ Envoy Proxy Sidecar v1.39.1\n(Connection-Time CIDR Filtering & Egress Lockdown)"]
     end
 
     subgraph Phoenix_Container ["📊 Container: dsh-phoenix (UID 1000:1000, cap_drop: ALL)"]

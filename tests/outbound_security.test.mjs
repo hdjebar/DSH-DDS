@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import {
   OutboundSecurityError,
   readResponseBodyLimited,
@@ -45,6 +46,26 @@ test('Outbound security rejects inconsistent DNS answers before connecting', asy
   await assert.rejects(secureFetch('https://api.example.test/start', {
     allowedHosts: ['api.example.test'], lookup: rotatingLookup, fetchImpl: async () => new Response('unexpected')
   }), (error) => error.code === 'OUTBOUND_DNS_REBINDING');
+});
+
+test('Outbound security pins a direct connection to the validated DNS address', async (t) => {
+  const server = http.createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'text/plain' });
+    response.end(request.headers.host);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const { port } = server.address();
+
+  const response = await secureFetch(`http://api.example.test:${port}/pinned`, {
+    allowedHosts: ['api.example.test'],
+    allowPrivateHosts: ['api.example.test'],
+    allowedPorts: [port],
+    protocols: ['http:'],
+    lookup: async () => [{ address: '127.0.0.1', family: 4 }]
+  });
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), `api.example.test:${port}`);
 });
 
 test('Outbound security bounds streamed and declared response bodies', async () => {

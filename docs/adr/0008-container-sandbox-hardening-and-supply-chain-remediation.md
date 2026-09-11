@@ -98,11 +98,12 @@ Sandbox mode (`docker-compose.sandbox.yml`) enforces tighter constraints: `2.0 C
 3. **Lockfile Synchronization**: Root and web profile lockfiles (`config/profiles/web/pnpm-lock.yaml`) are kept in strict synchronization.
 
 ### 3.6 Pillar 6: Dual-Network Envoy Egress Proxy Sidecar
-Egress filtering is enforced via an independent Envoy proxy sidecar (`egress-filter` running `envoyproxy/envoy:v1.31-latest`):
+Egress filtering is enforced via an independent Envoy proxy sidecar (`egress-filter` running digest-pinned `envoyproxy/envoy:v1.39.1`):
 * `dsh` and `phoenix` reside on `dsh-internal` (`internal: true`), possessing no default route to the external internet.
 * `egress-filter` bridges `dsh-internal` and `dsh-egress-net`.
 * All outbound traffic from `dsh` transits `HTTP_PROXY=http://egress-filter:10000`.
-* Outbound traffic is restricted to Tier 1 allowlisted model gateways (`openrouter.ai`, `generativelanguage.googleapis.com`) and package registries, with Tier 2 public fetch restricted to read-only `GET`/`HEAD` with strict 10-second timeouts.
+* Envoy removes private and reserved DNS results inside the cache used for the actual upstream connection, closing proxy-side DNS-rebinding TOCTOU.
+* Outbound traffic is restricted to Tier 1 allowlisted model gateways (`openrouter.ai`, `generativelanguage.googleapis.com`), the approved SDMX endpoint, and package registries. Tier 2 public HTTP fetch is restricted to read-only `GET`/`HEAD` with strict 10-second timeouts; HTTPS CONNECT is limited to explicit trusted domains because methods inside a TLS tunnel cannot be inspected by the proxy.
 
 ### 3.7 Pillar 7: Threat Model Boundary Demarcation
 We formally document that:

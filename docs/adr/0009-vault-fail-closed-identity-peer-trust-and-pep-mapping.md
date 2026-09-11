@@ -53,6 +53,8 @@ A thorough audit of the DeepSeek Harness (DSH-DDS) container, compose layer, and
 ### 5. Supply Chain & Operational Hardening
 - Pinned Envoy sidecar in `docker-compose.sandbox.yml` to immutable digest:
   `envoyproxy/envoy:v1.31-latest@sha256:caa5b411be1633b90023592a34a7e010c933d6e60206c758f631485e53006865`.
+  That historical pin was superseded by digest-pinned Envoy 1.39.1 when connection-time
+  `resolved_address_filter` support became required for DNS-rebinding protection.
 - Aligned `package.json` to `yaml: 2.7.0`.
 - Bounded `thoughtSignatures` cache in `llm-gateway.js` to 1,000 entries using FIFO eviction.
 - Handled HTTP 3xx redirects up to 3 hops in `web-search.js`.

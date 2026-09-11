@@ -21,7 +21,7 @@
     {"id":"checkpoint","type":"database","label":"Audit Checkpoints","sublabel":"separate mount · chain head","pos":[950,470],"size":[180,64]},
     {"id":"telemetry_gateway","type":"security","label":"Telemetry Gateway","sublabel":"POST /v1/traces only","tag":"credential inject","pos":[480,140],"size":[190,64]},
     {"id":"phoenix","type":"database","label":"Arize Phoenix","sublabel":"authenticated · internal network","tag":"loopback UI :6006","pos":[720,140],"size":[190,64]},
-    {"id":"envoy","type":"security","label":"Envoy Egress","sublabel":"sandbox filtered proxy :10000","tag":"zero direct egress","pos":[950,300],"size":[180,64]},
+    {"id":"envoy","type":"security","label":"Envoy Egress","sublabel":"v1.39.1 · filtered proxy :10000","tag":"DNS CIDR pinned","pos":[950,300],"size":[180,64]},
     {"id":"llm","type":"cloud","label":"Approved External APIs","sublabel":"LLM / web allowlists","pos":[1180,300],"size":[170,64]}
   ],
   "boundaries": [
@@ -43,6 +43,6 @@
   "cards": [
     {"dot":"rose","title":"Execution boundary","items":["PEP issues short-lived workdir-bound capabilities","Executor has no network and no audit, vault, or application-state mounts","Landlock and per-invocation user/PID namespaces require live Linux validation"]},
     {"dot":"violet","title":"Accountability boundary","items":["DSH cannot rewrite the ledger or checkpoint files","Writer receipts make protected grants fail closed","Remote/WORM checkpoints remain required for host-compromise independence"]},
-    {"dot":"cyan","title":"Telemetry boundary","items":["Phoenix is authenticated and isolated from the DSH service network","Gateway exposes only OTLP trace ingestion","DNS rebinding remains open until proxy resolution pins validated destinations"]}
+    {"dot":"cyan","title":"Telemetry and egress boundary","items":["Phoenix is authenticated and isolated from the DSH service network","Gateway exposes only OTLP trace ingestion","Direct requests pin validated addresses; Envoy rejects private and reserved upstream DNS results"]}
   ]
 }

@@ -71,16 +71,18 @@ test('Envoy Egress Configuration: Tier 2 read-only web fetch and 403 mutation bl
   const routes = publicFetch.routes;
   assert.ok(routes.length >= 2, 'Must contain allow and block routes');
 
-  // Route 1: Read-only GET/HEAD
-  const getHeadRoute = routes[0];
+  // Read-only GET/HEAD route (CONNECT has its own explicit policy).
+  const getHeadRoute = routes.find((route) => route.match.headers);
+  assert.ok(getHeadRoute, 'Must contain a method-filtered public fetch route');
   assert.equal(getHeadRoute.match.prefix, '/');
   const methodHeader = getHeadRoute.match.headers.find(h => h.name === ':method');
   assert.ok(methodHeader, 'Must match :method header');
   assert.equal(methodHeader.string_match.safe_regex.regex, '^(GET|HEAD)$');
   assert.equal(getHeadRoute.route.timeout, '10s', 'Read-only web fetch must have 10s timeout');
 
-  // Route 2: 403 Forbidden for mutation methods
-  const blockRoute = routes[1];
+  // Catch-all 403 for mutation methods.
+  const blockRoute = routes.find((route) => route.match.prefix === '/' && route.direct_response);
+  assert.ok(blockRoute, 'Must contain a catch-all mutation block route');
   assert.equal(blockRoute.match.prefix, '/');
   assert.equal(blockRoute.direct_response.status, 403);
   assert.ok(
@@ -129,4 +131,47 @@ test('Sandbox Compose Topology: egress-filter sidecar and dual-network routing',
   // Networks definition
   assert.equal(compose.networks['dsh-internal'].internal, true, 'dsh-internal must have internal: true');
   assert.equal(compose.networks['dsh-egress-net'].driver, 'bridge', 'dsh-egress-net must be bridge driver');
+});
+
+test('Envoy Egress Configuration: proxy DNS cache rejects private and reserved addresses', () => {
+  const config = yaml.parse(fs.readFileSync(ENVOY_CONFIG_PATH, 'utf8'));
+  const hcm = config.static_resources.listeners[0].filter_chains[0].filters
+    .find((filter) => filter.name.includes('http_connection_manager'));
+  const dynamicFilter = hcm.typed_config.http_filters
+    .find((filter) => filter.name === 'envoy.filters.http.dynamic_forward_proxy');
+  const dynamicCluster = config.static_resources.clusters
+    .find((cluster) => cluster.name === 'dynamic_forward_proxy_cluster');
+
+  const filterCache = dynamicFilter.typed_config.dns_cache_config;
+  const clusterCache = dynamicCluster.cluster_type.typed_config.dns_cache_config;
+  assert.deepEqual(clusterCache, filterCache, 'Filter and cluster must share identical DNS-cache security policy');
+
+  const deniedCidrs = new Set(filterCache.resolved_address_filter.ranges
+    .map(({ address_prefix: address, prefix_len: prefix }) => `${address}/${prefix}`));
+  for (const cidr of [
+    '0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8',
+    '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', '198.18.0.0/15',
+    '224.0.0.0/4', '240.0.0.0/4', '::/128', '::1/128', '::ffff:0:0/96',
+    '64:ff9b::/96', 'fc00::/7', 'fe80::/10', 'ff00::/8'
+  ]) {
+    assert.ok(deniedCidrs.has(cidr), `Proxy DNS cache must reject ${cidr}`);
+  }
+});
+
+test('Envoy Egress Configuration: CONNECT tunnels are limited to explicitly trusted HTTPS domains', () => {
+  const config = yaml.parse(fs.readFileSync(ENVOY_CONFIG_PATH, 'utf8'));
+  const hcm = config.static_resources.listeners[0].filter_chains[0].filters
+    .find((filter) => filter.name.includes('http_connection_manager'));
+  const vhosts = hcm.typed_config.route_config.virtual_hosts;
+  const trustedApis = vhosts.find((vhost) => vhost.name === 'trusted_apis');
+  const publicFetch = vhosts.find((vhost) => vhost.name === 'public_web_fetch');
+
+  assert.ok(trustedApis.domains.includes('lustat.statec.lu:443'));
+  const trustedConnect = trustedApis.routes.find((route) => route.match.connect_matcher);
+  assert.equal(trustedConnect.route.cluster, 'dynamic_forward_proxy_cluster');
+  assert.deepEqual(trustedConnect.route.upgrade_configs, [{ upgrade_type: 'CONNECT', connect_config: {} }]);
+
+  const publicConnect = publicFetch.routes.find((route) => route.match.connect_matcher);
+  assert.equal(publicConnect.direct_response.status, 403);
+  assert.match(publicConnect.direct_response.body.inline_string, /explicitly trusted destination/);
 });
