@@ -171,3 +171,7 @@ ENV NODE_OPTIONS=""
 USER dsh-executor:dsh
 WORKDIR /workspaces
 ENTRYPOINT ["node", "/app/services/isolated-executor/server.mjs"]
+
+# Keep the application runtime as the default output of `docker build .`; Compose selects
+# the isolated-executor stage explicitly for the dedicated command service.
+FROM runner AS application

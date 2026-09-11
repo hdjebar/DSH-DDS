@@ -142,7 +142,13 @@ test('Compose isolates the executor network and excludes application state mount
   assert.match(executorSource, /const limitedArgv = \[\s*confinement\.launcher/);
   assert.doesNotMatch(executorSource, /--mount-proc/);
   assert.match(executorSource, /isolated executor namespace\/Landlock probe failed/);
-  assert.match(fs.readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8'), /util-linux/);
+  const dockerfile = fs.readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
+  assert.match(dockerfile, /util-linux/);
+  assert.match(
+    dockerfile,
+    /FROM runner AS isolated-executor[\s\S]*ENTRYPOINT \["node", "\/app\/services\/isolated-executor\/server\.mjs"\][\s\S]*FROM runner AS application\s*$/,
+    'default Docker build output must remain the DSH application, not the executor target'
+  );
 });
 
 test('workspace permission migration changes only executor-mounted roots and skips symlinks', () => {

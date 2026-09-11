@@ -65,7 +65,18 @@ jobs:
         run: npm ci
 
       - name: Dependency Vulnerability Audit
-        run: npm audit --audit-level=high
+        run: |
+          for attempt in 1 2 3; do
+            if npm audit --audit-level=high; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Dependency audit failed after 3 attempts."
+              exit 1
+            fi
+            echo "Dependency audit attempt $attempt failed; retrying in 10 seconds..."
+            sleep 10
+          done
 
       - name: Production Web Profile Dependency Audit
         run: |
