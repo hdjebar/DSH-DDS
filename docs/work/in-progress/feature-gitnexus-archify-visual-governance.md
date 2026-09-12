@@ -15,11 +15,11 @@ Integrate **GitNexus** (zero-server AST knowledge graph & MCP server) and **Arch
 
 ## 📋 Implementation Checklist
 
-- [x] **GitNexus AST Indexing**: Successfully indexed 2,503 nodes, 3,451 edges, and 77 execution flows in `DSH-DDS`.
+- [x] **GitNexus AST Indexing**: Successfully indexed 2,999 nodes, 6,710 edges, and 144 execution flows in `DSH-DDS`.
 - [x] **Archify Skill Installation**: Installed Archify skill into `.agents/skills/archify` with deterministic JSON IR schemas.
-- [x] **Render Core Visuals**: Recompiled [System Runtime Architecture](../../visual-architecture/system-runtime.architecture.html) and [Agent Trace Sequence](../../visual-architecture/agent-trace.sequence.html).
+- [x] **Render Core Visuals**: Recompiled [System Runtime Architecture](../../visual-architecture/system-runtime.architecture.html), [Security Pipeline](../../visual-architecture/security-pipeline.workflow.html), [Declarative Workflow](../../visual-architecture/declarative-workflow.workflow.html), and [Agent Trace Sequence](../../visual-architecture/agent-trace.sequence.html).
 - [x] **Workflow Documentation**: Authored and committed [GitNexus & Archify Workflow Guide](../../guides/gitnexus-archify.md).
-- [ ] **Automated CI Visual Check**: Add a GitHub Actions check asserting that all Archify visual models pass showcase quality checks on PRs.
+- [x] **Automated CI Visual Check**: CI rebuilds every tracked Archify artifact at showcase quality and fails when validation fails or generated HTML differs from the committed output.
 - [ ] **Dynamic Blast Radius Visualization**: Implement an automated hook turning `gitnexus impact <symbol>` output into a dynamic Archify visual diff diagram during planning phases.
 
 ---

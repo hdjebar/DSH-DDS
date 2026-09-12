@@ -86,6 +86,11 @@ jobs:
       - name: Installer Parity Check
         run: npm run verify:installer
 
+      - name: Visual Architecture Showcase Quality and Parity
+        run: |
+          npm run visual-architecture:build
+          git diff --exit-code -- docs/visual-architecture
+
       - name: Shell Syntax Validation
         run: |
           bash -n dsh.sh install_dsh.sh reset.sh
