@@ -10,7 +10,8 @@
     "verify:installer": "node scripts/build_installer.mjs --check",
     "archify": "node node_modules/@tt-a1i/archify-dsh/skills/archify/bin/archify.mjs",
     "diagrams:build": "node scripts/build_diagrams.mjs",
-    "visual-architecture:build": "node scripts/build_diagrams.mjs"
+    "visual-architecture:build": "node scripts/build_diagrams.mjs",
+    "visual-architecture:impact": "node scripts/render_gitnexus_impact.mjs"
   },
   "dependencies": {
     "yaml": "2.9.0"

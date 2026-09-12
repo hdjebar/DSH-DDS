@@ -42,12 +42,17 @@ When paired, GitNexus and Archify solve the two biggest challenges in AI-assiste
 GitNexus is configured to index the repository locally into `.gitnexus/` (ignored in `.gitignore`):
 
 ```bash
-# Index or re-index the repository
-npx -y gitnexus analyze .
+# Bootstrap the pinned external planning tool and index the repository
+npx -y gitnexus@1.6.11 analyze .
 
 # Check index status
-npx -y gitnexus status
+npx -y gitnexus@1.6.11 status
 ```
+
+GitNexus is deliberately kept outside the application dependency tree so its analysis-only
+packages are not shipped with DSH-DDS. The impact visualizer verifies version `1.6.11` and
+uses either `GITNEXUS_CLI`, a repository-local installation, or the pinned npm execution
+cache created by the bootstrap command.
 
 #### Antigravity MCP Server (`~/.gemini/config/mcp_config.json`)
 Expose GitNexus to Antigravity so the agent can query symbols and relationships:
@@ -57,7 +62,7 @@ Expose GitNexus to Antigravity so the agent can query symbols and relationships:
   "mcpServers": {
     "gitnexus": {
       "command": "npx",
-      "args": ["-y", "gitnexus", "mcp"]
+      "args": ["-y", "gitnexus@1.6.11", "mcp"]
     }
   }
 }
@@ -88,18 +93,33 @@ npx gitnexus context registerRbacInterceptor
 ```
 
 *Example Output:*
-* Incoming callers: `tests/multi_user.test.mjs`, `tests/core_plugin.test.mjs`
-* Outgoing dependencies: `preExecuteWaterfall`, `UserPartitionManager`, `isInside`
-* Execution processes: `RegisterRbacInterceptor ➔ SanitizeUserId`, `RegisterRbacInterceptor ➔ ResolvePath`
+* Incoming callers: `apply`, `tests/core_plugin.test.mjs`, `tests/isolated_executor.test.mjs`, `tests/multi_user.test.mjs`, and `tests/security_containment.test.mjs`
+* Outgoing dependencies: `preExecuteWaterfall`, `UserPartitionManager`, and the dynamic-governance environment boundary
+* Execution processes include `RegisterRbacInterceptor ➔ ResolveUser`, `RegisterRbacInterceptor ➔ RunWithExecutionCapability`, and `RegisterRbacInterceptor ➔ PartitionIdentity`
 
 ### Step 2: Impact Analysis / Blast Radius (GitNexus)
 Determine the risk level and all affected modules before touching code:
 
 ```bash
-npx gitnexus impact user-partition.js
+npx gitnexus impact registerRbacInterceptor --direction upstream
 ```
 * Returns affected modules, caller depth, and risk rating (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
 * Alerts the developer if a critical boundary is breached.
+
+Generate a bounded, interactive planning artifact directly from an authoritative impact result:
+
+```bash
+npm run visual-architecture:impact -- registerRbacInterceptor
+
+# Use the exact GitNexus UID when a name is ambiguous:
+npm run visual-architecture:impact -- \
+  --uid Function:packages/dsh-dds-core/rbac-interceptor.js:registerRbacInterceptor
+```
+
+The command requires a clean worktree, GitNexus 1.6.11, a fresh complete index, upstream
+direction, and a non-`UNKNOWN` risk result. It refuses stale, ambiguous, partial, truncated, or malformed
+evidence. By default it writes the showcase-validated HTML, its JSON specification, and the
+complete machine-readable impact report under the ignored `.gitnexus/visuals/` directory.
 
 ### Step 3: Synthesis into Archify JSON IR (Agent)
 Using verified graph facts from GitNexus, the agent authors or updates a typed Archify JSON specification (e.g., in `docs/visual-architecture/`):
@@ -130,14 +150,17 @@ Using verified graph facts from GitNexus, the agent authors or updates a typed A
 Compile the intermediate representation into an interactive HTML/SVG artifact:
 
 ```bash
-# Validate against schemas and quality constraints
-node .agents/skills/archify/bin/archify.mjs validate architecture \
-  docs/visual-architecture/system-runtime.architecture.json --quality standard --json
+# Validate against schemas and showcase quality constraints
+npm run archify -- validate architecture \
+  docs/visual-architecture/system-runtime.architecture.json --quality showcase --json
 
-# Render standalone interactive HTML
-node .agents/skills/archify/bin/archify.mjs render architecture \
+# Deliver the verified standalone interactive HTML
+npm run archify -- deliver architecture \
   docs/visual-architecture/system-runtime.architecture.json \
-  docs/visual-architecture/system-runtime.architecture.html --quality standard
+  docs/visual-architecture/system-runtime.architecture.html --quality showcase --json
+
+# Rebuild every governed diagram and verify committed HTML parity
+npm run visual-architecture:build
 ```
 
 Generated diagrams include:
@@ -159,15 +182,16 @@ npx gitnexus detect-changes
 
 | Task | Tool | Command |
 | :--- | :--- | :--- |
-| **Index repository** | GitNexus | `npx gitnexus analyze .` |
-| **Check index freshness** | GitNexus | `npx gitnexus status` |
+| **Index repository** | GitNexus | `npx -y gitnexus@1.6.11 analyze .` |
+| **Check index freshness** | GitNexus | `npx -y gitnexus@1.6.11 status` |
 | **Find symbol context** | GitNexus | `npx gitnexus context <symbolName>` |
-| **Check blast radius** | GitNexus | `npx gitnexus impact <symbolOrFile>` |
+| **Check blast radius** | GitNexus | `npx gitnexus impact <symbolOrFile> --direction upstream` |
+| **Visualize blast radius** | GitNexus + Archify | `npm run visual-architecture:impact -- <symbolName>` |
 | **Search execution flows** | GitNexus | `npx gitnexus query "<concept>"` |
 | **Pre-commit safety check**| GitNexus | `npx gitnexus detect-changes` |
-| **Validate diagram IR** | Archify | `node .agents/skills/archify/bin/archify.mjs validate <type> <file.json>` |
-| **Render HTML diagram** | Archify | `node .agents/skills/archify/bin/archify.mjs render <type> <file.json> <file.html>` |
-| **Deliver final diagram** | Archify | `node .agents/skills/archify/bin/archify.mjs deliver <type> <file.json> <file.html>` |
+| **Validate diagram IR** | Archify | `npm run archify -- validate <type> <file.json> --quality showcase --json` |
+| **Build governed diagrams** | Archify | `npm run visual-architecture:build` |
+| **Deliver final diagram** | Archify | `npm run archify -- deliver <type> <file.json> <file.html> --quality showcase --json` |
 
 ---
 

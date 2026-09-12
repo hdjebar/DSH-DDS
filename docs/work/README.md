@@ -1,6 +1,6 @@
 # 📋 DSH-DDS Agile Kanban Work Hub
 
-> The board graphic contains historical sprint snapshot counts; current regression status is maintained in `docs/work/testing/README.md` (214/214 passing).
+> The board graphic contains historical sprint snapshot counts; current regression status is maintained in `docs/work/testing/README.md` (222/222 passing).
 
 Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages the engineering lifecycle, sprint backlogs, in-flight technical initiatives, and verified delivery records following modern Agile and Kanban principles.
 
@@ -39,7 +39,7 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 | 📋 **To Do** | **Temporal Durable Execution** | `v2.2.0` | Reliability | [`todo/epic-temporal-durable-execution.md`](todo/epic-temporal-durable-execution.md) |
 | 📋 **To Do** | **ISO 42001 & EU AI Act Audit Kit** | `v2.2.0` | Compliance | [`todo/epic-iso-42001-audit-kit.md`](todo/epic-iso-42001-audit-kit.md) |
 | 📋 **To Do** | **Firecracker MicroVM Isolation** | `v2.3.0` | Virtualization | [`todo/epic-microvm-firecracker-isolation.md`](todo/epic-microvm-firecracker-isolation.md) |
-| 🚧 **In Progress** | **GitNexus & Archify Visual Governance** | `v2.1.0` | Agentic Tooling | [`in-progress/feature-gitnexus-archify-visual-governance.md`](in-progress/feature-gitnexus-archify-visual-governance.md) |
+| ✅ **Done** | **GitNexus & Archify Visual Governance** | `v2.1.0` | Agentic Tooling | [`done/feature-gitnexus-archify-visual-governance.md`](done/feature-gitnexus-archify-visual-governance.md) |
 | 🧪 **Testing** | **Quality Gates & Regression Gate** | Continuous | Quality Assurance | [`testing/README.md`](testing/README.md) |
 | ✅ **Done** | **Global Architecture Refactoring** | `v1.10.0` | Core Kernel | [`done/global-refactoring/README.md`](done/global-refactoring/README.md) |
 | ✅ **Done** | **Milestone 1: Egress Proxy & Failover** | `v1.11.0` | Security & Net | [`done/milestone-1-zero-trust-egress.md`](done/milestone-1-zero-trust-egress.md) |
@@ -66,7 +66,7 @@ A task or epic can graduate from `backlog/` to `todo/` and into `in-progress/` o
 ### 3. Definition of Done (DoD)
 A task or epic can graduate from `testing/` to `done/` only when:
 * Code implementation is complete, non-breaking, and adheres to non-root execution guidelines.
-* All Five Quality Gates pass (214/214 tests, installer parity, visual models compiled, AST checks).
+* All Five Quality Gates pass (222/222 tests, installer parity, visual models compiled, AST checks).
 * GitNexus pre-commit check (`npx gitnexus detect-changes`) passes with zero unmapped symbol mutations.
 * Core documentation, CHANGELOG, and ADR references are updated.
 

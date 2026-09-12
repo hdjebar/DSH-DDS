@@ -115,6 +115,7 @@ jobs:
           node --check services/isolated-executor/server.mjs
           node --check scripts/migrate_tenant_partitions.mjs
           node --check scripts/prepare_executor_workspaces.mjs
+          node --check scripts/render_gitnexus_impact.mjs
 
       - name: Run Node.js Test Suite (CLI, YAML & Parity)
         run: |
