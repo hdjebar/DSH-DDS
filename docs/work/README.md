@@ -1,6 +1,6 @@
 # 📋 DSH-DDS Agile Kanban Work Hub
 
-> The board graphic contains historical sprint snapshot counts; current regression status is maintained in `docs/work/testing/README.md` (222/222 passing).
+> The board graphic contains historical sprint snapshot counts; current regression status is maintained in `docs/work/testing/README.md` (225/225 passing).
 
 Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages the engineering lifecycle, sprint backlogs, in-flight technical initiatives, and verified delivery records following modern Agile and Kanban principles.
 
@@ -66,7 +66,7 @@ A task or epic can graduate from `backlog/` to `todo/` and into `in-progress/` o
 ### 3. Definition of Done (DoD)
 A task or epic can graduate from `testing/` to `done/` only when:
 * Code implementation is complete, non-breaking, and adheres to non-root execution guidelines.
-* All Five Quality Gates pass (222/222 tests, installer parity, visual models compiled, AST checks).
+* All Five Quality Gates pass (225/225 tests, installer parity, visual models compiled, AST checks).
 * GitNexus pre-commit check (`npx gitnexus detect-changes`) passes with zero unmapped symbol mutations.
 * Core documentation, CHANGELOG, and ADR references are updated.
 

@@ -85,6 +85,8 @@ COPY config/profiles/headless/cordis.patch.yml /app/prebuilt-profiles/headless/c
 COPY config/profiles/headless/cordis.patch.yml /var/lib/dsh/profiles/headless/cordis.patch.yml
 COPY config/profiles/cli/cordis.yml /app/prebuilt-profiles/cli/cordis.yml
 COPY config/profiles/cli/cordis.yml /var/lib/dsh/profiles/cli/cordis.yml
+COPY config/profiles/cli/cordis.patch.yml /app/prebuilt-profiles/cli/cordis.patch.yml
+COPY config/profiles/cli/cordis.patch.yml /var/lib/dsh/profiles/cli/cordis.patch.yml
 
 # Complete profile peer dependencies from DSH's runtime dependency tree (never symlink scope dirs)
 RUN for p in /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/* /usr/local/lib/node_modules/@deepseek-ai/*; do \
@@ -120,10 +122,17 @@ RUN for p in /var/lib/dsh/profiles/web/node_modules/*; do [ -e "$p" ] && ln -sf 
 # Copy and link native in-tree @dsh-dds/core Cordis plugin
 COPY packages/dsh-dds-core /app/packages/dsh-dds-core
 COPY config/audit-writer-core.mjs config/audit-writer.mjs config/telemetry-gateway.mjs /app/services/
-RUN mkdir -p /usr/local/lib/node_modules/@dsh-dds /app/prebuilt-profiles/web/node_modules/@dsh-dds /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+RUN mkdir -p /usr/local/lib/node_modules/@dsh-dds \
+    /app/prebuilt-profiles/web/node_modules/@dsh-dds /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+    /app/prebuilt-profiles/headless/node_modules/@dsh-dds /var/lib/dsh/profiles/headless/node_modules/@dsh-dds \
+    /app/prebuilt-profiles/cli/node_modules/@dsh-dds /var/lib/dsh/profiles/cli/node_modules/@dsh-dds \
     && ln -sfn /app/packages/dsh-dds-core /usr/local/lib/node_modules/@dsh-dds/core \
     && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/web/node_modules/@dsh-dds/core \
-    && ln -sfn /app/packages/dsh-dds-core /var/lib/dsh/profiles/web/node_modules/@dsh-dds/core
+    && ln -sfn /app/packages/dsh-dds-core /var/lib/dsh/profiles/web/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/headless/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /var/lib/dsh/profiles/headless/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /app/prebuilt-profiles/cli/node_modules/@dsh-dds/core \
+    && ln -sfn /app/packages/dsh-dds-core /var/lib/dsh/profiles/cli/node_modules/@dsh-dds/core
 
 # Standard unadulterated pnpm engine configured for unprivileged non-root runtime store
 RUN ln -sf /usr/local/lib/node_modules/pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
@@ -143,7 +152,11 @@ RUN chown -R dsh:dsh /home/dsh /var/lib/dsh /var/lib/dsh-state /run/dsh /var/log
     && chown -R root:root /app \
     && chmod -R 755 /app \
     && chown -R root:root /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
-    && chmod -R 755 /var/lib/dsh/profiles/web/node_modules/@dsh-dds
+      /var/lib/dsh/profiles/headless/node_modules/@dsh-dds \
+      /var/lib/dsh/profiles/cli/node_modules/@dsh-dds \
+    && chmod -R 755 /var/lib/dsh/profiles/web/node_modules/@dsh-dds \
+      /var/lib/dsh/profiles/headless/node_modules/@dsh-dds \
+      /var/lib/dsh/profiles/cli/node_modules/@dsh-dds
 
 EXPOSE 3080
 

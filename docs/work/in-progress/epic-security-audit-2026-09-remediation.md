@@ -74,12 +74,16 @@ Still required before this epic can move to Done:
   client-disconnect cancellation; a live Envoy 1.39.1 probe also confirms trusted HTTPS succeeds
   while untrusted CONNECT and metadata destinations are denied.
 
-Current automated verification: **218/218 tests pass**. Installer parity, JavaScript/shell syntax,
+Current automated verification: **225/225 tests pass**. Installer parity, JavaScript/shell syntax,
 schema parsing, whitespace checks, both Compose configurations, root and production-web dependency
 audits, and CI workflow parsing pass. After refreshing the index, GitNexus classifies the combined
 DNS-pinning and executor-hardening worktree as **High**: 39 changed symbols affect 9 execution
 flows. This patch therefore requires focused review of outbound validation, executor startup,
 client cancellation, and process termination before rollout.
+
+The first GEP-2 enforcement-parity slice now also loads the native RBAC plugin in the web,
+headless, and CLI profiles, provisions every patch through the image and standalone installer,
+and regression-tests that parity. A deterministic boot-time policy-engine assertion remains open.
 
 ## Change-risk warning
 

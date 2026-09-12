@@ -23,11 +23,11 @@ Every initiative in `testing/` must satisfy the **Five Quality Gates** before pr
 
 | Gate | Verification Command | Objective | Passing Standard |
 | :--- | :--- | :--- | :--- |
-| **1. Unit & Integration** | `npm test` | Regression testing across all components | 100% pass rate (222/222 tests) |
+| **1. Unit & Integration** | `npm test` | Regression testing across all components | 100% pass rate (225/225 tests) |
 | **2. Supply Chain & Installer** | `npm run verify:installer` | Zero drift between installer and source files | Parity verified |
 | **3. Visual Architecture** | `npm run visual-architecture:build` | Archify showcase quality certification | 9/9 checks passed, 0 errors |
 | **4. AST Blast Radius** | `npx gitnexus detect-changes` | Verify only intended symbols were touched | Low risk, 0 unmapped mutations |
-| **5. LLM Trajectory Evals** | `node --test tests/phoenix-evals.test.mjs` | Multi-dimensional trajectory scoring | Score ≥ 0.85 (Tool, RBAC, Syntax) |
+| **5. LLM Trajectory Evals** | `node --test tests/phoenix_evals.test.mjs` | Multi-dimensional trajectory scoring | Score ≥ 0.85 (Tool, RBAC, Syntax) |
 
 ---
 

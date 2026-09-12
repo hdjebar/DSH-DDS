@@ -17,10 +17,10 @@ let rbacEngine = null;
 async function getRbacEngine() {
   if (rbacEngine) return rbacEngine;
   const candidates = [
-    '../../config/persona.mjs',
-    '/etc/dsh/persona.mjs',
-    '/var/lib/dsh/persona.mjs',
-    '/opt/dsh-config/persona.mjs'
+    '../../config/rbac-policy.mjs',
+    '/etc/dsh/rbac-policy.mjs',
+    '/var/lib/dsh/rbac-policy.mjs',
+    '/opt/dsh-config/rbac-policy.mjs'
   ];
   for (const candidate of candidates) {
     try {
