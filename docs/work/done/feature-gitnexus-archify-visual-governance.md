@@ -15,7 +15,7 @@ intelligence and visual governance workflow within DSH-DDS and agentic pair prog
 
 ## 📋 Implementation Checklist
 
-- [x] **GitNexus AST Indexing**: Indexed 3,115 nodes, 6,980 edges, and 148 execution flows in `DSH-DDS` at completion.
+- [x] **GitNexus AST Indexing**: Established a refreshable repository index and made fresh, complete graph evidence mandatory for generated impact diagrams.
 - [x] **Archify Skill Installation**: Installed Archify into `.agents/skills/archify` with deterministic JSON IR schemas.
 - [x] **Render Core Visuals**: Recompiled [System Runtime Architecture](../../visual-architecture/system-runtime.architecture.html), [Security Pipeline](../../visual-architecture/security-pipeline.workflow.html), [Declarative Workflow](../../visual-architecture/declarative-workflow.workflow.html), and [Agent Trace Sequence](../../visual-architecture/agent-trace.sequence.html).
 - [x] **Workflow Documentation**: Maintained the [GitNexus & Archify Workflow Guide](../../guides/gitnexus-archify.md).
