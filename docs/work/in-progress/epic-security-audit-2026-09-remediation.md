@@ -74,18 +74,15 @@ Still required before this epic can move to Done:
   client-disconnect cancellation; a live Envoy 1.39.1 probe also confirms trusted HTTPS succeeds
   while untrusted CONNECT and metadata destinations are denied.
 
-Current automated verification: **230/230 tests pass**. Installer parity, JavaScript/shell syntax,
-schema parsing, whitespace checks, both Compose configurations, root and production-web dependency
-audits, and CI workflow parsing pass. After refreshing the index, GitNexus classifies the combined
-DNS-pinning and executor-hardening worktree as **High**: 39 changed symbols affect 9 execution
-flows. This patch therefore requires focused review of outbound validation, executor startup,
-client cancellation, and process termination before rollout.
+Current automated verification: **248/248 tests pass**. Installer parity (0 drift across 97 canonical assets), JavaScript/shell syntax,
+schema parsing, whitespace checks, all three Compose configurations, root and production-web dependency
+audits, and CI workflow parsing pass.
 
-The first GEP-2 enforcement-parity slice now also loads the native RBAC plugin in the web,
+The GEP-2 enforcement-parity slice loads the native RBAC plugin in the web,
 headless, and CLI profiles, provisions every patch through the image and standalone installer,
-and regression-tests that parity. A deterministic boot-time policy-engine assertion remains open.
+enforces parity via `tests/profile_parity.test.mjs`, and asserts policy engine availability deterministically at boot time with an idempotent `bootstrapRbac` lifecycle.
 
-GEP-2 Phase 3 now rejects the reproduced multi-gate approval replay: accepted checkpoints are
+GEP-2 Phase 3 rejects the reproduced multi-gate approval replay: accepted checkpoints are
 state-bound and terminal, later gates receive distinct successor IDs, writes are atomic and
 durable, and production discovers the host Ed25519 public key from the mounted configuration.
 Restoration of the original canonical suspended state by a hostile checkpoint writer still requires an external monotonic or WORM

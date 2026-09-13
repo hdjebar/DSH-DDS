@@ -153,12 +153,12 @@ gate → versioned checkpoint `SUSPENDED_APPROVAL_REQUIRED` (mode `0600`, fsync 
 
 - [x] **Phase 0a — profile-parity guardrails.** Refreshed the GitNexus index at `881cb34`, measured `getRbacEngine` as LOW risk, confirmed the 222-test baseline, and added `tests/profile_parity.test.mjs` failing first.
 - [x] **Phase 0b — policy-contract guardrails.** Add `tests/policy_manifest.test.mjs` covering default-deny acceptance, missing and invalid manifests, schema validation, and starter template conformance.
-- [ ] **Phase 1 — enforcement parity (V3-H1).** Profile parity is implemented; deterministic boot assertion remains.
+- [x] **Phase 1 — enforcement parity (V3-H1).** Profile parity, deterministic boot assertion, and idempotent `bootstrapRbac` lifecycle implemented.
   - [x] Resolve the policy engine directly from `rbac-policy.mjs` in source, standard-container, installed, and sandbox paths.
   - [x] Insert `@dsh-dds/core` with `enableToolRbac: true` in web, headless, and CLI patches.
   - [x] Copy and provision every profile patch and expose the root-owned core plugin to every image profile.
   - [x] Enforce those invariants with `tests/profile_parity.test.mjs`.
-  - [ ] Add an idempotent `bootstrapRbac` lifecycle and a deterministic boot-time policy-engine assertion after confirming the Cordis startup contract.
+  - [x] Add an idempotent `bootstrapRbac` lifecycle and a deterministic boot-time policy-engine assertion after confirming the Cordis startup contract.
 - [x] **Phase 2 — persona contract (V3-H2, H-4).** Schema + `policy-manifest.mjs` + template/distill emission + structured YAML patch emit; synthetic interactive persona retained per reconciliation note.
 - [x] **Phase 3 — approval trust root (R-2, H-3).** Mounted key discovery, state-bound v2 digest, atomic persistence, monotonic consumption, successor identity, and replay regressions implemented. Restoration of the canonical suspended state remains an explicitly external monotonic/WORM-storage control.
 - [x] **Phase 4 — step gate unification (V3-M6/M7, TQ-2).** `authorizeStep` extracted, fallback re-authorized without dropping gates, bounded loop ring window (`ring.slice(-8)`), default-gated actions enforced, and `tests/step_gate.test.mjs` passing.

@@ -12,6 +12,7 @@ import {
   ModelCatalogService,
   registerLocalizationTap,
   registerRbacInterceptor,
+  bootstrapRbac,
   registerSessionEventsShim,
   registerBashWorkdirShim,
   DEFAULT_OPERATOR,
@@ -671,6 +672,60 @@ test('Core RBAC Interceptor: fails closed when policy engine is unavailable', as
     },
     /Zero-Trust RBAC Violation.*Policy engine unavailable/
   );
+});
+
+test('Core RBAC Lifecycle: bootstrapRbac resolves engine deterministically and is idempotent', async () => {
+  const mockCtx = {};
+  const engine = await bootstrapRbac(mockCtx, { enableToolRbac: true });
+  assert.ok(engine, 'Engine must resolve');
+  assert.equal(typeof engine.enforceRbacPolicy, 'function', 'Engine must expose enforceRbacPolicy');
+  assert.equal(mockCtx.__dds_rbac_bootstrapped, true, 'Context must record bootstrap state');
+  assert.equal(mockCtx.__dds_rbac_engine, engine, 'Context must cache resolved engine');
+
+  // Second call must return the cached instance without re-resolving
+  const engine2 = await bootstrapRbac(mockCtx, { enableToolRbac: true });
+  assert.equal(engine2, engine, 'bootstrapRbac must return cached engine (idempotent)');
+});
+
+test('Core RBAC Lifecycle: bootstrapRbac throws fail-closed on missing or malformed engine', async () => {
+  const brokenCtx = {};
+  await assert.rejects(
+    async () => {
+      await bootstrapRbac(brokenCtx, {
+        enableToolRbac: true,
+        getRbacEngine: async () => null
+      });
+    },
+    /Zero-Trust RBAC Violation.*Deterministic boot assertion failed.*fail-closed/
+  );
+
+  const invalidCtx = {};
+  await assert.rejects(
+    async () => {
+      await bootstrapRbac(invalidCtx, {
+        enableToolRbac: true,
+        getRbacEngine: async () => ({ notAnEngine: true })
+      });
+    },
+    /Zero-Trust RBAC Violation.*Deterministic boot assertion failed.*fail-closed/
+  );
+});
+
+test('Core RBAC Lifecycle: registerRbacInterceptor guards against duplicate registration', async () => {
+  let hookCount = 0;
+  const mockCtx = {
+    before(event, fn) {
+      if (event === 'tool-execute') hookCount++;
+    }
+  };
+
+  registerRbacInterceptor(mockCtx, { enableToolRbac: true });
+  assert.equal(hookCount, 1, 'First registration must attach listener');
+  assert.equal(mockCtx.__dds_rbac_registered, true);
+
+  // Second call on same context must do nothing
+  registerRbacInterceptor(mockCtx, { enableToolRbac: true });
+  assert.equal(hookCount, 1, 'Second registration must be a no-op');
 });
 
 test('Web Search Fallback: enforces HTTPS and duckduckgo.com domain restrictions', async () => {

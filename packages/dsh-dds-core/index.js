@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import { registerGatewayMiddleware } from './gateway.js';
 import { ModelCatalogService } from './model-catalog.js';
 import { registerLocalizationTap } from './localization.js';
-import { registerRbacInterceptor, TOOL_ACTION_MAP, KNOWN_POLICY_VERBS } from './rbac-interceptor.js';
+import { registerRbacInterceptor, bootstrapRbac, TOOL_ACTION_MAP, KNOWN_POLICY_VERBS } from './rbac-interceptor.js';
 import { registerLlmGateway, LlmSemanticGateway } from './llm-gateway.js';
 import { registerWebSearchFallback, resilientSearch, parseDuckDuckGoHtml, fetchSearchUrl, executeDuckDuckGoSearch } from './web-search.js';
 import {
@@ -182,6 +182,7 @@ export {
   ModelCatalogService,
   registerLocalizationTap,
   registerRbacInterceptor,
+  bootstrapRbac,
   TOOL_ACTION_MAP,
   KNOWN_POLICY_VERBS,
   registerLlmGateway,

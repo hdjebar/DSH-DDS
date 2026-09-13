@@ -76,8 +76,42 @@ export const KNOWN_POLICY_VERBS = new Set([
   'fetch_sdmx_dataflows'
 ]);
 
+export async function bootstrapRbac(ctx, config = {}) {
+  if (ctx?.__dds_rbac_bootstrapped) {
+    return ctx.__dds_rbac_engine;
+  }
+  const resolveEngine = async () => (
+    config.getRbacEngine
+      ? await config.getRbacEngine()
+      : (config.rbacEngine || await getRbacEngine())
+  );
+  const engine = await resolveEngine();
+  if (config.enableToolRbac !== false) {
+    if (!engine || typeof engine.enforceRbacPolicy !== 'function') {
+      throw new Error('[Zero-Trust RBAC Violation] Deterministic boot assertion failed: RBAC policy engine could not be resolved (fail-closed)');
+    }
+  }
+  if (ctx) {
+    ctx.__dds_rbac_bootstrapped = true;
+    ctx.__dds_rbac_engine = engine;
+  }
+  return engine;
+}
+
 export function registerRbacInterceptor(ctx, config = {}) {
   if (config.enableToolRbac === false) return;
+  if (ctx?.__dds_rbac_registered) return;
+  if (ctx) ctx.__dds_rbac_registered = true;
+
+  bootstrapRbac(ctx, config).catch((err) => {
+    console.error('❌ [@dsh-dds/core] Fatal RBAC bootstrap failure:', err.message);
+  });
+
+  if (typeof ctx?.on === 'function') {
+    ctx.on('ready', async () => {
+      await bootstrapRbac(ctx, config);
+    });
+  }
 
   const partitionManager = new UserPartitionManager(config);
   const authEnabled = config.authEnabled ?? (process.env.DSH_AUTH_ENABLE === 'true');
@@ -159,7 +193,7 @@ export function registerRbacInterceptor(ctx, config = {}) {
       }
     }
 
-    const engine = await resolveEngine();
+    const engine = ctx?.__dds_rbac_engine || await resolveEngine();
     if (!engine || typeof engine.enforceRbacPolicy !== 'function') {
       throw new Error('[Zero-Trust RBAC Violation] Policy engine unavailable');
     }
