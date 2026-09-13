@@ -345,7 +345,7 @@ nano .env
 | **`DSH_APPROVAL_SECRET`** | Development fallback | *(auto)* | Internal HMAC fallback for trusted non-production execution. Production and sandbox verification require host-side Ed25519 signing instead. |
 | **`DSH_APPROVAL_PUBLIC_KEY_FILE`** | Optional | `${DSH_CONFIG_DIR:-/etc/dsh}/keys/approval_ed25519.pub` | Overrides the mounted Ed25519 public-key path used to verify human approval tokens. Private signing material remains on the host. |
 | **`GITHUB_PERSONAL_ACCESS_TOKEN`** | Optional | *(empty)* | Fine-grained PAT. Only required if workflows invoke the `github` MCP server. |
-| **`PHOENIX_ENABLE_AUTH`** | Optional | `false` | Set `true` to require authentication on the Phoenix UI. |
+| **`PHOENIX_ENABLE_AUTH`** | Required | `true` | Enforces authentication on the Phoenix UI (fail-closed security default). |
 | **`PHOENIX_SECRET`** | Optional | *(empty)* | Session encryption secret. Required when `PHOENIX_ENABLE_AUTH=true`. |
 | **`PHOENIX_API_KEY`** | Optional | *(empty)* | API key for programmatic OTel query endpoints. |
 

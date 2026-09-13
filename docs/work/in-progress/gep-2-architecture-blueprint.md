@@ -163,7 +163,7 @@ gate → versioned checkpoint `SUSPENDED_APPROVAL_REQUIRED` (mode `0600`, fsync 
 - [x] **Phase 3 — approval trust root (R-2, H-3).** Mounted key discovery, state-bound v2 digest, atomic persistence, monotonic consumption, successor identity, and replay regressions implemented. Restoration of the canonical suspended state remains an explicitly external monotonic/WORM-storage control.
 - [x] **Phase 4 — step gate unification (V3-M6/M7, TQ-2).** `authorizeStep` extracted, fallback re-authorized without dropping gates, bounded loop ring window (`ring.slice(-8)`), default-gated actions enforced, and `tests/step_gate.test.mjs` passing.
 - [x] **Phase 5 — installer integrity (H-1/H-2, R-1, R-4).** Manifest, allowlist, verified fallback, umask, ignores.
-- [ ] **Phase 6 — hygiene (V3-M3, R-3/R-5/R-6).** Timeouts, fail-closed token, `lossy`, authoring YAML safety.
+- [x] **Phase 6 — hygiene (V3-M3, R-3/R-5/R-6).** Timeouts, fail-closed token, `lossy`, authoring YAML safety.
 - [ ] **Phase 7 — docs + CI.** Claim corrections; `needs:`; `envoy --mode validate`; remove live-network test.
 - [ ] **Phase 8 — verify.** `npm test`, `npm run verify:installer`, `docker compose config`, regenerate installer; `gitnexus_detect_changes` before commit.
 

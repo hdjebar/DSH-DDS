@@ -54,7 +54,7 @@ Welcome to the **Agile Kanban Work Hub** for `DSH-DDS`. This directory manages t
 1. **💡 Backlog (`backlog/`)**: Brainstorming, ideation briefs (`backlog/ideation/`), technology feasibility spikes, and exploratory architecture proposals.
 2. **📋 To Do (`todo/`)**: Prioritized Epics with validated scopes and technical acceptance criteria ready for implementation.
 3. **🚧 In Progress (`in-progress/`)**: Active implementation sprint. Strictly capped at **maximum 3 active features** simultaneously to maintain focus and prevent delivery bottlenecks.
-4. **🧪 Testing (`testing/`)**: Quality gate verification. Automated regression testing (`npm test`), installer sync (`verify:installer`), visual architecture certification (`visual-architecture:build`), and LLM trajectory evals (`tests/phoenix-evals.test.mjs`).
+4. **🧪 Testing (`testing/`)**: Quality gate verification. Automated regression testing (`npm test`), installer sync (`verify:installer`), visual architecture certification (`visual-architecture:build`), and LLM trajectory evals (`tests/phoenix_evals.test.mjs`).
 5. **✅ Done (`done/`)**: Production-ready, verified deliverables with merged code, zero regressions, and updated Diátaxis documentation.
 
 ### 2. Definition of Ready (DoR)

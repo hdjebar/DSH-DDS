@@ -145,13 +145,13 @@ async function checkDshEngine() {
   try {
     let healthOk = false;
     try {
-      const hRes = await fetch(healthUrl);
+      const hRes = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
       if (hRes.ok) {
         healthOk = true;
       }
     } catch {}
 
-    const res = await fetch(dshUrl);
+    const res = await fetch(dshUrl, { signal: AbortSignal.timeout(5000) });
     if (res.ok || healthOk) {
       pass('DSH Service', `Listening on 0.0.0.0:${dshPort} (HTTP 200 / Health OK)`);
     } else if (res.status === 401) {
@@ -168,7 +168,8 @@ async function checkPhoenixTelemetry() {
   console.log('\n🔍 [2/9] Arize Phoenix Telemetry & Observability:');
   try {
     const res = await fetch(`${PHOENIX_URL}/v1/projects`, {
-      headers: getPhoenixHeaders()
+      headers: getPhoenixHeaders(),
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -190,7 +191,7 @@ async function checkGoogleGemini() {
   }
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       pass('Google AI Studio API', 'Authenticated successfully (gemini-3.7-flash live)');
     } else {
@@ -209,7 +210,8 @@ async function checkOpenRouter() {
   }
   try {
     const res = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}` }
+      headers: { 'Authorization': `Bearer ${OPENROUTER_API_KEY}` },
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -234,7 +236,8 @@ async function checkGitHubToken() {
       headers: {
         'Authorization': `token ${GITHUB_TOKEN}`,
         'User-Agent': 'DSH-Doctor/1.0'
-      }
+      },
+      signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
       const user = await res.json().catch(() => ({}));

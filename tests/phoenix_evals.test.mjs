@@ -30,9 +30,19 @@ test('getTelemetryHeaders: generates authenticated headers when configured', () 
   assert.equal(authedHeaders['Authorization'], 'Bearer secret-key-123');
   assert.equal(authedHeaders['x-phoenix-api-key'], 'secret-key-123');
 
-  // With Auth Enabled
-  const authEnabledHeaders = getTelemetryHeaders({ PHOENIX_ENABLE_AUTH: 'true' });
-  assert.ok(authEnabledHeaders['Authorization'].startsWith('Bearer '));
+  // With Auth Enabled but No API Key (fails closed)
+  assert.throws(
+    () => getTelemetryHeaders({ PHOENIX_ENABLE_AUTH: 'true' }),
+    /PHOENIX_API_KEY is not configured/
+  );
+
+  // With Auth Enabled and API Key
+  const authEnabledWithKey = getTelemetryHeaders({
+    PHOENIX_ENABLE_AUTH: 'true',
+    PHOENIX_API_KEY: 'auth-key-456'
+  });
+  assert.equal(authEnabledWithKey['Authorization'], 'Bearer auth-key-456');
+  assert.equal(authEnabledWithKey['x-phoenix-api-key'], 'auth-key-456');
 });
 
 test('TrajectoryEvaluator: computes 1.0 EXCELLENT for clean, successful workflow', () => {

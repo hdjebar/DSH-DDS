@@ -24,10 +24,14 @@ function getPhoenixHeaders(extraHeaders = {}) {
 }
 
 async function waitForPhoenix(maxRetries = 15) {
+  const startTime = Date.now();
+  const totalDeadlineMs = 15_000;
   for (let i = 0; i < maxRetries; i++) {
+    if (Date.now() - startTime >= totalDeadlineMs) break;
     try {
       const res = await fetch(`${PHOENIX_URL}/v1/projects`, {
-        headers: getPhoenixHeaders()
+        headers: getPhoenixHeaders(),
+        signal: AbortSignal.timeout(2000)
       });
       if (res.ok) {
         console.log('✅ Arize Phoenix is ready.');
@@ -48,7 +52,8 @@ async function fetchOpenRouterModels() {
   try {
     console.log('🔄 Fetching live model catalog from OpenRouter...');
     const res = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` }
+      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` },
+      signal: AbortSignal.timeout(10_000)
     });
     if (!res.ok) {
       const errText = `HTTP ${res.status}: ${res.statusText}`;
@@ -73,7 +78,8 @@ async function fetchGoogleModels() {
   try {
     console.log('🔄 Fetching live model catalog from Google AI Studio...');
     const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
-      headers: { 'x-goog-api-key': GEMINI_API_KEY }
+      headers: { 'x-goog-api-key': GEMINI_API_KEY },
+      signal: AbortSignal.timeout(10_000)
     });
     if (!res.ok) {
       const errText = `HTTP ${res.status}: ${res.statusText}`;
@@ -113,6 +119,7 @@ async function syncToPhoenix() {
     const res = await fetch(`${PHOENIX_URL}/graphql`, {
       method: 'POST',
       headers: getPhoenixHeaders({ 'Content-Type': 'application/json' }),
+      signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         query: ensureProviderQuery,
         variables: {
@@ -273,16 +280,6 @@ async function main() {
 
     await persistModelCache(openRouterModels, googleModels);
 
-    // Auto-patch plugin translations to English
-    try {
-      const patchScript = path.resolve(process.cwd(), 'config/patch_translations.mjs');
-      const containerPatchScript = '/root/.dsh/patch_translations.mjs';
-      if (fs.existsSync(containerPatchScript)) {
-        await import(containerPatchScript);
-      } else if (fs.existsSync(patchScript)) {
-        await import(patchScript);
-      }
-    } catch {}
 
     if (openRouterRes.error) errors.push(`OpenRouter: ${openRouterRes.error}`);
     if (googleRes.error) errors.push(`Gemini: ${googleRes.error}`);

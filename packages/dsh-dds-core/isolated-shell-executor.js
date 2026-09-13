@@ -102,6 +102,7 @@ export class IsolatedShellExecutor extends ShellExecutor {
     if (spec.signal) spec.signal.addEventListener('abort', () => controller.abort(), { once: true });
     let output = '';
     let outputOffset = 0;
+    let isLossy = false;
     const proc = {
       status: 'running',
       exitCode: null,
@@ -111,7 +112,7 @@ export class IsolatedShellExecutor extends ShellExecutor {
       readOutput() {
         const delta = output.slice(outputOffset);
         outputOffset = output.length;
-        return { delta, lossy: false };
+        return { delta, lossy: isLossy };
       },
       kill() {
         if (proc.status !== 'running') return false;
@@ -124,6 +125,9 @@ export class IsolatedShellExecutor extends ShellExecutor {
       proc.exitCode = result.exitCode;
       proc.signal = result.signal;
       proc.sandbox = result.sandbox;
+      if (result.stdout?.truncated || result.stderr?.truncated) {
+        isLossy = true;
+      }
       output = result.stdout.text + (result.stderr.text ? `${result.stdout.text ? '\n' : ''}[stderr]\n${result.stderr.text}` : '');
     }, error => {
       proc.status = 'killed';

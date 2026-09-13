@@ -343,8 +343,8 @@ get_manifest_sha256() {
     "scripts/lib/tenant_partition_migration.mjs") echo "ac34288219f2c6d53925f559043fceaf4f5eac8989e054e15eb4c1918ee1130c" ;;
     "scripts/export_telemetry.sh") echo "8e24147d7d2583fcb9b43269ca6ac33787d6944f802a43de100e92539b7c3d82" ;;
     "scripts/prune_telemetry.sh") echo "b0c72bb4fd3a510fd052e7b43ac7514b48b9eed1d0fa7eeb813fd3b441eb0c90" ;;
-    "config/sync_models.mjs") echo "6f1f1c771814b26a0d5eb6273d74b78ad8b20fc52d0ba36e21fffcd2cbc3d68b" ;;
-    "config/doctor.mjs") echo "6e828a93e834952d4b7608d5f83b41982b95887f286c32660cf4c475bc92aac5" ;;
+    "config/sync_models.mjs") echo "26431510158e493040c02283c72c7980bc5a828f6d3247c548961fdf4e6dbf52" ;;
+    "config/doctor.mjs") echo "9507ef2fa45bb14c03a7f5a7a220a821b4f55eae5715f64979cfc88701efff99" ;;
     "config/persona.mjs") echo "8edb1511166a51f9accc2c5fe70582bbfedf7a6b8c8922d8f34d1625ac0e9eaa" ;;
     "config/declarative-orchestrator.mjs") echo "d87877fd39378eeb90fda9c7bc4efed759b106ee80d7f6dd29fb5dca432485eb" ;;
     "config/outbound-security.mjs") echo "64bebb80cac5bd876418d93306416153e58f079aa024f5f54d8966aabcc1db33" ;;
@@ -356,7 +356,7 @@ get_manifest_sha256() {
     "config/rbac-policy.mjs") echo "f28af4ad115a25bf72b4968b6695ee8564ec2405d346e10b6fd2ad49219a10ec" ;;
     "config/policy-manifest.mjs") echo "44e47cf95541dcf58d93ff9f39e88e3922f4e5490d0bb264eafe14dad3c85ba1" ;;
     "config/settings.default.yaml") echo "1c7e2691e04edd13344314dc1449a5b8498e49ccb0fc13ea7386db7f72954769" ;;
-    "config/phoenix-evals.mjs") echo "ccdf4a13b4772fc29ef4c7b04a6643eed372e854d214c73326509d777cc68210" ;;
+    "config/phoenix-evals.mjs") echo "adda595b491d85e43dc13115d01f9fcdd3cbc98917e2c2fde6bef8351484adab" ;;
     "config/context-quarantine.mjs") echo "0cfbad5ee0f99a13af4f06087a51b2f5a2db156e86ce302f63e23d7ec01b8326" ;;
     "config/dynamic-governance.mjs") echo "553e27b65e6f07f0300a66caf376460a2c3948e531261242830890c57bac65d7" ;;
     "config/failover-gateway.mjs") echo "eca6c5d88b4177864d4315a5c05f8b6b77e627b62314bfadc0e8d2e53da7d3c0" ;;
@@ -369,7 +369,7 @@ get_manifest_sha256() {
     "packages/dsh-dds-core/gateway.js") echo "f52724e569e2f864a0a8a0e3e4f75df9cf40d794984a8ac98eccbec994233eb2" ;;
     "packages/dsh-dds-core/iam.js") echo "ad192f53cfbb12134e0ea9885d9e01430a17eb2c7b744040ca2ff3529a38c0b2" ;;
     "packages/dsh-dds-core/index.js") echo "c015ba28d649579eec319db402b6ad5ebd664896afd2100afd61834c7d691129" ;;
-    "packages/dsh-dds-core/isolated-shell-executor.js") echo "fda2e9f251d10ad1de6d892695ed06d083aa32a5604617158628ec00744d0f4b" ;;
+    "packages/dsh-dds-core/isolated-shell-executor.js") echo "648587221285d137ca773971f0fb90029ada397bab3ac394f2fb1559dc69a889" ;;
     "packages/dsh-dds-core/llm-gateway.js") echo "b1f43c14866963ba6ca073533ae70ba6709135174c35b9a3fe403e3cca39b90d" ;;
     "packages/dsh-dds-core/loader-hooks.mjs") echo "390ce8b9833135a6d3bd41d5ef82b7267d9a1df58b993fc97db33e37aee61929" ;;
     "packages/dsh-dds-core/loader.mjs") echo "589ebe7451418533813c5a44aa8dc9654f74ba73155123521b4df6e52109391c" ;;

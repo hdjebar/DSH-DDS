@@ -27,10 +27,13 @@ export function getTelemetryHeaders(env = process.env) {
   const apiKey = env.PHOENIX_API_KEY || '';
   const authEnabled = env.PHOENIX_ENABLE_AUTH === 'true' || env.PHOENIX_ENABLE_AUTH === '1';
 
-  if (apiKey || authEnabled) {
-    const key = apiKey || 'phoenix-default-token';
-    headers['Authorization'] = `Bearer ${key}`;
-    headers['x-phoenix-api-key'] = key;
+  if (authEnabled && !apiKey) {
+    throw new Error('Phoenix authentication is enabled but PHOENIX_API_KEY is not configured.');
+  }
+
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    headers['x-phoenix-api-key'] = apiKey;
   }
 
   return headers;
