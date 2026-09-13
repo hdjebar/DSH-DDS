@@ -2,11 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import yaml from 'yaml';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ENVOY_CONFIG_PATH = path.join(ROOT, 'config/network/envoy-egress.yaml');
 const COMPOSE_SANDBOX_PATH = path.join(ROOT, 'docker-compose.sandbox.yml');
+
+function isDockerAvailable() {
+  try {
+    const res = spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 3000 });
+    return res.status === 0;
+  } catch {
+    return false;
+  }
+}
 
 test('Envoy Egress Configuration: parses valid YAML and configures listener', () => {
   assert.ok(fs.existsSync(ENVOY_CONFIG_PATH), 'envoy-egress.yaml must exist');
@@ -174,4 +184,23 @@ test('Envoy Egress Configuration: CONNECT tunnels are limited to explicitly trus
   const publicConnect = publicFetch.routes.find((route) => route.match.connect_matcher);
   assert.equal(publicConnect.direct_response.status, 403);
   assert.match(publicConnect.direct_response.body.inline_string, /explicitly trusted destination/);
+});
+
+test('Envoy Egress Configuration: passes envoy --mode validate when docker daemon is available', (t) => {
+  if (!isDockerAvailable()) {
+    t.skip('Docker daemon is not available in current test environment');
+    return;
+  }
+  const ENVOY_IMAGE = 'envoyproxy/envoy:v1.39.1@sha256:57e14a549d7bd43c8d3f6d03e8cfa653e037d4b38e133acd9b54f38c524401b4';
+  const res = spawnSync('docker', [
+    'run', '--rm',
+    '-v', `${ENVOY_CONFIG_PATH}:/etc/envoy/envoy.yaml:ro`,
+    ENVOY_IMAGE,
+    '--mode', 'validate',
+    '-c', '/etc/envoy/envoy.yaml'
+  ], { encoding: 'utf8', timeout: 30000 });
+
+  assert.equal(res.status, 0, `Envoy validation failed:\n${res.stderr || res.stdout}`);
+  const combined = (res.stdout || '') + (res.stderr || '');
+  assert.match(combined, /configuration '\/etc\/envoy\/envoy\.yaml' OK/);
 });

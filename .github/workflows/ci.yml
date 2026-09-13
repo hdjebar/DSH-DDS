@@ -107,12 +107,15 @@ jobs:
           node --check config/phoenix-evals.mjs
           node --check config/rbac-policy.mjs
           node --check config/worktree-staging.mjs
+          node --check config/policy-manifest.mjs
           node --check config/audit-client.mjs
           node --check config/audit-writer-core.mjs
           node --check config/audit-writer.mjs
           node --check config/outbound-security.mjs
           node --check config/telemetry-gateway.mjs
           node --check services/isolated-executor/server.mjs
+          node --check scripts/provisioning-manifest.mjs
+          node --check scripts/build_installer.mjs
           node --check scripts/migrate_tenant_partitions.mjs
           node --check scripts/prepare_executor_workspaces.mjs
           node --check scripts/render_gitnexus_impact.mjs
@@ -153,8 +156,16 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.sandbox.yml config --quiet
           docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
 
+      - name: Validate Envoy Egress Configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/config/network/envoy-egress.yaml:/etc/envoy/envoy.yaml:ro" \
+            envoyproxy/envoy:v1.39.1@sha256:57e14a549d7bd43c8d3f6d03e8cfa653e037d4b38e133acd9b54f38c524401b4 \
+            --mode validate -c /etc/envoy/envoy.yaml
+
   container-build-and-smoke:
     name: Container Build & Offline MCP Smoke Tests
+    needs: security-and-static-analysis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

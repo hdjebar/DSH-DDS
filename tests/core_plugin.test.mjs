@@ -430,27 +430,65 @@ test('Web Search Fallback: parseDuckDuckGoHtml extracts structured search result
   assert.equal(results[1].url, 'https://example.org/stats');
 });
 
-test('Web Search Fallback: registerWebSearchFallback intercepts engine failure and engages fallback', async () => {
+test('Web Search Fallback: registerWebSearchFallback intercepts engine failure and engages fallback (hermetic)', async () => {
   const { registerWebSearchFallback } = await import('../packages/dsh-dds-core/index.js');
+  const https = (await import('node:https')).default;
+  const { EventEmitter } = await import('node:events');
 
-  let originalCalled = false;
-  const mockCtx = {
-    web: {
-      search: async (req) => {
-        originalCalled = true;
-        throw new Error('Error: modsearch failed (exit 1): Error: Every engine for the web source failed. - firecrawl: firecrawl rejected the keyless request (403)');
-      }
-    }
+  const mockHtml = `
+    <div class="result results_links">
+      <h2 class="result__title">
+        <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fhermetic&rut=1">Hermetic Result</a>
+      </h2>
+      <a class="result__snippet">Hermetic snippet for offline test validation.</a>
+    </div>
+  `;
+
+  const originalGet = https.get;
+  let getCallCount = 0;
+  https.get = (targetUrl, options, callback) => {
+    getCallCount++;
+    const req = new EventEmitter();
+    req.destroy = () => {};
+    process.nextTick(() => {
+      const res = new EventEmitter();
+      res.statusCode = 200;
+      res.headers = {};
+      res.resume = () => {};
+      callback(res);
+      res.emit('data', Buffer.from(mockHtml));
+      res.emit('end');
+    });
+    return req;
   };
 
-  registerWebSearchFallback(mockCtx);
-  assert.ok(mockCtx.web.__dds_wrapped, 'ctx.web must be wrapped');
+  try {
+    let originalCalled = false;
+    const mockCtx = {
+      web: {
+        search: async (req) => {
+          originalCalled = true;
+          throw new Error('Error: modsearch failed (exit 1): Error: Every engine for the web source failed. - firecrawl: firecrawl rejected the keyless request (403)');
+        }
+      }
+    };
 
-  const res = await mockCtx.web.search({ query: 'test query' });
-  assert.equal(originalCalled, true, 'Original search must be attempted first');
-  assert.ok(res.content, 'Fallback search must return content');
-  assert.ok(Array.isArray(res.sources), 'Fallback search must return sources array');
-  assert.equal(res.truncated, false);
+    registerWebSearchFallback(mockCtx);
+    assert.ok(mockCtx.web.__dds_wrapped, 'ctx.web must be wrapped');
+
+    const res = await mockCtx.web.search({ query: 'test query' });
+    assert.equal(originalCalled, true, 'Original search must be attempted first');
+    assert.equal(getCallCount, 1, 'Hermetic https.get must be called exactly once');
+    assert.ok(res.content, 'Fallback search must return content');
+    assert.ok(res.content.includes('Hermetic Result'), 'Fallback search content must include mocked result title');
+    assert.ok(Array.isArray(res.sources), 'Fallback search must return sources array');
+    assert.equal(res.sources.length, 1);
+    assert.equal(res.sources[0].title, 'Hermetic Result');
+    assert.equal(res.sources[0].url, 'https://example.com/hermetic');
+    assert.equal(res.truncated, false);
+  } finally {
+    https.get = originalGet;
+  }
 });
 
 test('Core RBAC Interceptor: TOOL_ACTION_MAP precedence and prototype isolation', async () => {
