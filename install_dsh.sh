@@ -62,7 +62,7 @@ mkdir -p "$DSH_INSTALL/config/profiles/web" \
 chmod 0770 "$DSH_INSTALL/workspaces/cases" "$DSH_INSTALL/workspaces/users"
 chmod 0750 "$DSH_INSTALL/workspaces/shared"
 
-# 2. Strict & Safe Environment Variable Loader
+# 2. Strict & Safe Environment Variable Loader (Finding H-1)
 load_env_safely() {
   local env_file="$1"
   [ -f "$env_file" ] || return 0
@@ -82,7 +82,24 @@ load_env_safely() {
       elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
         val="${BASH_REMATCH[1]}"
       fi
-      export "$key=$val"
+
+      # Hard-deny dangerous execution/injection variables and source redirects (Finding H-1)
+      case "$key" in
+        LD_PRELOAD|LD_LIBRARY_PATH|BASH_ENV|ENV|SHELLOPTS|NODE_OPTIONS|PYTHONPATH|RUBYOPT|PERL5OPT|DSH_REPO_URL|DSH_SOURCE_DIR|DSH_REF|DSH_INSTALL)
+          echo "⚠️  Security Warning: Refusing to load restricted environment variable '$key' from $env_file." >&2
+          continue
+          ;;
+      esac
+
+      # Strict allowlist of permissible configuration variables
+      case "$key" in
+        DSH_*|PHOENIX_*|GEMINI_API_KEY|OPENROUTER_API_KEY|GITHUB_PERSONAL_ACCESS_TOKEN)
+          export "$key=$val"
+          ;;
+        *)
+          echo "⚠️  Security Warning: Ignoring unrecognized key '$key' from $env_file." >&2
+          ;;
+      esac
     fi
   done < "$env_file"
 }
@@ -93,7 +110,7 @@ if [ -f "$DSH_INSTALL/.env" ]; then
   load_env_safely "$DSH_INSTALL/.env"
 elif [ -f ".env" ]; then
   echo "📝 Copying local .env to $DSH_INSTALL/.env and loading variables..."
-  cp .env "$DSH_INSTALL/.env"
+  ( umask 077 && cp .env "$DSH_INSTALL/.env" )
   chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
   load_env_safely "$DSH_INSTALL/.env"
 else
@@ -107,6 +124,12 @@ else
     read -srp "  • GitHub Personal Access Token [GITHUB_PERSONAL_ACCESS_TOKEN]: " input_github
     echo ""
     read -rp "  • DSH Web Port [default 3080]: " input_port
+    if [ -n "${input_port:-}" ]; then
+      if ! [[ "$input_port" =~ ^[0-9]{1,5}$ ]] || [ "$input_port" -lt 1 ] || [ "$input_port" -gt 65535 ]; then
+        echo "❌ Error: Invalid DSH Web Port '$input_port'. Must be a number between 1 and 65535." >&2
+        exit 1
+      fi
+    fi
     
     AUTO_APPROVAL_SECRET="$(generate_secret)"
     VAULT_MASTER_KEY="$(generate_secret)"
@@ -117,7 +140,9 @@ else
     PHOENIX_SECRET="$(generate_secret)"
     PHOENIX_ADMIN_SECRET="dsh0_$(generate_secret)"
     PHOENIX_INITIAL_PASSWORD="dsh0_$(generate_secret)"
-    cat << EOF > "$DSH_INSTALL/.env"
+    (
+      umask 077
+      cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=${input_port:-3080}
 GEMINI_API_KEY=${input_gemini:-}
@@ -130,12 +155,14 @@ PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_INITIAL_PASSWORD}
 PHOENIX_API_KEY=${PHOENIX_ADMIN_SECRET}
 PHOENIX_INGEST_TOKEN=
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
+DSH_APPROVAL_PUBLIC_KEY_FILE=
 DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
 DSH_RESTART_CSRF_TOKEN=${RESTART_CSRF_TOKEN}
 DSH_AUDIT_INTEGRITY_KEY=${AUDIT_INTEGRITY_KEY}
 DSH_AUDIT_WRITER_TOKEN=${AUDIT_WRITER_TOKEN}
 DSH_EXECUTOR_CAPABILITY_KEY=${EXECUTOR_CAPABILITY_KEY}
 EOF
+    )
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "✅ Generated $DSH_INSTALL/.env (mode 0600)"
     load_env_safely "$DSH_INSTALL/.env"
@@ -149,7 +176,9 @@ EOF
     PHOENIX_SECRET="$(generate_secret)"
     PHOENIX_ADMIN_SECRET="dsh0_$(generate_secret)"
     PHOENIX_INITIAL_PASSWORD="dsh0_$(generate_secret)"
-    cat << EOF > "$DSH_INSTALL/.env"
+    (
+      umask 077
+      cat << EOF > "$DSH_INSTALL/.env"
 # DeepSeek Harness + Arize Phoenix Environment Configuration
 DSH_PORT=3080
 GEMINI_API_KEY=
@@ -162,15 +191,24 @@ PHOENIX_DEFAULT_ADMIN_INITIAL_PASSWORD=${PHOENIX_INITIAL_PASSWORD}
 PHOENIX_API_KEY=${PHOENIX_ADMIN_SECRET}
 PHOENIX_INGEST_TOKEN=
 DSH_APPROVAL_SECRET=${AUTO_APPROVAL_SECRET}
+DSH_APPROVAL_PUBLIC_KEY_FILE=
 DSH_VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
 DSH_RESTART_CSRF_TOKEN=${RESTART_CSRF_TOKEN}
 DSH_AUDIT_INTEGRITY_KEY=${AUDIT_INTEGRITY_KEY}
 DSH_AUDIT_WRITER_TOKEN=${AUDIT_WRITER_TOKEN}
 DSH_EXECUTOR_CAPABILITY_KEY=${EXECUTOR_CAPABILITY_KEY}
 EOF
+    )
     chmod 0600 "$DSH_INSTALL/.env" 2>/dev/null || true
     echo "📝 Generated starter $DSH_INSTALL/.env template (mode 0600). You can populate keys anytime in .env."
     load_env_safely "$DSH_INSTALL/.env"
+  fi
+fi
+
+if [ -n "${DSH_PORT:-}" ]; then
+  if ! [[ "$DSH_PORT" =~ ^[0-9]{1,5}$ ]] || [ "$DSH_PORT" -lt 1 ] || [ "$DSH_PORT" -gt 65535 ]; then
+    echo "❌ Error: Invalid DSH_PORT '$DSH_PORT'. Must be a numeric port between 1 and 65535." >&2
+    exit 1
   fi
 fi
 
@@ -291,6 +329,135 @@ verify_archive_checksum() {
   echo "🔐 Verified release archive checksum for $DSH_REF."
 }
 
+# --- BEGIN PROVISIONING MANIFEST ---
+get_manifest_sha256() {
+  case "$1" in
+    "dsh.sh") echo "23cbf19d8903e84d0c58f65bb069c09811482f47eb4216e2603c6f3e493f9dfa" ;;
+    "reset.sh") echo "875f9470347db8c329e90a4f31195d78356388e30583504cb1baf34f5c5f7a7f" ;;
+    "docker-compose.sandbox.yml") echo "cab777bf18452669d83547ba78f7cdf01410f12cda4301e659bf4a8706cf9be2" ;;
+    "docker-compose.dev.yml") echo "9a1e07866cdb852cd282997cdf89c81e5193c49a5a36ef5f9dce0abf06783f9e" ;;
+    "docker/entrypoint.sh") echo "85dd8b596da80ae52b8120d3c93a04815514df32871d3a0f29f3da618adcc1d3" ;;
+    "services/isolated-executor/server.mjs") echo "a0ddca1c64402ad896d77cba6df59a9fc226c8568ccb942223006b15030b8b31" ;;
+    "scripts/prepare_executor_workspaces.mjs") echo "43844ac882b96e4aa2b7d4a6fc3d1c7e3c5e9ebc71dbdeb929ffa77963e82ada" ;;
+    "scripts/migrate_tenant_partitions.mjs") echo "beec8d23e98214e627bdf559cee8cb221fa09820e7822e5b650d13787262e13e" ;;
+    "scripts/lib/tenant_partition_migration.mjs") echo "ac34288219f2c6d53925f559043fceaf4f5eac8989e054e15eb4c1918ee1130c" ;;
+    "scripts/export_telemetry.sh") echo "8e24147d7d2583fcb9b43269ca6ac33787d6944f802a43de100e92539b7c3d82" ;;
+    "scripts/prune_telemetry.sh") echo "b0c72bb4fd3a510fd052e7b43ac7514b48b9eed1d0fa7eeb813fd3b441eb0c90" ;;
+    "config/sync_models.mjs") echo "6f1f1c771814b26a0d5eb6273d74b78ad8b20fc52d0ba36e21fffcd2cbc3d68b" ;;
+    "config/doctor.mjs") echo "6e828a93e834952d4b7608d5f83b41982b95887f286c32660cf4c475bc92aac5" ;;
+    "config/persona.mjs") echo "8edb1511166a51f9accc2c5fe70582bbfedf7a6b8c8922d8f34d1625ac0e9eaa" ;;
+    "config/declarative-orchestrator.mjs") echo "d87877fd39378eeb90fda9c7bc4efed759b106ee80d7f6dd29fb5dca432485eb" ;;
+    "config/outbound-security.mjs") echo "64bebb80cac5bd876418d93306416153e58f079aa024f5f54d8966aabcc1db33" ;;
+    "config/audit-client.mjs") echo "3ca4bb715f3a1f1213d399ba8c10d3e51ffca3014309022e8b9f63ea64ae3717" ;;
+    "config/audit-writer-core.mjs") echo "bb7a698a2b05a2e6c855683601c23849197c89c8864a836869a044021b1c2495" ;;
+    "config/audit-writer.mjs") echo "8a417a4c14f2471e1444856c7861587b14b120a3caec0774db9cfd9de97977f3" ;;
+    "config/telemetry-gateway.mjs") echo "517a0f9a210fcf0fc3319e422a9d4e4616e44a58aca46d2ba12797afe9b98143" ;;
+    "config/audit-checkpoints/.gitkeep") echo "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b" ;;
+    "config/rbac-policy.mjs") echo "f28af4ad115a25bf72b4968b6695ee8564ec2405d346e10b6fd2ad49219a10ec" ;;
+    "config/policy-manifest.mjs") echo "44e47cf95541dcf58d93ff9f39e88e3922f4e5490d0bb264eafe14dad3c85ba1" ;;
+    "config/settings.default.yaml") echo "1c7e2691e04edd13344314dc1449a5b8498e49ccb0fc13ea7386db7f72954769" ;;
+    "config/phoenix-evals.mjs") echo "ccdf4a13b4772fc29ef4c7b04a6643eed372e854d214c73326509d777cc68210" ;;
+    "config/context-quarantine.mjs") echo "0cfbad5ee0f99a13af4f06087a51b2f5a2db156e86ce302f63e23d7ec01b8326" ;;
+    "config/dynamic-governance.mjs") echo "553e27b65e6f07f0300a66caf376460a2c3948e531261242830890c57bac65d7" ;;
+    "config/failover-gateway.mjs") echo "eca6c5d88b4177864d4315a5c05f8b6b77e627b62314bfadc0e8d2e53da7d3c0" ;;
+    "config/worktree-staging.mjs") echo "a40579fa53f8d3b8a110018eeb19b9f7cef8b8df236a45b4e5d903f44cbc66ca" ;;
+    "config/network/envoy-egress.yaml") echo "696ec577be0f9d35848dece28756a8d41cfb1aef631c8b385e307132bad803e0" ;;
+    "config/schemas/persona-policy-v1.schema.json") echo "04d20f370eff912305e8242ed7b26092db3a73ec88678a30bbb0396d532540c6" ;;
+    "config/schemas/tenant-partition-migration-v1.schema.json") echo "7ff258d2c57c1978eb1f30ca690a7b85c4c9607fd2a1028f98be16b45d4b8256" ;;
+    "packages/dsh-dds-core/byok-vault.js") echo "1187c016bf95e96f26890ed6104a99c480159cd669db6f7e47448a685a4976c7" ;;
+    "packages/dsh-dds-core/execution-capability.js") echo "fd28c02744c917a7ec71d3a773fe84d541f4642df7f2511bf9f6a301bea78aed" ;;
+    "packages/dsh-dds-core/gateway.js") echo "f52724e569e2f864a0a8a0e3e4f75df9cf40d794984a8ac98eccbec994233eb2" ;;
+    "packages/dsh-dds-core/iam.js") echo "ad192f53cfbb12134e0ea9885d9e01430a17eb2c7b744040ca2ff3529a38c0b2" ;;
+    "packages/dsh-dds-core/index.js") echo "c015ba28d649579eec319db402b6ad5ebd664896afd2100afd61834c7d691129" ;;
+    "packages/dsh-dds-core/isolated-shell-executor.js") echo "fda2e9f251d10ad1de6d892695ed06d083aa32a5604617158628ec00744d0f4b" ;;
+    "packages/dsh-dds-core/llm-gateway.js") echo "b1f43c14866963ba6ca073533ae70ba6709135174c35b9a3fe403e3cca39b90d" ;;
+    "packages/dsh-dds-core/loader-hooks.mjs") echo "390ce8b9833135a6d3bd41d5ef82b7267d9a1df58b993fc97db33e37aee61929" ;;
+    "packages/dsh-dds-core/loader.mjs") echo "589ebe7451418533813c5a44aa8dc9654f74ba73155123521b4df6e52109391c" ;;
+    "packages/dsh-dds-core/localization.js") echo "aaa2430de34f631bdc0085db3e203662a50506ce1e417c491da9b046ca49c32a" ;;
+    "packages/dsh-dds-core/model-catalog.js") echo "4f37cc98d3007755887ac886e950bc8442a934cda81b656a93a1f6ed6f9491a5" ;;
+    "packages/dsh-dds-core/net-trust.js") echo "32f92f2bef5ac57b02f682421a16e21f9e6c75ec2be7fa490b7e7ef8529ed4c4" ;;
+    "packages/dsh-dds-core/package.json") echo "ad3994b9eb985ee10c411b19d2cd91f3eb2932e74e809b80179c99509110ccbd" ;;
+    "packages/dsh-dds-core/rbac-interceptor.js") echo "ff8d5353d313920113185842ddc14b32dd4b33a30c6494e6694e0f2cab1f3675" ;;
+    "packages/dsh-dds-core/user-partition.js") echo "3121583f75fbf5c78503e076207ecc8a0bac11c09730fe8f2ca699f99f35315f" ;;
+    "packages/dsh-dds-core/web-search.js") echo "2ddfcc01f2245f4386b4b2f8602468ef7ee63d9d536e4ad73ae5861e0b36e425" ;;
+    "config/profiles/cli/cordis.patch.yml") echo "476a93da63556f9b7edf3c049a12abaa00934a4e4a1e58be079f7422258b6e26" ;;
+    "config/profiles/cli/cordis.yml") echo "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e" ;;
+    "config/profiles/cli/package.json") echo "854b8e8d2286571785aab5207e0b7e5ce56311eb0e25ed0391eacfe7abebd95f" ;;
+    "config/profiles/cli/pnpm-lock.yaml") echo "716663b14d5f920668fc2a971acff4042fc03f9c35fd186b90084be1724bb8ac" ;;
+    "config/profiles/headless/cordis.patch.yml") echo "476a93da63556f9b7edf3c049a12abaa00934a4e4a1e58be079f7422258b6e26" ;;
+    "config/profiles/headless/cordis.yml") echo "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e" ;;
+    "config/profiles/headless/package.json") echo "563c0b6082748a6e93daad51514f01335c51fc9c44f5f88253383f18ac2557b5" ;;
+    "config/profiles/headless/pnpm-workspace.yaml") echo "5b66cce9e0ce8c4d774154b36db6d1caadb9994470d1c128e3f81e95172ea20b" ;;
+    "config/profiles/web/cordis.yml") echo "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e" ;;
+    "config/profiles/web/pnpm-lock.yaml") echo "24ce63f2d5b5719e350ed175e52d9c3a303cb1e05fb0834fed8cceb0787d0ae0" ;;
+    "config/profiles/web/pnpm-workspace.yaml") echo "633bdda04c5388010d35456484aa5c52d9d87b34bb36a32b896efa52f5eed24c" ;;
+    "config/personas/data-analyst/SKILL.md") echo "bf9938ed2a5dff12b0cab5d8eba0dab0fe9a835ed0ab7519f1a582c386d12241" ;;
+    "config/personas/data-analyst/persona.yaml") echo "b30f6541f4f1825061c2e0c627f149bbd95e664be5037652c53cc8d5abe7beaa" ;;
+    "config/personas/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
+    "config/personas/devops-sre/persona.yaml") echo "49723bde10d019fd1d6087da22478cf9dd76f12f7d7217517eb024c3737a9949" ;;
+    "config/personas/mlops-engineer/SKILL.md") echo "ed67c2e65767eee5872504b6063f82b73f1a41bf90b2acf4f09e1b4d24ad789b" ;;
+    "config/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
+    "config/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
+    "config/personas/persona-creator/persona.yaml") echo "a8c78ed1ecb14a944de5ebf6b4aa7ea545825aff636b7bb029e0971ef0f87603" ;;
+    "config/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
+    "config/personas/sdmx-expert/persona.yaml") echo "1fcbdcee4ce1ea997381229e57b3cbc01963be3ac26c71d7d5d147b18ec0c7c2" ;;
+    "config/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
+    "config/personas/security-auditor/persona.yaml") echo "0c850997901b79615319529f2a8fb0f0983f1fea2b61b4afb470b2446e4e33de" ;;
+    "config/personas/stats-engineer/SKILL.md") echo "8462c97cbb4a04bb9895e15a799e51af5f513de848b7e0b5e9a864eb9d52d523" ;;
+    "config/personas/stats-engineer/persona.yaml") echo "9bef06f20d8bd6fb68d6255e08ccd9c9fa6f0f1c1a91493bfb02506f4d38ffa4" ;;
+    "config/skills/data-analyst/SKILL.md") echo "bf9938ed2a5dff12b0cab5d8eba0dab0fe9a835ed0ab7519f1a582c386d12241" ;;
+    "config/skills/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
+    "config/skills/mlops-engineer/SKILL.md") echo "ed67c2e65767eee5872504b6063f82b73f1a41bf90b2acf4f09e1b4d24ad789b" ;;
+    "config/skills/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
+    "config/skills/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
+    "config/skills/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
+    "config/skills/stats-engineer/SKILL.md") echo "8462c97cbb4a04bb9895e15a799e51af5f513de848b7e0b5e9a864eb9d52d523" ;;
+    "config/templates/personas/base-template/SKILL.md") echo "87a30a61b4aa2e8ef81e30fcd735177f95ae5ecaa86088dfe7806da475e80ccc" ;;
+    "config/templates/personas/base-template/persona.yaml") echo "9efc11f61a240192ca4613e66f2264783dbe701dcbd22cb45dc44be60bfd277b" ;;
+    "config/templates/personas/data-analyst/SKILL.md") echo "bf9938ed2a5dff12b0cab5d8eba0dab0fe9a835ed0ab7519f1a582c386d12241" ;;
+    "config/templates/personas/data-analyst/persona.yaml") echo "a7fc0cbac1245bef4151d9c28f360ad617121ef0673ff4d2068300316a2ebe1a" ;;
+    "config/templates/personas/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
+    "config/templates/personas/devops-sre/persona.yaml") echo "c14026bdcb1eb61920b6410320ea2dcf3d28355c8d9a3954b97f6ff201dd3244" ;;
+    "config/templates/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
+    "config/templates/personas/persona-creator/persona.yaml") echo "5f1a4fc340f403940370561c039e708a2fd2e47c3350361f8ec0a4492f913dec" ;;
+    "config/templates/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
+    "config/templates/personas/sdmx-expert/persona.yaml") echo "b71b6a0afee67076926f6ad530bc99081e5cb091a4bf5abf2cba2d4214a10ac6" ;;
+    "config/templates/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
+    "config/templates/personas/security-auditor/persona.yaml") echo "6a44bbdbc47dcaa87b0596ee78d2251c4115831ff4c3208e9991027140607bbd" ;;
+    *) echo "" ;;
+  esac
+}
+# --- END PROVISIONING MANIFEST ---
+
+verify_file_checksum() {
+  local target_file="$1"
+  local rel_path="$2"
+  local expected_sha
+  expected_sha="$(get_manifest_sha256 "$rel_path")"
+  if [ -z "$expected_sha" ]; then
+    echo "❌ Security Error: No authoritative SHA-256 hash defined in provisioning manifest for '$rel_path'." >&2
+    exit 1
+  fi
+
+  local actual_sha=''
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual_sha="$(sha256sum "$target_file" | awk '{print $1}')"
+  elif command -v shasum >/dev/null 2>&1; then
+    actual_sha="$(shasum -a 256 "$target_file" | awk '{print $1}')"
+  else
+    echo "❌ Error: Neither sha256sum nor shasum is available to verify '$rel_path'." >&2
+    exit 1
+  fi
+
+  if [ "$expected_sha" != "$actual_sha" ]; then
+    echo "❌ Integrity Error: SHA-256 mismatch for fallback download '$rel_path'." >&2
+    echo "   expected: $expected_sha" >&2
+    echo "   actual:   $actual_sha" >&2
+    exit 1
+  fi
+  echo "🔐 Verified SHA-256 integrity for fallback download '$rel_path'."
+}
+
 fetch_or_copy_file() {
   local rel_path="$1"
   local final_dest="$DSH_INSTALL/$rel_path"
@@ -329,6 +496,7 @@ fetch_or_copy_file() {
         echo "❌ Error: Failed to download $rel_path from $GITHUB_RAW/$rel_path" >&2
         exit 1
       fi
+      verify_file_checksum "$stage_dest" "$rel_path"
     fi
   fi
 }
@@ -347,6 +515,7 @@ fetch_or_copy_file "config/audit-writer.mjs"
 fetch_or_copy_file "config/telemetry-gateway.mjs"
 fetch_or_copy_file "config/audit-checkpoints/.gitkeep"
 fetch_or_copy_file "config/rbac-policy.mjs"
+fetch_or_copy_file "config/policy-manifest.mjs"
 fetch_or_copy_file "config/settings.default.yaml"
 # Stage settings.yaml for clean installs (FR-016)
 if [ ! -f "$DSH_INSTALL/config/settings.yaml" ]; then
@@ -356,6 +525,12 @@ if [ ! -f "$DSH_INSTALL/config/settings.yaml" ]; then
     cp "$DSH_INSTALL/config/settings.default.yaml" "$STAGE_DIR/config/settings.yaml"
   fi
 fi
+fetch_or_copy_file "config/phoenix-evals.mjs"
+fetch_or_copy_file "config/context-quarantine.mjs"
+fetch_or_copy_file "config/dynamic-governance.mjs"
+fetch_or_copy_file "config/failover-gateway.mjs"
+fetch_or_copy_file "config/worktree-staging.mjs"
+fetch_or_copy_file "config/network/envoy-egress.yaml"
 fetch_or_copy_file "dsh.sh"
 fetch_or_copy_file "reset.sh"
 fetch_or_copy_file "docker-compose.sandbox.yml"
@@ -365,7 +540,10 @@ fetch_or_copy_file "services/isolated-executor/server.mjs"
 fetch_or_copy_file "scripts/prepare_executor_workspaces.mjs"
 fetch_or_copy_file "scripts/migrate_tenant_partitions.mjs"
 fetch_or_copy_file "scripts/lib/tenant_partition_migration.mjs"
+fetch_or_copy_file "config/schemas/persona-policy-v1.schema.json"
 fetch_or_copy_file "config/schemas/tenant-partition-migration-v1.schema.json"
+fetch_or_copy_file "scripts/export_telemetry.sh"
+fetch_or_copy_file "scripts/prune_telemetry.sh"
 
 # Profiles
 fetch_or_copy_file "packages/dsh-dds-core/package.json"
@@ -450,15 +628,25 @@ verify_and_promote_staged() {
     "config/telemetry-gateway.mjs"
     "config/audit-checkpoints/.gitkeep"
     "config/rbac-policy.mjs"
+    "config/policy-manifest.mjs"
     "config/settings.default.yaml"
     "config/settings.yaml"
+    "config/phoenix-evals.mjs"
+    "config/context-quarantine.mjs"
+    "config/dynamic-governance.mjs"
+    "config/failover-gateway.mjs"
+    "config/worktree-staging.mjs"
+    "config/network/envoy-egress.yaml"
     "dsh.sh"
     "reset.sh"
     "docker-compose.sandbox.yml"
     "docker-compose.dev.yml"
     "docker/entrypoint.sh"
+    "services/isolated-executor/server.mjs"
+    "scripts/prepare_executor_workspaces.mjs"
     "scripts/migrate_tenant_partitions.mjs"
     "scripts/lib/tenant_partition_migration.mjs"
+    "config/schemas/persona-policy-v1.schema.json"
     "config/schemas/tenant-partition-migration-v1.schema.json"
   )
   for f in "${required_staged[@]}"; do

@@ -5,6 +5,12 @@
 config/sessions/
 config/storages/
 config/phoenix/
+config/audit/
+config/audit-checkpoints/
+config/users/
+config/keys/
+.host_keys/
+workspaces/
 config/models.cache.json
 config/sync_status.json
 **/node_modules

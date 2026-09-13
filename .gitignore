@@ -25,6 +25,13 @@ config/storages/*
 !config/storages/.gitkeep
 config/audit/*
 !config/audit/.gitkeep
+config/audit-checkpoints/*
+!config/audit-checkpoints/.gitkeep
+config/users/*
+!config/users/.gitkeep
+config/keys/*
+!config/keys/.gitkeep
+.host_keys/
 config/cache/*
 !config/cache/.gitkeep
 config/patch/*
@@ -66,4 +73,7 @@ workspaces/cases/*
 !workspaces/artifacts/
 workspaces/artifacts/*
 !workspaces/artifacts/.gitkeep
+!workspaces/users/
+workspaces/users/*
+!workspaces/users/.gitkeep
 .gitnexus
