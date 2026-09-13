@@ -12,6 +12,7 @@ import { execSync, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'node:url';
 import { DeclarativeWorkflowEngine, runAgentWorkflow, AgentPhoenixTracer } from './declarative-orchestrator.mjs';
+import { createDefaultDenyPolicy } from './policy-manifest.mjs';
 import {
   parseYaml,
   parsePersonaYaml,
@@ -201,8 +202,16 @@ export function createPersona(name, templateName = 'data-analyst') {
   for (const file of fs.readdirSync(templateDir)) {
     let content = fs.readFileSync(path.join(templateDir, file), 'utf8');
     content = content.replace(/name:\s*[\w-]+/m, `name: ${safeName}`);
+    if (file === 'persona.yaml') {
+      const safeRole = safeName.replace(/-/g, '_');
+      content = content
+        .replace(/(\nrbac:\s*\n\s+role:\s*)["']?[\w-]+["']?/m, `$1"${safeRole}"`)
+        .replaceAll(`/root/.dsh/personas/${safeTemplate}`, `/root/.dsh/personas/${safeName}`);
+    }
     fs.writeFileSync(path.join(targetDir, file), content, 'utf8');
   }
+
+  parsePersonaYaml(path.join(targetDir, 'persona.yaml'));
 
   if (fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
     fs.copyFileSync(path.join(targetDir, 'SKILL.md'), path.join(targetSkillDir, 'SKILL.md'));
@@ -291,18 +300,40 @@ function runPersona(name, prompt, tier = 'default', profile = 'headless') {
       const chosenModel = meta.models[safeTier] || meta.models.default;
       if (chosenModel) {
         console.log(`🤖 Invoking persona \x1b[32m${safeName}\x1b[0m on profile \x1b[35m${safeProfile}\x1b[0m using \x1b[33m[${safeTier}]\x1b[0m tier: \x1b[36m${chosenModel.provider}/${chosenModel.model}\x1b[0m`);
-        let patchContent = `- id: agent-default-model\n  config:\n    provider: ${chosenModel.provider}\n    model: ${chosenModel.model}\n`;
+        const patchEntries = [
+          {
+            id: 'agent-default-model',
+            config: {
+              provider: chosenModel.provider,
+              model: chosenModel.model
+            }
+          }
+        ];
 
         // Wire persona MCP servers
         if (meta.mcpServers && typeof meta.mcpServers === 'object') {
           for (const [sName, sCfg] of Object.entries(meta.mcpServers)) {
             if (sCfg && sCfg.command) {
-              patchContent += `- insert:\n    - id: mcp-${sName}\n      name: '@deepseek-ai/dsh-mcp-client'\n      config:\n        serverName: ${sName}\n        transport: ${sCfg.transport || 'stdio'}\n        command: ${sCfg.command}\n        args: ${JSON.stringify(sCfg.args || [])}\n`;
+              const safeServerName = validateSlug(sName, 'MCP server name');
+              patchEntries.push({
+                insert: [
+                  {
+                    id: `mcp-${safeServerName}`,
+                    name: '@deepseek-ai/dsh-mcp-client',
+                    config: {
+                      serverName: safeServerName,
+                      transport: sCfg.transport || 'stdio',
+                      command: sCfg.command,
+                      args: Array.isArray(sCfg.args) ? sCfg.args : []
+                    }
+                  }
+                ]
+              });
             }
           }
         }
 
-        fs.writeFileSync(tempPatchFile, patchContent, 'utf8');
+        fs.writeFileSync(tempPatchFile, YAML ? YAML.stringify(patchEntries) : JSON.stringify(patchEntries), 'utf8');
         hasPatch = true;
       }
     }
@@ -734,6 +765,7 @@ function distillPersona(name, options = {}) {
   const rawTitle = options.title || safeName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   const cleanTitle = JSON.stringify(rawTitle.replace(/[\r\n\t]/g, ' ')).slice(1, -1);
   const cleanDesc = `Distilled specialist persona for ${cleanTitle} derived from interactive sessions.`;
+  const defaultDenyPolicy = createDefaultDenyPolicy(safeName);
 
   const targetDir = path.join(PERSONAS_DIR, safeName);
   const targetSkillDir = path.join(SKILLS_DIR, safeName);
@@ -785,6 +817,17 @@ mcpServers:
   fetch:
     command: "mcp-server-webresearch"
     args: []
+
+rbac:
+  role: "${defaultDenyPolicy.role}"
+  permissions:
+    filesystem:
+      read: []
+      write: []
+      deny:
+${defaultDenyPolicy.permissions.filesystem.deny.map(entry => `        - "${entry}"`).join('\n')}
+    mcp:
+      allowed: []
 
 workflows:
   default-task:

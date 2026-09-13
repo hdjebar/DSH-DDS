@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsh-dds.local/schemas/persona-policy-v1.schema.json",
+  "title": "DSH-DDS Persona Policy Contract v1",
+  "type": "object",
+  "required": ["rbac"],
+  "properties": {
+    "rbac": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "permissions"],
+      "properties": {
+        "role": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filesystem"],
+          "properties": {
+            "filesystem": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["read", "write", "deny"],
+              "properties": {
+                "read": { "$ref": "#/$defs/nonEmptyStringArray" },
+                "write": { "$ref": "#/$defs/nonEmptyStringArray" },
+                "deny": { "$ref": "#/$defs/nonEmptyStringArray" }
+              }
+            },
+            "mcp": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["allowed"],
+              "properties": {
+                "allowed": { "$ref": "#/$defs/nonEmptyStringArray" }
+              }
+            },
+            "tools": { "$ref": "#/$defs/nonEmptyStringArray" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyStringArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" }
+    }
+  }
+}

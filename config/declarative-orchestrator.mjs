@@ -28,6 +28,13 @@ import {
 const APPROVAL_CHECKPOINT_VERSION = 2;
 const SUSPENDED_APPROVAL_STATUS = 'SUSPENDED_APPROVAL_REQUIRED';
 
+export const DEFAULT_GATED_ACTIONS = new Set([
+  'apply_fix_or_patch',
+  'contain_threat',
+  'escalate_to_soc',
+  'save_artifact'
+]);
+
 function canonicalApprovalCheckpoint(checkpoint) {
   return {
     checkpointVersion: checkpoint.checkpointVersion,
@@ -1183,6 +1190,77 @@ export class DeclarativeWorkflowEngine {
     return Boolean(resolveField(clean));
   }
 
+  authorizeStep(normalizedStep, currentContext, workflowName = 'agent-session', traceId = null) {
+    const rawAction = String(normalizedStep.action || '').trim().replace(/^["']|["']$/g, '');
+
+    // 0. Strict Fail-Closed on Unknown Action (Authoritative Capability Registry Check)
+    const isKnownCapability = this.actionHandlers.has(rawAction) ||
+      ['create_file', 'modify_file', 'save_artifact', 'read_file'].includes(rawAction) ||
+      rawAction.startsWith('mcp:');
+    if (!isKnownCapability) {
+      throw new Error(`UNKNOWN_ACTION_ERROR: Workflow action '${rawAction}' is not registered in the authoritative capability registry.`);
+    }
+
+    // 1. Zero Trust RBAC Authorization Check (Fail-Closed)
+    const rbacCheck = enforceRbacPolicy(this.meta, normalizedStep);
+    const recordDecision = rbacCheck.allowed ? logGrcAuditEvent : logGrcAuditEventBestEffort;
+    recordDecision({
+      persona: this.meta.name,
+      workflow: workflowName,
+      step_name: normalizedStep.name || rawAction,
+      action: rawAction,
+      target: normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || null,
+      decision: rbacCheck.allowed ? 'GRANTED' : 'DENIED',
+      role: rbacCheck.role,
+      reason: rbacCheck.allowed ? 'Policy validated' : rbacCheck.violation
+    }, traceId);
+
+    if (!rbacCheck.allowed) {
+      const err = new Error(`Zero Trust RBAC Policy Violation [${rbacCheck.code}]: ${rbacCheck.violation}`);
+      err.code = rbacCheck.code;
+      throw err;
+    }
+
+    // Canonical Operation Envelope: immutable, pre-resolved descriptor passed to handler
+    const canonicalEnvelope = Object.freeze({
+      ...normalizedStep,
+      action: rawAction,
+      resolvedTarget: rbacCheck.resolvedTarget || (normalizedStep.target ? resolvePath(normalizedStep.target) : null)
+    });
+
+    // 2. Adaptive Case Management Condition Evaluation
+    const condition = normalizedStep.when || normalizedStep.condition;
+    if (condition && !this.evaluateCondition(condition, currentContext)) {
+      return { skipped: true, reason: `Condition '${condition}' not met`, canonicalEnvelope, rbacCheck };
+    }
+
+    // 3. Approval Gate Checking (ACM Suspension)
+    const isGated = normalizedStep.approval_required === true ||
+      normalizedStep.approval === true ||
+      (normalizedStep.approval_required === undefined &&
+       normalizedStep.approval === undefined &&
+       DEFAULT_GATED_ACTIONS.has(rawAction));
+
+    if (isGated) {
+      if (!currentContext.approved) {
+        logGrcAuditEventBestEffort({
+          persona: this.meta.name,
+          workflow: workflowName,
+          step_name: normalizedStep.name || rawAction,
+          action: rawAction,
+          target: normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || null,
+          decision: 'GATED',
+          role: rbacCheck.role,
+          reason: 'Workflow execution suspended pending approval gate'
+        }, traceId);
+        return { gated: true, reason: 'Pending human-in-the-loop approval gate', canonicalEnvelope, rbacCheck };
+      }
+      delete currentContext.approved;
+    }
+
+    return { allowed: true, canonicalEnvelope, rbacCheck };
+  }
+
   async executeStep(step, currentContext, workflowName, traceId, parentSpanId) {
     const rawAction = String(step.action || '').trim().replace(/^["']|["']$/g, '');
 
@@ -1202,65 +1280,16 @@ export class DeclarativeWorkflowEngine {
         : '/workspaces/cases';
     }
 
-    // 0. Strict Fail-Closed on Unknown Action (Authoritative Capability Registry Check)
-    const isKnownCapability = this.actionHandlers.has(rawAction) ||
-      ['create_file', 'modify_file', 'save_artifact', 'read_file'].includes(rawAction) ||
-      rawAction.startsWith('mcp:');
-    if (!isKnownCapability) {
-      throw new Error(`UNKNOWN_ACTION_ERROR: Workflow action '${rawAction}' is not registered in the authoritative capability registry.`);
+    const auth = this.authorizeStep(normalizedStep, currentContext, workflowName, traceId);
+    if (auth.skipped) {
+      return { skipped: true, reason: auth.reason };
+    }
+    if (auth.gated) {
+      return { gated: true, reason: auth.reason };
     }
 
-    // 1. Zero Trust RBAC Authorization Check (Fail-Closed)
-    const rbacCheck = enforceRbacPolicy(this.meta, normalizedStep);
-    // Fail-closed only when the step would otherwise proceed; a denial must surface as
-    // the policy violation, not as an audit-sink error.
-    const recordDecision = rbacCheck.allowed ? logGrcAuditEvent : logGrcAuditEventBestEffort;
-    recordDecision({
-      persona: this.meta.name,
-      workflow: workflowName,
-      step_name: normalizedStep.name || rawAction,
-      action: rawAction,
-      target: normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || null,
-      decision: rbacCheck.allowed ? 'GRANTED' : 'DENIED',
-      role: rbacCheck.role,
-      reason: rbacCheck.allowed ? 'Policy validated' : rbacCheck.violation
-    }, traceId);
-
-    if (!rbacCheck.allowed) {
-      throw new Error(`Zero Trust RBAC Policy Violation [${rbacCheck.code}]: ${rbacCheck.violation}`);
-    }
-
-    // Canonical Operation Envelope: immutable, pre-resolved descriptor passed to handler
-    const canonicalEnvelope = Object.freeze({
-      ...normalizedStep,
-      action: rawAction,
-      resolvedTarget: rbacCheck.resolvedTarget || (normalizedStep.target ? resolvePath(normalizedStep.target) : null)
-    });
-
-    // 2. Adaptive Case Management Condition Evaluation
-    const condition = normalizedStep.when || normalizedStep.condition;
-    if (condition && !this.evaluateCondition(condition, currentContext)) {
-      return { skipped: true, reason: `Condition '${condition}' not met` };
-    }
-
-    // 3. Approval Gate Checking (ACM Suspension) - F-05: Log GATED state explicitly
-    if (normalizedStep.approval_required || normalizedStep.approval) {
-      if (!currentContext.approved) {
-        logGrcAuditEventBestEffort({
-          persona: this.meta.name,
-          workflow: workflowName,
-          step_name: normalizedStep.name || rawAction,
-          action: rawAction,
-          target: normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || null,
-          decision: 'GATED',
-          role: rbacCheck.role,
-          reason: 'Workflow execution suspended pending approval gate'
-        }, traceId);
-        return { gated: true, reason: 'Pending human-in-the-loop approval gate' };
-      }
-      // FR-005: Scoped approval consumption: consume one-time approval for this specific gated step
-      delete currentContext.approved;
-    }
+    const canonicalEnvelope = auth.canonicalEnvelope;
+    const rbacCheck = auth.rbacCheck;
 
     // 4. Strict Fail-Closed on Unknown Action
     if (!this.actionHandlers.has(rawAction)) {
@@ -1290,14 +1319,20 @@ export class DeclarativeWorkflowEngine {
       }
 
       const fallbackStep = {
+        ...normalizedStep,
         name: `Fallback for ${normalizedStep.name || rawAction}: ${fallbackAction}`,
         action: fallbackAction,
-        target: normalizedStep.target || null,
-        scope: normalizedStep.scope || null
+        approval_required: normalizedStep.fallback_approval_required,
+        approval: undefined,
+        on_failure: undefined,
+        fallback: undefined
       };
 
       try {
         const fallbackRes = await this.executeStep(fallbackStep, currentContext, workflowName, traceId, spanId);
+        if (fallbackRes?.gated) {
+          return fallbackRes;
+        }
         // FR-004: Outcome validation: Check if fallback itself returned a failed status
         if (!fallbackRes || fallbackRes.status === 'failed' || fallbackRes.failed === true) {
           return {
@@ -1328,14 +1363,20 @@ export class DeclarativeWorkflowEngine {
       // Invariant 7: Deterministic Loop Trap & Hash Ring Guard
       const stepTarget = normalizedStep.target || normalizedStep.destination || normalizedStep.concrete_target || normalizedStep.scope || '';
       const stepParams = normalizedStep.parameters || normalizedStep.params || {};
-      const signaturePayload = JSON.stringify({ action: rawAction, target: String(stepTarget).trim(), params: stepParams });
+      const stepPrompt = normalizedStep.prompt || '';
+      const signaturePayload = JSON.stringify({
+        action: rawAction,
+        target: String(stepTarget).trim(),
+        prompt: String(stepPrompt).trim(),
+        params: stepParams
+      });
       const stepSignature = crypto.createHash('sha256').update(signaturePayload).digest('hex');
 
       if (!currentContext.__stepHashRing) {
         currentContext.__stepHashRing = [];
       }
       const ring = currentContext.__stepHashRing;
-      if (ring.length > 0 && ring[ring.length - 1] === stepSignature) {
+      if (ring.length > 0 && ring.slice(-8).includes(stepSignature)) {
         const loopErr = new Error(`[Agent Loop Trap] Deterministic circular step detected: action '${rawAction}' on target '${stepTarget}' executed repeatedly without divergence (LOOP_DETECTED)`);
         loopErr.code = 'LOOP_DETECTED';
 
@@ -1363,6 +1404,9 @@ export class DeclarativeWorkflowEngine {
         throw loopErr;
       }
       ring.push(stepSignature);
+      if (ring.length > 32) {
+        ring.shift();
+      }
 
       stepOutput = await handler(canonicalEnvelope, currentContext);
       if (stepOutput && (stepOutput.status === 'failed' || stepOutput.failed === true)) {

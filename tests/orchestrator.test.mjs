@@ -68,7 +68,8 @@ test('Declarative Orchestrator: executes structured steps with real capability a
             name: 'Apply Verification Patch',
             action: 'apply_fix_or_patch',
             target: path.join(tmpDir, 'test.patch'),
-            content: '# Test verification patch content\n'
+            content: '# Test verification patch content\n',
+            approval_required: false
           },
           {
             name: 'Write Audit Report',
@@ -405,7 +406,18 @@ test('Declarative Orchestrator: AgentPhoenixTracer generates correlated parent-c
 });
 
 test('Declarative Orchestrator: runAgentWorkflow bridge executes real persona workflow', async () => {
-  const res = await runAgentWorkflow('security-auditor', 'audit_code');
+  const initialRes = await runAgentWorkflow('security-auditor', 'audit_code');
+  assert.equal(initialRes.status, 'SUSPENDED_APPROVAL_REQUIRED');
+  assert.ok(initialRes.execution.instanceId);
+
+  const checkpointFile = path.join(process.env.DSH_SESSIONS_DIR, 'checkpoints', `${initialRes.execution.instanceId}.json`);
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointFile, 'utf8'));
+  const validToken = DeclarativeWorkflowEngine.generateApprovalToken(checkpoint, 'secops-lead');
+
+  const res = await runAgentWorkflow('security-auditor', 'audit_code', {
+    resume: initialRes.execution.instanceId,
+    token: validToken
+  });
   assert.equal(res.success, true);
   assert.equal(res.execution.status, 'COMPLETED');
   assert.ok(res.execution.executionLogs.length >= 4);
@@ -540,7 +552,7 @@ test('PR-003 Regression: capability adapters fail closed without simulation', as
     workflows: {
       patch_without_content: {
         steps: [
-          { name: 'Patch Target No Content', action: 'apply_fix_or_patch', target: path.join(testIsolatedDir, 'test.patch') }
+          { name: 'Patch Target No Content', action: 'apply_fix_or_patch', target: path.join(testIsolatedDir, 'test.patch'), approval_required: false }
         ]
       },
       invalid_sdmx_schema: {
@@ -588,6 +600,7 @@ rbac:
     filesystem:
       read: ["/workspaces"]
       write: ["/workspaces"]
+      deny: []
 workflows:
   failing_wf:
     steps:
@@ -660,7 +673,7 @@ test('PR-009 Regression: approval gate creates durable checkpoint and resumes wi
         steps: [
           { name: 'Step 1 Pre-Gated Analysis', action: 'parse_intent' },
           { name: 'Step 2 Critical Containment', action: 'contain_threat', target: path.join(testIsolatedDir, 'cases', 'quarantine.json'), approval_required: true },
-          { name: 'Step 3 Post-Gated Escalation', action: 'escalate_to_soc' }
+          { name: 'Step 3 Post-Gated Escalation', action: 'escalate_to_soc', approval_required: false }
         ]
       }
     }
@@ -818,12 +831,14 @@ test('FR-003 Regression: capability adapters validate syntax, schemas, and persi
             name: 'Apply Bad Syntax JS',
             action: 'apply_fix_or_patch',
             target: path.join(testIsolatedDir, 'bad.js'),
-            content: 'function broken( { not valid js'
+            content: 'function broken( { not valid js',
+            approval_required: false
           },
           {
             name: 'Escalate SOC Incident',
             action: 'escalate_to_soc',
-            target: path.join(testIsolatedDir, 'cases', 'soc_esc.json')
+            target: path.join(testIsolatedDir, 'cases', 'soc_esc.json'),
+            approval_required: false
           }
         ]
       }
@@ -890,7 +905,7 @@ test('Audit Verification: escalate_to_soc is a write action and fails closed on 
     workflows: {
       soc_test: {
         steps: [
-          { name: 'Authorized SOC Escalation', action: 'escalate_to_soc', target: path.join(testIsolatedDir, 'cases', 'soc_granted.json') }
+          { name: 'Authorized SOC Escalation', action: 'escalate_to_soc', target: path.join(testIsolatedDir, 'cases', 'soc_granted.json'), approval_required: false }
         ]
       }
     }
@@ -1049,7 +1064,8 @@ test('Audit Verification: transactional patch leaves target unmodified on syntax
   const step1 = await engine.executeStep({
     action: 'apply_fix_or_patch',
     target: targetJs,
-    content: mismatchDiff
+    content: mismatchDiff,
+    approval_required: false
   }, {}, 'test', 'tr-tx1', 'sp-tx1');
   assert.equal(step1.status, 'failed');
   assert.equal(step1.code, 'PATCH_CONTEXT_MISMATCH');
@@ -1059,7 +1075,8 @@ test('Audit Verification: transactional patch leaves target unmodified on syntax
   const step2 = await engine.executeStep({
     action: 'apply_fix_or_patch',
     target: targetJs,
-    content: 'const broken = (function unclosed { '
+    content: 'const broken = (function unclosed { ',
+    approval_required: false
   }, {}, 'test', 'tr-tx2', 'sp-tx2');
   assert.equal(step2.status, 'failed');
   assert.equal(step2.code, 'SYNTAX_VERIFICATION_FAILED');
@@ -1073,7 +1090,8 @@ test('Audit Verification: transactional patch leaves target unmodified on syntax
   const step3 = await engine.executeStep({
     action: 'apply_fix_or_patch',
     target: targetJson,
-    content: '{\n  "status": invalid_json\n}'
+    content: '{\n  "status": invalid_json\n}',
+    approval_required: false
   }, {}, 'test', 'tr-tx3', 'sp-tx3');
   assert.equal(step3.status, 'failed');
   assert.equal(step3.code, 'SYNTAX_VERIFICATION_FAILED');
@@ -1090,7 +1108,8 @@ test('Audit Verification: transactional patch leaves target unmodified on syntax
   const step4 = await engine.executeStep({
     action: 'apply_fix_or_patch',
     target: targetJs,
-    content: validDiff
+    content: validDiff,
+    approval_required: false
   }, {}, 'test', 'tr-tx4', 'sp-tx4');
   assert.equal(step4.status, 'success');
   assert.equal(fs.readFileSync(targetJs, 'utf8'), 'const initial = "valid code";\nconsole.log("patched: " + initial);\n');
@@ -1464,7 +1483,7 @@ test('FR-021 Regression: apply_fix_or_patch validates ES modules with static imp
   const mjsTarget = path.join(testIsolatedDir, 'module_test.mjs');
   const validMjs = `import path from 'node:path';\nexport const helper = () => path.join('a', 'b');\nexport default helper;\n`;
   const res1 = await engine.executeStep(
-    { action: 'apply_fix_or_patch', target: mjsTarget, content: validMjs },
+    { action: 'apply_fix_or_patch', target: mjsTarget, content: validMjs, approval_required: false },
     {}, 'wf', 'tr', 'sp'
   );
   assert.equal(res1.status, 'success');
@@ -1475,7 +1494,7 @@ test('FR-021 Regression: apply_fix_or_patch validates ES modules with static imp
   const tlaTarget = path.join(testIsolatedDir, 'tla_test.mjs');
   const validTla = `const val = await Promise.resolve(100);\nexport default val;\n`;
   const res2 = await engine.executeStep(
-    { action: 'apply_fix_or_patch', target: tlaTarget, content: validTla },
+    { action: 'apply_fix_or_patch', target: tlaTarget, content: validTla, approval_required: false },
     {}, 'wf', 'tr', 'sp'
   );
   assert.equal(res2.status, 'success');
@@ -1484,7 +1503,7 @@ test('FR-021 Regression: apply_fix_or_patch validates ES modules with static imp
   // 3. Invalid ES module syntax fails closed
   const badMjsTarget = path.join(testIsolatedDir, 'bad_module.mjs');
   const res3 = await engine.executeStep(
-    { action: 'apply_fix_or_patch', target: badMjsTarget, content: 'import { from "node:fs";' },
+    { action: 'apply_fix_or_patch', target: badMjsTarget, content: 'import { from "node:fs";', approval_required: false },
     {}, 'wf', 'tr', 'sp'
   );
   assert.equal(res3.status, 'failed');
@@ -1506,7 +1525,7 @@ test('FR-022 Regression: apply_fix_or_patch preserves executable file permission
   assert.equal(initialMode, 0o755);
 
   const res = await engine.executeStep(
-    { action: 'apply_fix_or_patch', target: scriptPath, content: '#!/bin/bash\necho "patched"\n' },
+    { action: 'apply_fix_or_patch', target: scriptPath, content: '#!/bin/bash\necho "patched"\n', approval_required: false },
     {}, 'wf', 'tr', 'sp'
   );
   assert.equal(res.status, 'success');
@@ -1578,7 +1597,7 @@ test('Hardening Regression: apply_fix_or_patch strictly rejects symbolic link ta
   }
 
   const res = await engine.executeStep(
-    { action: 'apply_fix_or_patch', target: symlinkTarget, content: 'console.log("patched");\n' },
+    { action: 'apply_fix_or_patch', target: symlinkTarget, content: 'console.log("patched");\n', approval_required: false },
     {}, 'wf', 'tr', 'sp'
   );
   assert.equal(res.status, 'failed');

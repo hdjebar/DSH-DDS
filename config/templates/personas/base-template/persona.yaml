@@ -41,6 +41,22 @@ mcpServers:
     command: "mcp-server-webresearch"
     args: []
 
+rbac:
+  role: "base_template"
+  permissions:
+    filesystem:
+      read: []
+      write: []
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "config/profiles/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+    mcp:
+      allowed: []
+
 workflows:
   default-task:
     modelTier: default

@@ -14,6 +14,8 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'module';
+import { assertPolicyContract } from './policy-manifest.mjs';
+export { assertPolicyContract, resolveEffectivePolicy, createDefaultDenyPolicy } from './policy-manifest.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -56,9 +58,22 @@ export function parseYaml(yamlText) {
 }
 
 export function parsePersonaYaml(filePath) {
-  if (!fs.existsSync(filePath)) return {};
+  if (!fs.existsSync(filePath)) {
+    const error = new Error(`RBAC_MANIFEST_MISSING: persona manifest '${filePath}' does not exist`);
+    error.code = 'RBAC_MANIFEST_MISSING';
+    throw error;
+  }
   const content = fs.readFileSync(filePath, 'utf8');
-  const doc = parseYaml(content);
+  let doc;
+  try {
+    doc = YAML.parse(content);
+  } catch (cause) {
+    const error = new Error(`RBAC_MANIFEST_INVALID: persona manifest '${filePath}' is not valid YAML: ${cause.message}`);
+    error.code = 'RBAC_MANIFEST_INVALID';
+    error.cause = cause;
+    throw error;
+  }
+  assertPolicyContract(doc);
 
   const result = {
     name: doc.name || path.basename(path.dirname(filePath)),
@@ -66,7 +81,7 @@ export function parsePersonaYaml(filePath) {
     description: doc.description || '',
     profiles: Array.isArray(doc.profiles) ? doc.profiles : (doc.profiles && typeof doc.profiles === 'object' ? Object.keys(doc.profiles) : ['web', 'headless', 'cli']),
     models: {},
-    rbac: doc.rbac || null,
+    rbac: doc.rbac,
     workflows: doc.workflows || {},
     plugins: doc.plugins || [],
     mcpServers: doc.mcpServers || {}
