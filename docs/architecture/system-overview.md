@@ -151,7 +151,7 @@ The repository includes deterministic, interactive visual maps compiled via **[A
 2. **[Zero-Trust PEP & Dynamic RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)** (`docs/visual-architecture/security-pipeline.workflow.json`):
    - Details the in-line interceptor lifecycle, persona read/write allowlists, ancestor canonicalization symlink escape detection (F-02), and writer-owned tamper-evident GRC audit logging.
 3. **[Declarative Workflow & Invariant 7 Loop Trap](../visual-architecture/declarative-workflow.workflow.html)** (`docs/visual-architecture/declarative-workflow.workflow.json`):
-   - Shows the 12-step hash ring buffer detecting and preventing infinite tool/model invocation loops (`LOOP_DETECTED`), coupled with asymmetric Ed25519 ACM human approval gates.
+   - Shows the current adjacent-step signature check detecting immediate tool/model repetition (`LOOP_DETECTED`), coupled with asymmetric Ed25519 ACM human approval gates; broader rolling-window detection remains planned.
 4. **[Agent Execution & OTLP Telemetry Sequence](../visual-architecture/agent-trace.sequence.html)** (`docs/visual-architecture/agent-trace.sequence.json`):
    - Sequences end-to-end prompt processing, AES-256-GCM BYOK credential decryption, Google Gemini thought signature preservation, and zero-leakage local Phoenix telemetry emission.
 

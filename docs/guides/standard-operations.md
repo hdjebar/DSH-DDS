@@ -137,7 +137,8 @@ Configuration parameters are loaded on boot from `.env` on the host:
 | `DSH_PORT` | **Optional** | Host port for Web UI (default: `3080`). Bound to `127.0.0.1`. |
 | `GEMINI_API_KEY` | **Conditionally Mandatory** | Google AI Studio API Key. Required to use Gemini models (`gemini-3.7-flash`). |
 | `OPENROUTER_API_KEY` | **Conditionally Mandatory** | OpenRouter API Key. Required to use DeepSeek V3, R1, Claude, and GPT-4o. |
-| `DSH_APPROVAL_SECRET` | **Auto-Generated (Internal)** | Internal HMAC/Ed25519 signing secret (min 16 chars). **NOT an external API key**; required only for signing `./dsh.sh approve` tokens. |
+| `DSH_APPROVAL_SECRET` | **Development fallback** | Internal HMAC fallback for trusted non-production execution. Production and sandbox approvals use host-side Ed25519 signing. |
+| `DSH_APPROVAL_PUBLIC_KEY_FILE` | **Optional** | Override for the mounted Ed25519 public key; defaults to `${DSH_CONFIG_DIR:-/etc/dsh}/keys/approval_ed25519.pub`. |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | **Optional** | Fine-grained PAT for GitHub MCP operations (repos, PRs, issues). |
 | `PHOENIX_ENABLE_AUTH` | **Optional** | `true`/`false`. Enables login authentication on Phoenix UI (`127.0.0.1:6006`). |
 | `PHOENIX_SECRET` | **Optional** | Secret for cookie encryption when `PHOENIX_ENABLE_AUTH=true`. |

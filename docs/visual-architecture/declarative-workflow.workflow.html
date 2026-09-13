@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"governed-execution","label":"Governed Execution Path","focus":["step_in","sig_hash","loop_check","acm_gate","adapter_exec","completed"],"note":"Follow declarative step execution through signature verification, approval signing, and adapter dispatch."},{"id":"loop-trap-circuit","label":"Invariant 7 Loop Trap","focus":["sig_hash","loop_check","loop_detected"],"note":"Inspect deterministic 12-step hash ring detection halting infinite repetition."},{"id":"checkpoint-telemetry","label":"Checkpoint \u0026 Phoenix OTel","focus":["adapter_exec","checkpoint","phoenix"],"note":"Observe atomic state checkpointing and distributed trace emission to local Phoenix."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"governed-execution","label":"Governed Execution Path","focus":["step_in","sig_hash","loop_check","acm_gate","adapter_exec","completed"],"note":"Follow declarative step execution through signature verification, state-bound approval, and adapter dispatch."},{"id":"loop-trap-circuit","label":"Invariant 7 Loop Trap","focus":["sig_hash","loop_check","loop_detected"],"note":"Inspect deterministic adjacent-step signature detection halting immediate repetition."},{"id":"checkpoint-telemetry","label":"Checkpoint \u0026 Phoenix OTel","focus":["adapter_exec","checkpoint","phoenix"],"note":"Observe atomic v2 checkpoint consumption and distributed trace emission to local Phoenix."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4951,13 +4951,13 @@
 
         <!-- Edge paths -->
         <path data-edge-from="step_in" data-edge-to="sig_hash" data-edge-key="0" data-edge-id="step-to-hash" data-composition-points="134,119;174,119" d="M 134 119 L 174 119" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="sig_hash" data-edge-to="loop_check" data-edge-label="verify ring" data-edge-key="1" data-edge-id="hash-to-ring" data-composition-points="220,153;220,166;300,166;300,209" d="M 220 153 L 220 166 L 300 166 L 300 209" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="sig_hash" data-edge-to="loop_check" data-edge-label="compare previous" data-edge-key="1" data-edge-id="hash-to-ring" data-composition-points="220,153;220,166;300,166;300,209" d="M 220 153 L 220 166 L 300 166 L 300 209" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="loop_check" data-edge-to="acm_gate" data-edge-key="2" data-edge-id="ring-to-gate" data-composition-points="300,277;300,290;430,290;430,333" d="M 300 277 L 300 290 L 430 290 L 430 333" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="acm_gate" data-edge-to="adapter_exec" data-edge-label="approved" data-edge-key="3" data-edge-id="gate-to-adapter" data-composition-points="430,401;430,414;500,414;500,457" d="M 430 401 L 430 414 L 500 414 L 500 457" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="adapter_exec" data-edge-to="completed" data-edge-label="advance" data-edge-key="4" data-edge-id="adapter-to-done" data-composition-points="546,491;692,491;692,119;671,119" d="M 546 491 L 692 491 L 692 119 L 671 119" class="a-emphasis" stroke-width="1.2" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="loop_check" data-edge-to="loop_detected" data-edge-label="3 repeats" data-edge-key="5" data-edge-id="ring-to-loop-err" data-composition-points="300,277;300,414;300,414;300,589" d="M 300 277 L 300 414 L 300 414 L 300 589" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="acm_gate" data-edge-to="rejected" data-edge-label="denied" data-edge-key="6" data-edge-id="gate-to-rej" data-composition-points="430,401;430,476;430,476;430,589" d="M 430 401 L 430 476 L 430 476 L 430 589" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="adapter_exec" data-edge-to="checkpoint" data-edge-key="7" data-edge-id="adapter-to-ckpt" data-composition-points="500,525;500,600;500,600;500,713" d="M 500 525 L 500 600 L 500 600 L 500 713" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="adapter_exec" data-edge-to="checkpoint" data-edge-label="consume gate" data-edge-key="7" data-edge-id="adapter-to-ckpt" data-composition-points="500,525;500,600;500,600;500,713" d="M 500 525 L 500 600 L 500 600 L 500 713" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="checkpoint" data-edge-to="phoenix" data-edge-key="8" data-edge-id="ckpt-to-phx" data-composition-points="546,739;579,739" d="M 546 739 L 579 739" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Nodes -->
@@ -4988,21 +4988,21 @@
         <text data-detail="fine" x="220" y="141" class="t-security" font-size="7" text-anchor="middle">Deterministic</text>
         </g>
 
-        <g id="node-loop_check" data-node-id="loop_check" data-node-label="Loop Trap Ring" tabindex="0" role="button" aria-label="Focus Loop Trap Ring, 12-step ring buffer, Loop Trap (Invariant 7) › Loop verification › Approval Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="12-step ring buffer" data-node-tag="Invariant 7" data-node-context="Loop Trap (Invariant 7) › Loop verification › Approval Gate">
-          <title>Loop Trap Ring · 12-step ring buffer · Loop Trap (Invariant 7) › Loop verification › Approval Gate · Invariant 7</title>
+        <g id="node-loop_check" data-node-id="loop_check" data-node-label="Loop Trap" tabindex="0" role="button" aria-label="Focus Loop Trap, previous-step check, Loop Trap (Invariant 7) › Loop verification › Approval Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="previous-step check" data-node-tag="Invariant 7" data-node-context="Loop Trap (Invariant 7) › Loop verification › Approval Gate">
+          <title>Loop Trap · previous-step check · Loop Trap (Invariant 7) › Loop verification › Approval Gate · Invariant 7</title>
           <rect x="254" y="209" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="254" y="209" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(260 215) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-detail-anchor x="300" y="230" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Loop Trap Ring</text>
-          <text data-detail="context" x="300" y="247" class="t-muted" font-size="7.3" text-anchor="middle">12-step ring buffer</text>
+          <text data-detail-anchor x="300" y="230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Loop Trap</text>
+          <text data-detail="context" x="300" y="247" class="t-muted" font-size="7.3" text-anchor="middle">previous-step check</text>
         <text data-detail="fine" x="300" y="265" class="t-security" font-size="7" text-anchor="middle">Invariant 7</text>
         </g>
 
-        <g id="node-acm_gate" data-node-id="acm_gate" data-node-label="ACM Gate" tabindex="0" role="button" aria-label="Focus ACM Gate, durable checkpoint, ACM Approval Gate › Approval Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="durable checkpoint" data-node-tag="Ed25519 Sign" data-node-context="ACM Approval Gate › Approval Gate">
-          <title>ACM Gate · durable checkpoint · ACM Approval Gate › Approval Gate · Ed25519 Sign</title>
+        <g id="node-acm_gate" data-node-id="acm_gate" data-node-label="ACM Gate" tabindex="0" role="button" aria-label="Focus ACM Gate, state-bound v2, ACM Approval Gate › Approval Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="state-bound v2" data-node-tag="Ed25519 Sign" data-node-context="ACM Approval Gate › Approval Gate">
+          <title>ACM Gate · state-bound v2 · ACM Approval Gate › Approval Gate · Ed25519 Sign</title>
           <rect x="384" y="333" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="384" y="333" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(390 339) scale(0.6875)">
@@ -5010,7 +5010,7 @@
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-detail-anchor x="430" y="354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">ACM Gate</text>
-          <text data-detail="context" x="430" y="371" class="t-muted" font-size="7.7" text-anchor="middle">durable checkpoint</text>
+          <text data-detail="context" x="430" y="371" class="t-muted" font-size="8" text-anchor="middle">state-bound v2</text>
         <text data-detail="fine" x="430" y="389" class="t-security" font-size="7" text-anchor="middle">Ed25519 Sign</text>
         </g>
 
@@ -5026,15 +5026,15 @@
         <text data-detail="fine" x="500" y="513" class="t-backend" font-size="7" text-anchor="middle">Transactional</text>
         </g>
 
-        <g id="node-completed" data-node-id="completed" data-node-label="Step Complete" tabindex="0" role="button" aria-label="Focus Step Complete, state advance, Workflow Engine › Execution &amp; Trace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="state advance" data-node-context="Workflow Engine › Execution &amp; Trace">
-          <title>Step Complete · state advance · Workflow Engine › Execution &amp; Trace</title>
+        <g id="node-completed" data-node-id="completed" data-node-label="Step Complete" tabindex="0" role="button" aria-label="Focus Step Complete, old gate consumed, Workflow Engine › Execution &amp; Trace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="old gate consumed" data-node-context="Workflow Engine › Execution &amp; Trace">
+          <title>Step Complete · old gate consumed · Workflow Engine › Execution &amp; Trace</title>
           <rect x="579" y="93" width="92" height="52" rx="6" class="c-mask"/>
           <rect x="579" y="93" width="92" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(585 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-detail-anchor x="625" y="114" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Step Complete</text>
-          <text data-detail="context" x="625" y="131" class="t-muted" font-size="8" text-anchor="middle">state advance</text>
+          <text data-detail="context" x="625" y="131" class="t-muted" font-size="8" text-anchor="middle">old gate consumed</text>
         </g>
 
         <g id="node-loop_detected" data-node-id="loop_detected" data-node-label="Loop Trap" tabindex="0" role="button" aria-label="Focus Loop Trap, LOOP_DETECTED, Exception Traps › Exception traps › Approval Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="LOOP_DETECTED" data-node-context="Exception Traps › Exception traps › Approval Gate">
@@ -5061,16 +5061,16 @@
           <text data-detail="context" x="430" y="627" class="t-muted" font-size="8" text-anchor="middle">invalid signature</text>
         </g>
 
-        <g id="node-checkpoint" data-node-id="checkpoint" data-node-label="Checkpoint" tabindex="0" role="button" aria-label="Focus Checkpoint, writer-owned chain head, Observability &amp; State › Execution &amp; Trace" aria-pressed="false" data-node-kind="database" data-node-sublabel="writer-owned chain head" data-node-context="Observability &amp; State › Execution &amp; Trace">
-          <title>Checkpoint · writer-owned chain head · Observability &amp; State › Execution &amp; Trace</title>
+        <g id="node-checkpoint" data-node-id="checkpoint" data-node-label="Approval State" tabindex="0" role="button" aria-label="Focus Approval State, 0600 • fsync + rename, Observability &amp; State › Execution &amp; Trace" aria-pressed="false" data-node-kind="database" data-node-sublabel="0600 • fsync + rename" data-node-context="Observability &amp; State › Execution &amp; Trace">
+          <title>Approval State · 0600 • fsync + rename · Observability &amp; State › Execution &amp; Trace</title>
           <rect x="454" y="713" width="92" height="52" rx="6" class="c-mask"/>
           <rect x="454" y="713" width="92" height="52" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(460 719) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-detail-anchor x="500" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Checkpoint</text>
-          <text data-detail="context" x="500" y="751" class="t-muted" font-size="6" text-anchor="middle">writer-owned chain head</text>
+          <text data-detail-anchor x="500" y="734" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Approval State</text>
+          <text data-detail="context" x="500" y="751" class="t-muted" font-size="6.6" text-anchor="middle">0600 • fsync + rename</text>
         </g>
 
         <g id="node-phoenix" data-node-id="phoenix" data-node-label="Phoenix OTel" tabindex="0" role="button" aria-label="Focus Phoenix OTel, authenticated gateway, Observability &amp; State › Execution &amp; Trace" aria-pressed="false" data-node-kind="database" data-node-sublabel="authenticated gateway" data-node-context="Observability &amp; State › Execution &amp; Trace">
@@ -5087,9 +5087,9 @@
 
         <!-- Edge labels -->
 
-        <g data-detail="context" data-edge-from="sig_hash" data-edge-to="loop_check" data-edge-label="verify ring" data-edge-key="1" data-edge-id="hash-to-ring">
-          <rect x="228.6" y="166" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="260" y="176" class="t-backend" font-size="8" text-anchor="middle">verify ring</text>
+        <g data-detail="context" data-edge-from="sig_hash" data-edge-to="loop_check" data-edge-label="compare previous" data-edge-key="1" data-edge-id="hash-to-ring">
+          <rect x="216.6" y="166" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="260" y="176" class="t-backend" font-size="8" text-anchor="middle">compare previous</text>
         </g>
 
         <g data-detail="context" data-edge-from="acm_gate" data-edge-to="adapter_exec" data-edge-label="approved" data-edge-key="3" data-edge-id="gate-to-adapter">
@@ -5108,7 +5108,10 @@
           <rect x="410.6" y="480" width="38.8" height="14" rx="3" class="c-mask"/>
           <text x="430" y="490" class="t-security" font-size="8" text-anchor="middle">denied</text>
         </g>
-
+        <g data-detail="context" data-edge-from="adapter_exec" data-edge-to="checkpoint" data-edge-label="consume gate" data-edge-key="7" data-edge-id="adapter-to-ckpt">
+          <rect x="466.2" y="645" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="500" y="655" class="t-muted" font-size="8" text-anchor="middle">consume gate</text>
+        </g>
 
 
         <!-- Legend -->
@@ -5321,8 +5324,8 @@
         </div>
         <ul>
           <li>&bull; Hashes action, target, and arguments into a canonical signature</li>
-          <li>&bull; Records last 12 step signatures in an in-memory ring buffer</li>
-          <li>&bull; Halts with LOOP_DETECTED on 3 occurrences within the window</li>
+          <li>&bull; Compares each signature with the immediately preceding step</li>
+          <li>&bull; Halts with LOOP_DETECTED on adjacent identical signatures</li>
         </ul>
       </div>
 
@@ -5332,9 +5335,9 @@
           <h3>Asymmetric Approval Gate</h3>
         </div>
         <ul>
-          <li>&bull; Pauses workflow before high-risk mutations or deployments</li>
-          <li>&bull; Persists state to .dsh_step_checkpoint.json with sha256 digest</li>
-          <li>&bull; Resumes strictly upon verification of host Ed25519 signature</li>
+          <li>&bull; Versioned digest binds suspended and consumed state</li>
+          <li>&bull; Accepted gate ends CONSUMED; later gate gets a new ID</li>
+          <li>&bull; Canonical suspended-state restore needs an external anchor</li>
         </ul>
       </div>
 

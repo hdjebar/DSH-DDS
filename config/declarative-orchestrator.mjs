@@ -25,6 +25,64 @@ import {
   resolvePath
 } from './rbac-policy.mjs';
 
+const APPROVAL_CHECKPOINT_VERSION = 2;
+const SUSPENDED_APPROVAL_STATUS = 'SUSPENDED_APPROVAL_REQUIRED';
+
+function canonicalApprovalCheckpoint(checkpoint) {
+  return {
+    checkpointVersion: checkpoint.checkpointVersion,
+    instanceId: checkpoint.instanceId,
+    persona: checkpoint.persona,
+    workflow: checkpoint.workflow,
+    stepIndex: checkpoint.stepIndex,
+    stepName: checkpoint.stepName,
+    action: checkpoint.action,
+    stepDescriptor: checkpoint.stepDescriptor,
+    workflowHash: checkpoint.workflowHash,
+    createdAt: checkpoint.createdAt,
+    contextSnapshot: checkpoint.contextSnapshot,
+    status: checkpoint.status,
+    consumedAt: checkpoint.consumedAt ?? null
+  };
+}
+
+function approvalCheckpointDigest(checkpoint) {
+  return crypto.createHash('sha256')
+    .update(JSON.stringify(canonicalApprovalCheckpoint(checkpoint)))
+    .digest('hex');
+}
+
+function writeCheckpointAtomically(checkpointPath, checkpoint) {
+  const checkpointDir = path.dirname(checkpointPath);
+  const tempPath = path.join(
+    checkpointDir,
+    `.${path.basename(checkpointPath)}.tmp.${process.pid}.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`
+  );
+  let fd = null;
+  try {
+    fd = fs.openSync(tempPath, 'wx', 0o600);
+    fs.writeFileSync(fd, JSON.stringify(checkpoint, null, 2), 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    fs.renameSync(tempPath, checkpointPath);
+
+    let dirFd = null;
+    try {
+      dirFd = fs.openSync(checkpointDir, 'r');
+      fs.fsyncSync(dirFd);
+    } finally {
+      if (dirFd !== null) fs.closeSync(dirFd);
+    }
+  } catch (error) {
+    if (fd !== null) {
+      try { fs.closeSync(fd); } catch {}
+    }
+    try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
+    throw error;
+  }
+}
+
 /**
  * 📊 OpenTelemetry Tracer with Parent-Child Span Correlation
  */
@@ -1413,7 +1471,8 @@ export class DeclarativeWorkflowEngine {
           const checkpointCreatedAt = new Date().toISOString();
           const stepIndex = steps.indexOf(step);
           const workflowHash = crypto.createHash('sha256').update(JSON.stringify(workflow)).digest('hex');
-          const canonicalCheckpointData = {
+          const checkpoint = {
+            checkpointVersion: APPROVAL_CHECKPOINT_VERSION,
             instanceId,
             persona: this.meta.name,
             workflow: safeWfName,
@@ -1423,20 +1482,14 @@ export class DeclarativeWorkflowEngine {
             stepDescriptor: step,
             workflowHash,
             createdAt: checkpointCreatedAt,
-            contextSnapshot: currentContext
-          };
-          const checkpointDigest = crypto.createHash('sha256')
-            .update(JSON.stringify(canonicalCheckpointData))
-            .digest('hex');
-
-          const checkpoint = {
-            ...canonicalCheckpointData,
+            contextSnapshot: currentContext,
             traceId,
-            checkpointDigest,
-            status: 'SUSPENDED_APPROVAL_REQUIRED',
+            status: SUSPENDED_APPROVAL_STATUS,
+            consumedAt: null,
             completedLogs: [...results]
           };
-          fs.writeFileSync(path.join(checkpointDir, `${instanceId}.json`), JSON.stringify(checkpoint, null, 2), 'utf8');
+          checkpoint.checkpointDigest = approvalCheckpointDigest(checkpoint);
+          writeCheckpointAtomically(path.join(checkpointDir, `${instanceId}.json`), checkpoint);
 
           // HALT: Suspend execution of subsequent steps
           break;
@@ -1576,45 +1629,31 @@ export class DeclarativeWorkflowEngine {
         throw new Error(`Checkpoint '${instanceId}' rejected: instanceId in file content '${checkpoint.instanceId}' does not match target checkpoint ID '${instanceId}'. Replays and renamed copies are strictly prohibited.`);
       }
 
-      // 1. Replay Protection: Checkpoint must currently be in SUSPENDED_APPROVAL_REQUIRED state
-      if (checkpoint.status !== 'SUSPENDED_APPROVAL_REQUIRED') {
-        throw new Error(`Checkpoint '${instanceId}' cannot be resumed: current status is '${checkpoint.status}' (replays rejected).`);
+      if (checkpoint.checkpointVersion !== APPROVAL_CHECKPOINT_VERSION) {
+        throw new Error(`APPROVAL_CHECKPOINT_VERSION_UNSUPPORTED: Checkpoint '${instanceId}' predates state-bound approval checkpoints. Restart the suspended workflow and approve the new checkpoint.`);
       }
 
-      // 2. Expiration Check (24h default TTL)
+      // 1. Digest Integrity Check: state is part of the signed checkpoint contract.
+      const computedDigest = approvalCheckpointDigest(checkpoint);
+
+      if (computedDigest !== checkpoint.checkpointDigest) {
+        throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
+      }
+
+      // 2. Replay Protection: accepted approvals never return to a resumable state.
+      if (checkpoint.status !== SUSPENDED_APPROVAL_STATUS || checkpoint.consumedAt !== null) {
+        throw new Error(`APPROVAL_CHECKPOINT_CONSUMED: Checkpoint '${instanceId}' cannot be resumed: current status is '${checkpoint.status}' (replays rejected).`);
+      }
+
+      // 3. Expiration Check (24h default TTL)
       const createdAt = new Date(checkpoint.createdAt).getTime();
       const ttlMs = options.ttlMs || (24 * 60 * 60 * 1000);
       if (Date.now() - createdAt > ttlMs) {
         checkpoint.status = 'EXPIRED';
-        const tempCp = path.join(checkpointDir, `.${instanceId}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
-        fs.writeFileSync(tempCp, JSON.stringify(checkpoint, null, 2), 'utf8');
-        fs.renameSync(tempCp, checkpointPath);
+        checkpoint.completedAt = new Date().toISOString();
+        checkpoint.checkpointDigest = approvalCheckpointDigest(checkpoint);
+        writeCheckpointAtomically(checkpointPath, checkpoint);
         throw new Error(`Checkpoint '${instanceId}' has expired (TTL: 24h).`);
-      }
-
-      // 3. Digest Integrity Check: recompute digest over canonical immutable data (FR-018)
-      const canonicalCheckpointData = {
-        instanceId: checkpoint.instanceId,
-        persona: checkpoint.persona,
-        workflow: checkpoint.workflow,
-        stepIndex: checkpoint.stepIndex,
-        stepName: checkpoint.stepName,
-        action: checkpoint.action,
-        stepDescriptor: checkpoint.stepDescriptor,
-        workflowHash: checkpoint.workflowHash,
-        createdAt: checkpoint.createdAt,
-        contextSnapshot: checkpoint.contextSnapshot
-      };
-      if (checkpoint.stepDescriptor === undefined && checkpoint.workflowHash === undefined) {
-        delete canonicalCheckpointData.stepDescriptor;
-        delete canonicalCheckpointData.workflowHash;
-      }
-      const computedDigest = crypto.createHash('sha256')
-        .update(JSON.stringify(canonicalCheckpointData))
-        .digest('hex');
-
-      if (computedDigest !== checkpoint.checkpointDigest) {
-        throw new Error(`Checkpoint '${instanceId}' rejected: checkpoint content has been tampered with (digest mismatch).`);
       }
 
       // 4. Manifest Integrity Check (FR-018): Ensure manifest and step definition match approval descriptor
@@ -1661,13 +1700,21 @@ export class DeclarativeWorkflowEngine {
       const payload = `${checkpoint.instanceId}:${checkpoint.persona}:${checkpoint.workflow}:${checkpoint.stepIndex}:${checkpoint.stepName}:${computedDigest}:${actor}:${expiresAt}`;
       const payloadBuf = Buffer.from(payload, 'utf8');
 
-      let publicKey = options.publicKey || process.env.DSH_APPROVAL_PUBLIC_KEY;
+      const isSandboxContainer = process.env.DSH_SANDBOX === '1' || process.env.NODE_ENV === 'production';
+      let publicKey = options.publicKey || null;
       if (!publicKey) {
+        const configuredKeyFile = options.publicKeyFile || process.env.DSH_APPROVAL_PUBLIC_KEY_FILE;
+        const configRoot = process.env.DSH_CONFIG_DIR || '/etc/dsh';
+        const sourceRoot = process.env.DSH_CONFIG_SOURCE;
         const pubKeyPaths = [
-          path.join(process.cwd(), 'config', 'keys', 'approval_ed25519.pub'),
-          path.join(process.cwd(), '.host_keys', 'approval_ed25519.pub'),
-          path.join('/root/.dsh', 'keys', 'approval_ed25519.pub'),
-          path.join(process.env.DSH_CONFIG_SOURCE || '', 'keys', 'approval_ed25519.pub')
+          configuredKeyFile,
+          path.join(configRoot, 'keys', 'approval_ed25519.pub'),
+          sourceRoot ? path.join(sourceRoot, 'keys', 'approval_ed25519.pub') : null,
+          ...(!isSandboxContainer ? [
+            path.join(process.cwd(), 'config', 'keys', 'approval_ed25519.pub'),
+            path.join(process.cwd(), '.host_keys', 'approval_ed25519.pub'),
+            path.join('/root/.dsh', 'keys', 'approval_ed25519.pub')
+          ] : [])
         ];
         for (const kp of pubKeyPaths) {
           if (kp && fs.existsSync(kp)) {
@@ -1678,8 +1725,7 @@ export class DeclarativeWorkflowEngine {
           }
         }
       }
-
-      const isSandboxContainer = process.env.DSH_SANDBOX === '1' || process.env.NODE_ENV === 'production';
+      if (!publicKey) publicKey = process.env.DSH_APPROVAL_PUBLIC_KEY;
 
       let verified = false;
       if (publicKey) {
@@ -1722,12 +1768,11 @@ export class DeclarativeWorkflowEngine {
       // Transition checkpoint to IN_PROGRESS on disk atomically via temp-write + rename
       checkpoint.status = 'IN_PROGRESS';
       checkpoint.resumedAt = new Date().toISOString();
+      checkpoint.consumedAt = checkpoint.resumedAt;
       checkpoint.approvedBy = actor;
       checkpoint.approvedAt = new Date().toISOString();
-
-      const tempCheckpoint = path.join(checkpointDir, `.${instanceId}.tmp.${Date.now()}.${crypto.randomBytes(4).toString('hex')}`);
-      fs.writeFileSync(tempCheckpoint, JSON.stringify(checkpoint, null, 2), 'utf8');
-      fs.renameSync(tempCheckpoint, checkpointPath);
+      checkpoint.checkpointDigest = approvalCheckpointDigest(checkpoint);
+      writeCheckpointAtomically(checkpointPath, checkpoint);
     } finally {
       if (lockFd !== null) {
         try { fs.closeSync(lockFd); } catch {}
@@ -1747,6 +1792,7 @@ export class DeclarativeWorkflowEngine {
     let workflowError = null;
     let suspendedReason = null;
     let newInstanceId = null;
+    let newCheckpointDigest = null;
 
     try {
       for (let i = startIndex; i < steps.length; i++) {
@@ -1766,7 +1812,8 @@ export class DeclarativeWorkflowEngine {
           validateSlug(newInstanceId, 'newInstanceId');
           const nextCreatedAt = new Date().toISOString();
           const nextWorkflowHash = crypto.createHash('sha256').update(JSON.stringify(workflow)).digest('hex');
-          const nextCanonical = {
+          const nextCheckpoint = {
+            checkpointVersion: APPROVAL_CHECKPOINT_VERSION,
             instanceId: newInstanceId,
             persona: this.meta.name,
             workflow: safeWfName,
@@ -1776,20 +1823,15 @@ export class DeclarativeWorkflowEngine {
             stepDescriptor: step,
             workflowHash: nextWorkflowHash,
             createdAt: nextCreatedAt,
-            contextSnapshot: currentContext
-          };
-          const nextDigest = crypto.createHash('sha256')
-            .update(JSON.stringify(nextCanonical))
-            .digest('hex');
-
-          const nextCheckpoint = {
-            ...nextCanonical,
+            contextSnapshot: currentContext,
             traceId,
-            checkpointDigest: nextDigest,
-            status: 'SUSPENDED_APPROVAL_REQUIRED',
+            status: SUSPENDED_APPROVAL_STATUS,
+            consumedAt: null,
             completedLogs: [...results]
           };
-          fs.writeFileSync(path.join(checkpointDir, `${newInstanceId}.json`), JSON.stringify(nextCheckpoint, null, 2), 'utf8');
+          nextCheckpoint.checkpointDigest = approvalCheckpointDigest(nextCheckpoint);
+          newCheckpointDigest = nextCheckpoint.checkpointDigest;
+          writeCheckpointAtomically(path.join(checkpointDir, `${newInstanceId}.json`), nextCheckpoint);
           break;
         }
 
@@ -1814,26 +1856,24 @@ export class DeclarativeWorkflowEngine {
       workflowError = err.message;
       throw err;
     } finally {
-      // 6. Explicit Checkpoint State Recovery: NEVER leave stranded in IN_PROGRESS
-      let finalStatus = 'COMPLETED';
+      // 6. The accepted checkpoint is terminal. A later gate owns a new checkpoint.
+      let finalStatus = 'CONSUMED';
       if (workflowError) {
         finalStatus = 'FAILED';
         checkpoint.error = workflowError;
-      } else if (suspendedReason) {
-        finalStatus = 'SUSPENDED_APPROVAL_REQUIRED';
       }
       checkpoint.status = finalStatus;
+      if (newInstanceId) checkpoint.successorInstanceId = newInstanceId;
       checkpoint.completedAt = new Date().toISOString();
-      try {
-        fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), 'utf8');
-      } catch {}
+      checkpoint.checkpointDigest = approvalCheckpointDigest(checkpoint);
+      writeCheckpointAtomically(checkpointPath, checkpoint);
     }
 
     return {
       persona: this.meta.name,
       workflow: safeWfName,
       instanceId: newInstanceId || instanceId,
-      checkpointDigest: checkpoint.checkpointDigest,
+      checkpointDigest: newCheckpointDigest || checkpoint.checkpointDigest,
       resumedFrom: instanceId,
       traceId,
       status: workflowError ? 'FAILED' : (suspendedReason ? 'SUSPENDED_APPROVAL_REQUIRED' : 'COMPLETED'),

@@ -3,6 +3,18 @@
 All notable changes to the **DeepSeek Harness (DSH-DDS)** project are documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+* Approval checkpoints now use a versioned digest that binds lifecycle state and consumption time. Accepted checkpoints transition monotonically through `SUSPENDED_APPROVAL_REQUIRED` → `IN_PROGRESS` → `CONSUMED|FAILED`, and a later gate receives a distinct successor checkpoint.
+* Checkpoint persistence now uses mode `0600`, same-directory temporary files, `fsync`, atomic rename, and parent-directory synchronization.
+* Production approval verification discovers the host-managed Ed25519 public key through `DSH_APPROVAL_PUBLIC_KEY_FILE`, `DSH_CONFIG_DIR`, `/etc/dsh/keys`, or the sandbox configuration mount.
+
+### Breaking changes
+
+* Pre-v2 suspended approval checkpoints and their tokens are intentionally rejected. Restart the suspended workflow to create a state-bound checkpoint before approving it again.
+
 ## [2.0.0] - 2026-09-07
 
 ### Level 4.0 High-Assurance Sovereign AI Harness & Global Architectural Refactoring

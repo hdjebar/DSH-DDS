@@ -97,23 +97,19 @@ rbac:
 
 ### Step 2: Enable Invariant 7 Loop Trap (Prevent Infinite Agent Loops)
 
-Autonomous LLMs can get caught in repetitive cycles (e.g., retrying the same failing command repeatedly). The **Invariant 7 Loop Trap** in `config/declarative-orchestrator.mjs` tracks a rolling 12-step hash ring:
+Autonomous LLMs can get caught in repetitive cycles (e.g., retrying the same failing command repeatedly). The current **Invariant 7 Loop Trap** in `config/declarative-orchestrator.mjs` compares each step with the immediately preceding step signature:
 
 $$\text{Step Signature} = \text{SHA-256}(\text{action} \parallel \text{target} \parallel \text{canonical JSON}(\text{args}))$$
 
-* **Enforcement**: If 3 identical signatures occur within the 12-step window, the orchestrator immediately halts the agent:
+* **Enforcement**: If two consecutive steps have identical signatures, the orchestrator immediately halts the agent:
   ```json
   {
     "status": "FAILED",
     "error_code": "LOOP_DETECTED",
-    "message": "Step signature repeated 3 times within 12-step window. Execution aborted to prevent token exhaustion."
+    "message": "Deterministic circular step detected: action and target executed repeatedly without divergence (LOOP_DETECTED)."
   }
   ```
-* **Configuration**: Active by default. Window depth and thresholds are tunable in `config/declarative-orchestrator.mjs`:
-  ```javascript
-  const LOOP_TRAP_RING_CAPACITY = 12; // Rolling window depth
-  const LOOP_TRAP_THRESHOLD = 3;       // Max repeats before abort
-  ```
+* **Current boundary**: Active by default for adjacent duplicates. The bounded rolling-window detector remains planned in GEP-2 Phase 4.
 
 ---
 
@@ -144,7 +140,7 @@ steps:
 ```
 
 #### Operator Approval Workflow:
-1. **Automated State Freeze**: The orchestrator saves an atomic checkpoint to `/var/lib/dsh/sessions/<session_id>/.dsh_step_checkpoint.json`.
+1. **Automated State Freeze**: The orchestrator saves a mode-`0600`, versioned checkpoint under `${DSH_SESSIONS_DIR}/checkpoints/<instance_id>.json` using `fsync` and atomic rename.
 2. **Cryptographic Signing**: The operator inspects the proposed mutation and signs the approval token from the host CLI:
    ```bash
    # List pending gates
@@ -153,7 +149,9 @@ steps:
    # Review the diff and approve
    ./dsh.sh approve <checkpoint_id>
    ```
-3. **Resumption**: The container verifies the Ed25519/HMAC signature and resumes execution without replaying earlier steps.
+3. **Resumption**: Production verifies the host Ed25519 signature through the mounted public key. The accepted checkpoint becomes `CONSUMED`; a later gate receives a distinct successor checkpoint and cannot downgrade the old state.
+
+The state-bound digest detects partial checkpoint rollback. Protection against restoration of the original canonical suspended state (including its valid digest) requires an external monotonic or WORM consumption anchor.
 
 ---
 
@@ -236,7 +234,7 @@ Autonomous agents introduce multi-step reasoning, tool execution, and state pers
 | **ASI01** | **Agent Goal Hijacking** | Web content or repo comments alter the agent's objective mid-execution. | **Acyclic Declarative DAGs**: Step sequencing is governed by a declarative recipe in `persona.yaml`, evaluated deterministically by the JavaScript orchestrator. The LLM cannot dynamically invent or re-route top-level workflow transitions. | ✅ **Covered** |
 | **ASI02** | **Tool Misuse & Unbounded Scope** | Agent uses legitimate tools (`mcp-sqlite`, `git`, `curl`) to access unauthorized databases or host resources. | **In-Line Policy Enforcement Point (PEP)**: The `@dsh-dds/core` plugin intercepts `tool-execute` events in real time before execution. Non-allowlisted commands or targets are rejected with `POLICY_DECISION: DENY`. | ✅ **Covered** |
 | **ASI03** | **Privilege Escalation Across Steps** | Agent acquires elevated privileges or tokens during multi-step execution. | **Operating System Confinement**: Stripped Linux capabilities (`cap_drop: ALL`), disabled privilege escalation (`no-new-privileges: true`), and unprivileged non-root user `dsh:dsh` (UID 1000:1000). | ✅ **Covered** |
-| **ASI04** | **Runaway Execution & Infinite Agent Loops** | Agent repeatedly attempts a failing tool action, spending hundreds of dollars while stuck in an infinite loop. | **Invariant 7 Loop Trap**: 12-step rolling hash ring buffer ($\text{SHA-256}(\text{action} \parallel \text{target} \parallel \text{args})$). Execution immediately terminates with `LOOP_DETECTED` on 3 duplicate signatures. | ✅ **Covered** |
+| **ASI04** | **Runaway Execution & Infinite Agent Loops** | Agent repeatedly attempts a failing tool action, spending hundreds of dollars while stuck in an infinite loop. | **Invariant 7 Loop Trap**: hashes action, target, and arguments and terminates with `LOOP_DETECTED` when the same signature occurs on consecutive steps. A bounded non-adjacent window remains planned. | ⚠️ **Partial** |
 | **ASI05** | **Memory Poisoning & Context Corruption** | Poisoned data from untrusted web pages contaminates agent session memory across runs. | **Per-Session Partitioning**: Mutable session state is stored in scoped tenant directories (`/var/lib/dsh/users/<id>/sessions/`) with ephemeral `tmpfs` mounts (`/run/dsh`) and zero persistence across runs. | ✅ **Covered** |
 | **ASI06** | **Inadequate Human-in-the-Loop Oversight** | High-consequence mutations (code patches, database drops, deployments) execute without consent. | **Asymmetric Ed25519 Approval Gates**: Steps marked `approval_required: true` suspend execution, persist an atomic state checkpoint, and require an out-of-band cryptographic signature (`./dsh.sh approve <id>`). | ✅ **Covered** |
 | **ASI07** | **Confused Deputy & SSRF** | Agent coerced into probing internal Docker bridge networks or cloud metadata (`169.254.169.254`). | **Envoy Egress Proxy Lockdown (ADR 0007)**: In sandbox profiles, containers route outbound HTTP/mTLS traffic strictly through loopback Envoy (`127.0.0.1:10000`) with strict DNS cache TTLs, blocking direct IP access and metadata endpoints. | ✅ **Covered** |
@@ -335,7 +333,7 @@ The interactive diagrams in [`docs/visual-architecture/`](../visual-architecture
 * 🛡️ **[Zero-Trust PEP & Dynamic RBAC Pipeline](../visual-architecture/security-pipeline.workflow.html)**:
   * Select the **"Fail-closed Defense"** view to trace how **ASI02** (Tool Misuse), **LLM02** (Directory Escape), and **MITRE AML.T0031** are quarantined before reaching the sandbox executor.
 * 🔄 **[Declarative Workflow & Invariant 7 Loop Trap](../visual-architecture/declarative-workflow.workflow.html)**:
-  * Select the **"Loop Trap Circuit"** view to inspect the **ASI04** 12-step hash ring trap, **EU AI Act Article 14** oversight, and **NIST AI RMF Manage** approval gates.
+  * Select the **"Loop Trap Circuit"** view to inspect the current adjacent-duplicate **ASI04** trap, **EU AI Act Article 14** oversight, and **NIST AI RMF Manage** approval gates.
 * ⚡ **[Agent Execution & OTLP Telemetry Sequence](../visual-architecture/agent-trace.sequence.html)**:
   * Select the **"Full Lifecycle"** view to trace **EU AI Act Article 12** and **ISO/IEC 42001 Annex A.10** distributed telemetry emission with zero cloud data leakage.
 
