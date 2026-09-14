@@ -13,7 +13,7 @@ This document serves as both the **Security Architecture Guide** and the **Secur
 * **Overall Posture**: **HARDENED BUT PENDING LIVE VALIDATION** for local deployments. Untrusted shell commands use a dedicated executor in every mode; the sandbox override additionally constrains application egress and writable state. Multi-tenant production use still requires live Linux/Landlock validation and an authenticated edge for the DSH UI.
 * **Network Isolation**: Host endpoints (`3080` for DSH, `6006` for Phoenix, and Phoenix OTLP `4317`/`4318`) bind strictly to loopback. Internally, DSH reaches Phoenix only through the telemetry gateway; shell execution has no network namespace.
 * **Supply Chain Security**: Base images derive directly from official `node:26-bookworm-slim` with `@deepseek-ai/dsh` installed from official npm, eliminating third-party Docker Hub intermediaries and pinning SHA256 digests.
-* **Data Sovereignty**: Observability (Arize Phoenix) runs 100% on-premise; no prompt traces or completion tokens egress to third-party cloud vendors.
+* **Data Sovereignty**: Observability (Arize Phoenix) runs 100% on-premise; telemetry traces, audit logs, and metrics do not egress to third-party cloud vendors (model prompt/completion transit depends on whether external or local LLM providers are configured; see SEC-05).
 
 ---
 

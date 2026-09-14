@@ -46,15 +46,10 @@ export function validateSlug(val, label = 'identifier') {
 
 export function parseYaml(yamlText) {
   if (typeof yamlText !== 'string' || !yamlText.trim()) return {};
-  try {
-    if (YAML && typeof YAML.parse === 'function') {
-      return YAML.parse(yamlText) || {};
-    }
-    throw new Error('YAML parser library not initialized');
-  } catch (err) {
-    console.error('YAML parse error:', err.message);
-    return {};
+  if (YAML && typeof YAML.parse === 'function') {
+    return YAML.parse(yamlText) || {};
   }
+  throw new Error('YAML parser library not initialized');
 }
 
 export function parsePersonaYaml(filePath) {

@@ -45,8 +45,16 @@ function parseArgs(argv) {
   let apply = false;
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === '--apply') apply = true;
-    else if (argv[index] === '--root') workspaceRoot = path.resolve(argv[++index] || '');
-    else if (argv[index] === '--gid') gid = Number(argv[++index]);
+    else if (argv[index] === '--root') {
+      const val = argv[++index];
+      if (!val) throw new Error('--root requires a non-empty directory path');
+      workspaceRoot = path.resolve(val);
+    }
+    else if (argv[index] === '--gid') {
+      const val = argv[++index];
+      if (val === undefined || val === '') throw new Error('--gid requires an integer argument');
+      gid = Number(val);
+    }
     else throw new Error(`Unknown argument: ${argv[index]}`);
   }
   return { workspaceRoot, gid, apply };

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import http from 'node:http';
 import path from 'node:path';
 import os from 'node:os';
@@ -237,4 +238,16 @@ test('executor cancels a running command when the client socket closes', async (
     if (previousKey === undefined) delete process.env.DSH_EXECUTOR_CAPABILITY_KEY;
     else process.env.DSH_EXECUTOR_CAPABILITY_KEY = previousKey;
   }
+});
+
+test('prepare_executor_workspaces CLI rejects missing --root argument (R-10)', () => {
+  const script = path.resolve('scripts/prepare_executor_workspaces.mjs');
+  assert.throws(
+    () => execFileSync(process.execPath, [script, '--root'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }),
+    err => {
+      assert.equal(err.status, 1);
+      assert.match(err.stderr, /--root requires a non-empty directory path/);
+      return true;
+    }
+  );
 });

@@ -53,9 +53,9 @@ export function validateCodeSyntax(code) {
         encoding: 'utf8',
         timeout: 3000
       });
-      return res.status === 0;
+      if (res.status === 0) return true;
     } catch {
-      return false;
+      // fall through
     }
   }
 

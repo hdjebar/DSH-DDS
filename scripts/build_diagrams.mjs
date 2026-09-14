@@ -55,7 +55,7 @@ for (const diagram of diagrams) {
     const rawResult = execFileSync(
       process.execPath,
       [archifyBin, 'deliver', diagram.type, inputPath, outputPath, '--quality', 'showcase', '--json'],
-      { cwd: rootDir, encoding: 'utf-8' }
+      { cwd: rootDir, encoding: 'utf-8', timeout: 30_000 }
     );
     const result = JSON.parse(rawResult);
     if (result.ok && result.validation?.compositionStatus === 'pass') {

@@ -3,7 +3,7 @@
 [![Docker](https://img.shields.io/badge/Docker-24.0+-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/Compose-2.24+-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![CI](https://github.com/hdjebar/DSH-DDS/actions/workflows/ci.yml/badge.svg)](https://github.com/hdjebar/DSH-DDS/actions/workflows/ci.yml)
-[![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-26-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > **Run AI agents where nothing is allowed to leave.**
@@ -221,7 +221,7 @@ node --test tests/*.test.mjs
 1. **CLI argument parser** — validates `--option=value`, short flags, mixed ordering, prompts with quotes and spaces; rejects malformed options.
 2. **YAML & persona schema validation** — asserts patch validity across all 7 shipped personas.
 3. **Secret scrubber** — asserts redaction of Google AI Studio keys, GitHub fine-grained PATs and Bearer tokens.
-4. **Installer parity assertion** — dynamically asserts byte-for-byte synchronisation between `install_dsh.sh` manifests and canonical repository files.
+4. **Installer parity assertion** — dynamically asserts structural and cryptographic synchronization (100% SHA-256 manifest hash and heredoc parity) between `install_dsh.sh` and canonical repository files.
 5. **CI & supply-chain hardening** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds images with `--no-cache`, validates ShellCheck and Hadolint, verifies entrypoint syntax, runs `npm audit`, and conducts `--network none` offline MCP smoke tests on every commit.
 
 ---

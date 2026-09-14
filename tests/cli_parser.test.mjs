@@ -169,6 +169,11 @@ tags: [ai, deepseek, automation]
   assert.deepEqual(parsed.tags, ['ai', 'deepseek', 'automation']);
 });
 
+test('Structured YAML Parser: throws on malformed YAML syntax (V3-L8)', async () => {
+  const { parseYaml } = await import('../config/persona.mjs');
+  assert.throws(() => parseYaml('foo: [unclosed bracket'), /YAML/i);
+});
+
 test('CLI Parser: distill title option (--title and --title=)', () => {
   const parsed1 = parsePersonaArgs(['distill', 'stats-engineer', '--title', 'Statistical Engineer']);
   assert.equal(parsed1.command, 'distill');

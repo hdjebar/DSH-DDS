@@ -74,7 +74,7 @@ Still required before this epic can move to Done:
   client-disconnect cancellation; a live Envoy 1.39.1 probe also confirms trusted HTTPS succeeds
   while untrusted CONNECT and metadata destinations are denied.
 
-Current automated verification: **248/248 tests pass**. Installer parity (0 drift across 97 canonical assets), JavaScript/shell syntax,
+Current automated verification: **251/251 tests pass**. Installer parity (0 drift across 101 canonical assets), JavaScript/shell syntax,
 schema parsing, whitespace checks, all three Compose configurations, root and production-web dependency
 audits, and CI workflow parsing pass.
 

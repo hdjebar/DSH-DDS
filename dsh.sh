@@ -84,13 +84,8 @@ case "$COMMAND" in
     ensure_runtime_dirs
     echo "🚀 Starting DeepSeek Harness and Phoenix stack..."
     docker compose up -d
-    sleep 2
-    WEB_URL="$(docker compose logs dsh 2>/dev/null | grep -Eo 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Za-z0-9_-]+' | tail -n 1 || true)"
-    if [ -n "$WEB_URL" ]; then
-      echo "👉 Web UI (Authenticated): $WEB_URL"
-    else
-      echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
-    fi
+    echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
+    echo "👉 Session token / Authenticated URL: run ./dsh.sh url"
     echo "👉 Phoenix Telemetry: http://localhost:6006"
     ;;
 
@@ -121,13 +116,8 @@ case "$COMMAND" in
     ensure_runtime_dirs
     echo "🔄 Recreating and restarting containers with updated configuration..."
     docker compose up -d --force-recreate
-    sleep 2
-    WEB_URL="$(docker compose logs dsh 2>/dev/null | grep -Eo 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Za-z0-9_-]+' | tail -n 1 || true)"
-    if [ -n "$WEB_URL" ]; then
-      echo "👉 Web UI (Authenticated): $WEB_URL"
-    else
-      echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
-    fi
+    echo "👉 Web UI: http://localhost:${DSH_PORT:-3080}"
+    echo "👉 Session token / Authenticated URL: run ./dsh.sh url"
     echo "👉 Phoenix Telemetry: http://localhost:6006"
     ;;
 

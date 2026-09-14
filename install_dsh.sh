@@ -332,13 +332,13 @@ verify_archive_checksum() {
 # --- BEGIN PROVISIONING MANIFEST ---
 get_manifest_sha256() {
   case "$1" in
-    "dsh.sh") echo "23cbf19d8903e84d0c58f65bb069c09811482f47eb4216e2603c6f3e493f9dfa" ;;
+    "dsh.sh") echo "9fb586cbd3034db7c05b6c19af32fdc74f41c6a6ca2611fcdcba47fd1bcaaebd" ;;
     "reset.sh") echo "875f9470347db8c329e90a4f31195d78356388e30583504cb1baf34f5c5f7a7f" ;;
     "docker-compose.sandbox.yml") echo "cab777bf18452669d83547ba78f7cdf01410f12cda4301e659bf4a8706cf9be2" ;;
     "docker-compose.dev.yml") echo "9a1e07866cdb852cd282997cdf89c81e5193c49a5a36ef5f9dce0abf06783f9e" ;;
     "docker/entrypoint.sh") echo "85dd8b596da80ae52b8120d3c93a04815514df32871d3a0f29f3da618adcc1d3" ;;
     "services/isolated-executor/server.mjs") echo "a0ddca1c64402ad896d77cba6df59a9fc226c8568ccb942223006b15030b8b31" ;;
-    "scripts/prepare_executor_workspaces.mjs") echo "43844ac882b96e4aa2b7d4a6fc3d1c7e3c5e9ebc71dbdeb929ffa77963e82ada" ;;
+    "scripts/prepare_executor_workspaces.mjs") echo "c551256c1e8f55a929ba8cdbd9f0a17b2ac45f3f73da0ea53ae3f6cdcdb4f0bc" ;;
     "scripts/migrate_tenant_partitions.mjs") echo "beec8d23e98214e627bdf559cee8cb221fa09820e7822e5b650d13787262e13e" ;;
     "scripts/lib/tenant_partition_migration.mjs") echo "ac34288219f2c6d53925f559043fceaf4f5eac8989e054e15eb4c1918ee1130c" ;;
     "scripts/export_telemetry.sh") echo "8e24147d7d2583fcb9b43269ca6ac33787d6944f802a43de100e92539b7c3d82" ;;
@@ -353,10 +353,10 @@ get_manifest_sha256() {
     "config/audit-writer.mjs") echo "8a417a4c14f2471e1444856c7861587b14b120a3caec0774db9cfd9de97977f3" ;;
     "config/telemetry-gateway.mjs") echo "517a0f9a210fcf0fc3319e422a9d4e4616e44a58aca46d2ba12797afe9b98143" ;;
     "config/audit-checkpoints/.gitkeep") echo "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b" ;;
-    "config/rbac-policy.mjs") echo "f7002f2074c823fa4db72f61cb555f3332289443a06ebe7d220791bd02b4ffab" ;;
+    "config/rbac-policy.mjs") echo "233ea6cc31bf496cf04fa3557b2c38b34b1d1b6bc430c8c5ca31361a366ce766" ;;
     "config/policy-manifest.mjs") echo "44e47cf95541dcf58d93ff9f39e88e3922f4e5490d0bb264eafe14dad3c85ba1" ;;
     "config/settings.default.yaml") echo "1c7e2691e04edd13344314dc1449a5b8498e49ccb0fc13ea7386db7f72954769" ;;
-    "config/phoenix-evals.mjs") echo "adda595b491d85e43dc13115d01f9fcdd3cbc98917e2c2fde6bef8351484adab" ;;
+    "config/phoenix-evals.mjs") echo "3100a09d9df8b0c5ddbdc42266e407decff53dbbf4792077da5a58d82d5057ca" ;;
     "config/context-quarantine.mjs") echo "0cfbad5ee0f99a13af4f06087a51b2f5a2db156e86ce302f63e23d7ec01b8326" ;;
     "config/dynamic-governance.mjs") echo "553e27b65e6f07f0300a66caf376460a2c3948e531261242830890c57bac65d7" ;;
     "config/failover-gateway.mjs") echo "eca6c5d88b4177864d4315a5c05f8b6b77e627b62314bfadc0e8d2e53da7d3c0" ;;
