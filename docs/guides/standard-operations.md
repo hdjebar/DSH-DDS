@@ -93,8 +93,15 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
 
 # 2. Run the desired persona (e.g. playground, security-auditor) in sandbox isolation:
 ./dsh.sh persona run playground "Evaluate untrusted dependency" --profile headless
+
+# 3. Clean up and vaporize all transient RAM scratch files & named volume state:
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 ```
-Inside the sandbox, root filesystem is read-only, all capabilities are dropped (`cap_drop: ALL`), and network traffic routes strictly through the Envoy proxy.
+Inside the sandbox:
+* Root filesystem is mounted read-only (`read_only: true`).
+* All Linux capabilities are dropped (`cap_drop: ALL`, `no-new-privileges: true`).
+* Network traffic routes strictly through the Envoy proxy, preventing SSRF to internal IPs.
+* Personas declared with `profiles: ["sandbox"]` or `runtime.requiresSandbox: true` will **fail closed** if you try running them against a standard container.
 
 ---
 

@@ -501,6 +501,34 @@ DSH-DDS protects personas from corrupting each other through defense-in-depth:
 * **Independent Execution Sessions**: Each chat session, CLI run, or headless task receives an isolated `session_id`. Tools, prompt context, and memory do not leak across personas.
 * **Synergy with Hardened Sandbox Mode**: For untrusted workflows, personas can run inside the hardened sandbox overlay (`docker-compose.sandbox.yml`), adding kernel-level capability drops (`cap_drop: ALL`), read-only root filesystems (`read_only: true`), tmpfs RAM-only scratch space, and Envoy proxy egress filtering.
 
+### 6. Sandbox-Only Personas (`profiles: ["sandbox"]`)
+You can configure high-privilege or experimental personas (like `playground`) to execute **exclusively** when the hardened container sandbox is running (`DSH_SANDBOX=1`):
+
+```yaml
+# config/personas/playground/persona.yaml
+version: "1.0"
+name: "playground"
+title: "Sandboxed Experimenter & Skill Author"
+description: "High-capability prototyping persona confined strictly to the hardened sandbox environment."
+
+# 🌐 Confined to Sandbox Profile Only
+profiles:
+  - "sandbox"
+
+# 🔒 Fail-Closed Runtime Assertion
+runtime:
+  requiresSandbox: true    # Refuses execution if running in standard, unhardened container
+```
+
+#### Fail-Closed Enforcement:
+* If invoked against a standard container (`./dsh.sh up`), the orchestrator checks `DSH_SANDBOX=1` and refuses execution:
+  ```text
+  ❌ Error: Persona 'playground' requires hardened sandbox profile (DSH_SANDBOX=1).
+     Standard container mode allows relaxed network egress and writable rootfs.
+     Start the sandbox stack: docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+  ```
+* **RAM-Only Ephemerality (`tmpfs`)**: In sandbox mode, all outputs in `/workspaces/cases` and `/artifacts` reside strictly in RAM (`tmpfs`). Running `docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v` instantly vaporizes all trial code and logs, leaving the host filesystem untouched.
+
 ---
 
 ## 🧪 Interactive Session Recording & Persona Distillation
