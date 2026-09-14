@@ -332,9 +332,9 @@ verify_archive_checksum() {
 # --- BEGIN PROVISIONING MANIFEST ---
 get_manifest_sha256() {
   case "$1" in
-    "dsh.sh") echo "9fb586cbd3034db7c05b6c19af32fdc74f41c6a6ca2611fcdcba47fd1bcaaebd" ;;
+    "dsh.sh") echo "ca1b918eb401f6f020f7d1c94509c01343f43eb36d00352f050cc4c0ce171e64" ;;
     "reset.sh") echo "875f9470347db8c329e90a4f31195d78356388e30583504cb1baf34f5c5f7a7f" ;;
-    "docker-compose.sandbox.yml") echo "cab777bf18452669d83547ba78f7cdf01410f12cda4301e659bf4a8706cf9be2" ;;
+    "docker-compose.sandbox.yml") echo "76dad7fb6048848acc830a7b4c8b39a3c5d3df79e485d2469db65b2bb1c849b2" ;;
     "docker-compose.dev.yml") echo "9a1e07866cdb852cd282997cdf89c81e5193c49a5a36ef5f9dce0abf06783f9e" ;;
     "docker/entrypoint.sh") echo "85dd8b596da80ae52b8120d3c93a04815514df32871d3a0f29f3da618adcc1d3" ;;
     "services/isolated-executor/server.mjs") echo "a0ddca1c64402ad896d77cba6df59a9fc226c8568ccb942223006b15030b8b31" ;;

@@ -79,6 +79,10 @@ assert_unsafe_host_allowed() {
   fi
 }
 
+exec_container_persona() {
+  docker compose exec -T dsh sh -c '[ -f /etc/dsh/persona.mjs ] && exec node /etc/dsh/persona.mjs "$@" || exec node /opt/dsh-config/persona.mjs "$@"' -- "$@"
+}
+
 case "$COMMAND" in
   up|start)
     ensure_runtime_dirs
@@ -211,29 +215,7 @@ case "$COMMAND" in
   persona)
     shift || true
     if [ "${1:-}" = "workflow" ] || [ "${1:-}" = "wf" ]; then
-      if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
-        # Check whether container is running with sandbox override
-        if docker compose exec -T dsh sh -c '[ "${DSH_SANDBOX:-0}" = "1" ]' 2>/dev/null; then
-          echo "🛡️  Executing workflow inside hardened container sandbox (DSH_SANDBOX=1)..."
-          docker compose exec -T dsh node /etc/dsh/persona.mjs "$@"
-        elif echo "$*" | grep -q -- "--allow-standard-container"; then
-          echo "⚠️  Executing workflow in standard container mode (--allow-standard-container supplied)."
-          echo "   Kernel Landlock and full volume isolation are relaxed."
-          CLEANED_ARGS=()
-          for arg in "$@"; do
-            if [ "$arg" != "--allow-standard-container" ]; then
-              CLEANED_ARGS+=("$arg")
-            fi
-          done
-          docker compose exec -T dsh node /etc/dsh/persona.mjs "${CLEANED_ARGS[@]}"
-        else
-          echo "❌ Error: Declarative workflows require hardened sandbox profile by default (DSH_SANDBOX=1)."
-          echo "   To start the sandbox stack:"
-          echo "     docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d"
-          echo "   Or pass '--allow-standard-container' to run in the current standard container."
-          exit 1
-        fi
-      elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+      if echo "$*" | grep -q -- "--force-host-unsafe"; then
         assert_unsafe_host_allowed
         echo "⚠️ WARNING: Executing declarative workflow on host due to --force-host-unsafe."
         echo "   Container Landlock, dropped capabilities, and volume isolation are bypassed!"
@@ -244,6 +226,28 @@ case "$COMMAND" in
           fi
         done
         node config/persona.mjs "${CLEANED_ARGS[@]}"
+      elif docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+        # Check whether container is running with sandbox override
+        if docker compose exec -T dsh sh -c '[ "${DSH_SANDBOX:-0}" = "1" ]' 2>/dev/null; then
+          echo "🛡️  Executing workflow inside hardened container sandbox (DSH_SANDBOX=1)..."
+          exec_container_persona "$@"
+        elif echo "$*" | grep -q -- "--allow-standard-container"; then
+          echo "⚠️  Executing workflow in standard container mode (--allow-standard-container supplied)."
+          echo "   Kernel Landlock and full volume isolation are relaxed."
+          CLEANED_ARGS=()
+          for arg in "$@"; do
+            if [ "$arg" != "--allow-standard-container" ]; then
+              CLEANED_ARGS+=("$arg")
+            fi
+          done
+          exec_container_persona "${CLEANED_ARGS[@]}"
+        else
+          echo "❌ Error: Declarative workflows require hardened sandbox profile by default (DSH_SANDBOX=1)."
+          echo "   To start the sandbox stack:"
+          echo "     docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d"
+          echo "   Or pass '--allow-standard-container' to run in the current standard container."
+          exit 1
+        fi
       else
         echo "❌ Error: DSH container is offline. Declarative workflows must run inside"
         echo "   the container sandbox to enforce kernel Landlock, dropped capabilities, and filesystem boundaries."
@@ -252,9 +256,7 @@ case "$COMMAND" in
         exit 1
       fi
     else
-      if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
-        docker compose exec -T dsh node /etc/dsh/persona.mjs "$@"
-      elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+      if echo "$*" | grep -q -- "--force-host-unsafe"; then
         assert_unsafe_host_allowed
         echo "⚠️ WARNING: Executing persona command on host due to --force-host-unsafe."
         CLEANED_ARGS=()
@@ -264,6 +266,8 @@ case "$COMMAND" in
           fi
         done
         node config/persona.mjs "${CLEANED_ARGS[@]}"
+      elif docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+        exec_container_persona "$@"
       else
         echo "❌ Error: DSH container is offline. To prevent evaluating container-writable files on host,"
         echo "   commands run inside the container by default. Start with: ./dsh.sh up"
@@ -275,9 +279,7 @@ case "$COMMAND" in
 
   sessions|session)
     shift || true
-    if docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
-      docker compose exec -T dsh node /etc/dsh/persona.mjs sessions "$@"
-    elif echo "$*" | grep -q -- "--force-host-unsafe"; then
+    if echo "$*" | grep -q -- "--force-host-unsafe"; then
       assert_unsafe_host_allowed
       echo "⚠️ WARNING: Executing session command on host due to --force-host-unsafe."
       CLEANED_ARGS=()
@@ -287,6 +289,8 @@ case "$COMMAND" in
         fi
       done
       node config/persona.mjs sessions "${CLEANED_ARGS[@]}"
+    elif docker compose ps --status running -q dsh 2>/dev/null | grep -q .; then
+      exec_container_persona sessions "$@"
     else
       echo "❌ Error: DSH container is offline. To prevent evaluating container-writable files on host,"
       echo "   commands run inside the container by default. Start with: ./dsh.sh up"
