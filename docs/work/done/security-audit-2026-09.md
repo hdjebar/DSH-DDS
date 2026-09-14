@@ -1,6 +1,6 @@
 # Consolidated Security Audit — September 2026
 
-> **Historical audit record:** This document preserves the evidence and dispositions from the original audit passes. The current implementation supersedes the direct application audit mount described below with an external `audit-writer`. See [`../in-progress/epic-security-audit-2026-09-remediation.md`](../in-progress/epic-security-audit-2026-09-remediation.md) for the live status and remaining release blockers.
+> **Historical audit record:** This document preserves the evidence and dispositions from the original audit passes. The current implementation supersedes the direct application audit mount described below with an external `audit-writer`. See [`./epic-security-audit-2026-09-remediation.md`](epic-security-audit-2026-09-remediation.md) for the live status and closeout record.
 
 Record of a four-pass adversarial audit of DSH-DDS covering the `@dsh-dds/core` Cordis
 plugin, the RBAC policy engine, the shell entrypoints, and the container and compose

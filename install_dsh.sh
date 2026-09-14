@@ -364,7 +364,7 @@ get_manifest_sha256() {
     "config/network/envoy-egress.yaml") echo "696ec577be0f9d35848dece28756a8d41cfb1aef631c8b385e307132bad803e0" ;;
     "config/schemas/persona-policy-v1.schema.json") echo "04d20f370eff912305e8242ed7b26092db3a73ec88678a30bbb0396d532540c6" ;;
     "config/schemas/tenant-partition-migration-v1.schema.json") echo "7ff258d2c57c1978eb1f30ca690a7b85c4c9607fd2a1028f98be16b45d4b8256" ;;
-    "packages/dsh-dds-core/byok-vault.js") echo "1187c016bf95e96f26890ed6104a99c480159cd669db6f7e47448a685a4976c7" ;;
+    "packages/dsh-dds-core/byok-vault.js") echo "8577553296c379d4cc4fceefa80aed86711d048fc9a89806af636085b81c5c28" ;;
     "packages/dsh-dds-core/execution-capability.js") echo "fd28c02744c917a7ec71d3a773fe84d541f4642df7f2511bf9f6a301bea78aed" ;;
     "packages/dsh-dds-core/gateway.js") echo "f52724e569e2f864a0a8a0e3e4f75df9cf40d794984a8ac98eccbec994233eb2" ;;
     "packages/dsh-dds-core/iam.js") echo "ad192f53cfbb12134e0ea9885d9e01430a17eb2c7b744040ca2ff3529a38c0b2" ;;

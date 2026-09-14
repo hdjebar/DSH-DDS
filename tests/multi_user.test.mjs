@@ -148,6 +148,18 @@ test('ByokVault: AES-256-GCM encryption and per-user key management', () => {
     decryptSecret(tamperedTag, masterSecret);
   }, /Unsupported state or unable to authenticate data/);
 
+  // Unversioned or v1 payload throws DEPRECATED_VAULT_PAYLOAD
+  const unversioned = { ...encrypted };
+  delete unversioned.version;
+  assert.throws(() => {
+    decryptSecret(unversioned, masterSecret);
+  }, /DEPRECATED_VAULT_PAYLOAD/);
+
+  const legacyV1 = { ...encrypted, version: 1 };
+  assert.throws(() => {
+    decryptSecret(legacyV1, masterSecret);
+  }, /DEPRECATED_VAULT_PAYLOAD/);
+
   // ByokVault instance storage
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-vault-'));
   try {

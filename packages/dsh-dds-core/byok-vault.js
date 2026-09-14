@@ -49,7 +49,7 @@ export function decryptSecret(payload, masterSecret) {
   if (!payload || !payload.ciphertext || !payload.iv || !payload.tag || !payload.salt) {
     throw new Error('Invalid encrypted secret payload structure');
   }
-  if (payload.version && payload.version < 2) {
+  if (!payload.version || payload.version < 2) {
     throw new Error('DEPRECATED_VAULT_PAYLOAD: Legacy v1 vault payload format is no longer accepted.');
   }
   const salt = Buffer.from(payload.salt, 'base64');

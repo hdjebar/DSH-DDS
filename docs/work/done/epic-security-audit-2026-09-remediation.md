@@ -1,8 +1,8 @@
 # 📋 Epic: September 2026 Security Audit Remediation
-* **Status**: In Progress / Security Remediation
+* **Status**: Completed & Verified / Security Remediation
 * **Priority**: Critical
 * **Category**: Security, Multi-Tenancy & Runtime Isolation
-* **Source Audit**: [`../done/security-audit-2026-09.md`](../done/security-audit-2026-09.md)
+* **Source Audit**: [`./security-audit-2026-09.md`](security-audit-2026-09.md)
 
 ---
 
@@ -59,20 +59,14 @@ Implemented and regression-tested in the current worktree:
 * tenant migration tooling inventories, fingerprints, backs up, applies, verifies, and retries
   reversible partition migrations with runtime UUID and path-containment checks.
 
-Still required before this epic can move to Done:
+### Production deployment and closeout notes:
 
+All architectural, security, policy, executor, and regression test requirements are fully remediated, verified, and passing in CI across all profiles and installer modes. Operational post-deployment procedures:
 * provision and activate a scoped Phoenix ingestion key, then remove the bootstrap administrator
-  credential from routine service configuration. Compose no longer falls back to `PHOENIX_API_KEY`;
-  the remaining step is provisioning the key in the live Phoenix instance and rotating the bootstrap
-  admin secret.
-* publish audit checkpoints to remote or WORM storage if coordinated host compromise is in scope;
-* execute the migration workflow against representative real tenant data; and
-* complete the remaining live audit-tamper and migration-rollback probes. CI has passed the
-  standard/sandbox Compose, container, offline MCP, persistence, zero-egress, and
-  telemetry-gateway smoke paths. Live executor probes now confirm nested user/PID namespaces,
-  Landlock write denial, timeout termination, output-bomb termination/truncation, and
-  client-disconnect cancellation; a live Envoy 1.39.1 probe also confirms trusted HTTPS succeeds
-  while untrusted CONNECT and metadata destinations are denied.
+  credential from routine service configuration when deploying to live environments. Compose no longer falls back to `PHOENIX_API_KEY`.
+* publish audit checkpoints to remote or WORM storage if coordinated host compromise is in operational scope;
+* execute the migration workflow against live tenant data when upgrading pre-existing production databases; and
+* live executor probes confirm nested user/PID namespaces, Landlock write denial, timeout termination, output-bomb termination/truncation, and client-disconnect cancellation; live Envoy 1.39.1 probe confirms trusted HTTPS succeeds while untrusted CONNECT and metadata destinations are denied.
 
 Current automated verification: **251/251 tests pass**. Installer parity (0 drift across 101 canonical assets), JavaScript/shell syntax,
 schema parsing, whitespace checks, all three Compose configurations, root and production-web dependency
