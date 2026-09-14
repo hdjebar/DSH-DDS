@@ -28,6 +28,7 @@ print_help() {
   echo "  cli               Launch interactive terminal matrix"
   echo "  run \"<prompt>\"   Execute one-shot autonomous task in headless mode"
   echo "  persona [cmd]     Manage AI Personas (list / create <name> --template <tmpl>)"
+  echo "  set-key <prov>    Inject API key (gemini, openrouter, github) into .env"
   echo "  approve <id>      Issue signed approval token to resume suspended workflow"
   echo "  reset             Safely clear caches & restart stack"
   echo "  status            Show container health status"
@@ -192,6 +193,61 @@ case "$COMMAND" in
         console.log('  ℹ️ No cached model catalog found. Run: ./dsh.sh sync-models');
       }
     "
+    ;;
+
+  set-key|key)
+    shift || true
+    PROVIDER="${1:-}"
+    KEY_VALUE="${2:-}"
+    if [ -z "$PROVIDER" ]; then
+      echo "❌ Usage: ./dsh.sh set-key <gemini|openrouter|github> [api-key]"
+      exit 1
+    fi
+    if [ -z "$KEY_VALUE" ]; then
+      echo -n "Enter API key for $PROVIDER: "
+      read -rs KEY_VALUE
+      echo ""
+    fi
+    if [ -z "$KEY_VALUE" ]; then
+      echo "❌ Error: API key cannot be empty."
+      exit 1
+    fi
+
+    case "$PROVIDER" in
+      gemini|google)
+        VAR_NAME="GEMINI_API_KEY"
+        ;;
+      openrouter|deepseek)
+        VAR_NAME="OPENROUTER_API_KEY"
+        ;;
+      github)
+        VAR_NAME="GITHUB_PERSONAL_ACCESS_TOKEN"
+        ;;
+      *)
+        VAR_NAME="$PROVIDER"
+        ;;
+    esac
+
+    touch "$SCRIPT_DIR/.env"
+    chmod 0600 "$SCRIPT_DIR/.env"
+
+    node -e '
+      const fs = require("fs");
+      const p = process.argv[1];
+      const varName = process.argv[2];
+      const val = process.argv[3];
+      let content = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
+      const regex = new RegExp(`^${varName}=.*$`, "m");
+      if (regex.test(content)) {
+        content = content.replace(regex, `${varName}=${val}`);
+      } else {
+        content = content.trimEnd() + `\n${varName}=${val}\n`;
+      }
+      fs.writeFileSync(p, content, { mode: 0o600 });
+    ' "$SCRIPT_DIR/.env" "$VAR_NAME" "$KEY_VALUE"
+
+    echo "✅ Successfully injected $VAR_NAME into .env (permissions: 0600)"
+    echo "💡 Restart or re-apply to load changes: ./dsh.sh restart"
     ;;
 
   cli)
