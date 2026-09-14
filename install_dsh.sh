@@ -377,7 +377,7 @@ get_manifest_sha256() {
     "packages/dsh-dds-core/model-catalog.js") echo "4f37cc98d3007755887ac886e950bc8442a934cda81b656a93a1f6ed6f9491a5" ;;
     "packages/dsh-dds-core/net-trust.js") echo "32f92f2bef5ac57b02f682421a16e21f9e6c75ec2be7fa490b7e7ef8529ed4c4" ;;
     "packages/dsh-dds-core/package.json") echo "ad3994b9eb985ee10c411b19d2cd91f3eb2932e74e809b80179c99509110ccbd" ;;
-    "packages/dsh-dds-core/rbac-interceptor.js") echo "21f8e6a8b7b5fe1fd9a824ef5a1db4a6c08edcc1f9f561c3941e6b54ebb117fb" ;;
+    "packages/dsh-dds-core/rbac-interceptor.js") echo "0387f5cdfa3d2521cfd13be08596f7a750be8c21b4c5e9007badffb68081f12b" ;;
     "packages/dsh-dds-core/user-partition.js") echo "3121583f75fbf5c78503e076207ecc8a0bac11c09730fe8f2ca699f99f35315f" ;;
     "packages/dsh-dds-core/web-search.js") echo "ba94644f29cc3c1bfce63471b2643e7d26f81dfcd833fcec886efbc8b43a89ed" ;;
     "config/profiles/cli/cordis.patch.yml") echo "476a93da63556f9b7edf3c049a12abaa00934a4e4a1e58be079f7422258b6e26" ;;

@@ -133,9 +133,23 @@ export function registerRbacInterceptor(ctx, config = {}) {
       throw new Error('[Zero-Trust RBAC Violation] Missing authenticated user identity context');
     }
 
-    const resolvedAction = (actionContext.toolName && TOOL_ACTION_MAP[actionContext.toolName])
+    let resolvedAction = (actionContext.toolName && TOOL_ACTION_MAP[actionContext.toolName])
       ?? (actionContext.action && TOOL_ACTION_MAP[actionContext.action])
       ?? (KNOWN_POLICY_VERBS.has(actionContext.action) ? actionContext.action : null);
+
+    if (!resolvedAction && actionContext.toolName) {
+      if (actionContext.toolName.startsWith('mcp:')) {
+        resolvedAction = actionContext.toolName;
+      } else if (actionContext.toolName.startsWith('mcp_')) {
+        resolvedAction = 'mcp:' + actionContext.toolName.slice(4);
+      } else if (actionContext.toolName.includes(':')) {
+        const [ns] = actionContext.toolName.split(':');
+        resolvedAction = 'mcp:' + ns;
+      } else if (actionContext.toolName.includes('__')) {
+        const [ns] = actionContext.toolName.split('__');
+        resolvedAction = 'mcp:' + ns;
+      }
+    }
 
     if (!resolvedAction) {
       throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || actionContext.action || 'unknown'}' is an unmapped or unauthorized tool`);

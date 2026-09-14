@@ -648,6 +648,57 @@ test('Core RBAC Interceptor: shell command is separated from target path and che
   }
 });
 
+test('Core RBAC Interceptor: enforces MCP server authorization against persona permissions (V3-M10)', async () => {
+  let beforeHook = null;
+  const mockCtx = {
+    user: DEFAULT_OPERATOR,
+    before(event, fn) {
+      if (event === 'tool-execute') beforeHook = fn;
+    }
+  };
+  registerRbacInterceptor(mockCtx, { enableToolRbac: true });
+
+  const restrictedPersona = {
+    name: 'restricted-analyst',
+    rbac: {
+      role: 'analyst',
+      permissions: {
+        filesystem: { read: ['/workspaces'], write: [], deny: [] },
+        mcp: { allowed: ['sqlite'] }
+      }
+    }
+  };
+
+  // Calling an unauthorized MCP tool (e.g. github:list_issues or mcp:context7) must fail closed
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'github:list_issues',
+        persona: restrictedPersona
+      });
+    },
+    /Zero-Trust RBAC Violation.*MCP tool 'github' not permitted for role 'analyst'/
+  );
+
+  await assert.rejects(
+    async () => {
+      await beforeHook({
+        toolName: 'mcp:context7',
+        persona: restrictedPersona
+      });
+    },
+    /Zero-Trust RBAC Violation.*MCP tool 'context7' not permitted for role 'analyst'/
+  );
+
+  // Calling an authorized MCP tool (sqlite) must be permitted
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'mcp:sqlite',
+      persona: restrictedPersona
+    });
+  });
+});
+
 test('Core RBAC Interceptor: fails closed when policy engine is unavailable', async () => {
   let beforeHook = null;
   const mockCtx = {
