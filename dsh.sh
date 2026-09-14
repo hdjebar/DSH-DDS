@@ -46,6 +46,7 @@ ensure_runtime_dirs() {
            "$SCRIPT_DIR/config/keys" \
            "$SCRIPT_DIR/.host_keys" \
            "$SCRIPT_DIR/workspaces/cases" \
+           "$SCRIPT_DIR/workspaces/playground" \
            "$SCRIPT_DIR/workspaces/artifacts"
   if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ] && [ -f "$SCRIPT_DIR/config/settings.default.yaml" ]; then
     cp "$SCRIPT_DIR/config/settings.default.yaml" "$SCRIPT_DIR/config/settings.yaml" 2>/dev/null || true

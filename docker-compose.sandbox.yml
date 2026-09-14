@@ -41,6 +41,7 @@ services:
       - /root/.dsh:rw,nosuid,nodev,size=64m,mode=0770,uid=1000,gid=1000
       - /var/log/dsh:rw,nosuid,nodev,size=32m,mode=0750,uid=1000,gid=1000
       - /workspaces/cases:rw,size=64m,mode=0770,uid=1000,gid=1000
+      - /workspaces/playground:rw,size=128m,mode=0770,uid=1000,gid=1000
       - /artifacts:rw,size=64m,mode=0770,uid=1000,gid=1000
     environment:
       - DSH_SANDBOX=1
