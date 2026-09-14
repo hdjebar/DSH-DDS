@@ -132,12 +132,16 @@ export const PROVISIONED_ASSETS = [
   { path: 'config/templates/personas/data-analyst/persona.yaml', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/devops-sre/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/devops-sre/persona.yaml', required: true, delivery: 'fetch' },
+  { path: 'config/templates/personas/mlops-engineer/SKILL.md', required: true, delivery: 'fetch' },
+  { path: 'config/templates/personas/mlops-engineer/persona.yaml', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/persona-creator/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/persona-creator/persona.yaml', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/sdmx-expert/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/sdmx-expert/persona.yaml', required: true, delivery: 'fetch' },
   { path: 'config/templates/personas/security-auditor/SKILL.md', required: true, delivery: 'fetch' },
-  { path: 'config/templates/personas/security-auditor/persona.yaml', required: true, delivery: 'fetch' }
+  { path: 'config/templates/personas/security-auditor/persona.yaml', required: true, delivery: 'fetch' },
+  { path: 'config/templates/personas/stats-engineer/SKILL.md', required: true, delivery: 'fetch' },
+  { path: 'config/templates/personas/stats-engineer/persona.yaml', required: true, delivery: 'fetch' }
 ];
 
 /**

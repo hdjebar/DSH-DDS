@@ -418,12 +418,16 @@ get_manifest_sha256() {
     "config/templates/personas/data-analyst/persona.yaml") echo "a7fc0cbac1245bef4151d9c28f360ad617121ef0673ff4d2068300316a2ebe1a" ;;
     "config/templates/personas/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
     "config/templates/personas/devops-sre/persona.yaml") echo "c14026bdcb1eb61920b6410320ea2dcf3d28355c8d9a3954b97f6ff201dd3244" ;;
+    "config/templates/personas/mlops-engineer/SKILL.md") echo "ed67c2e65767eee5872504b6063f82b73f1a41bf90b2acf4f09e1b4d24ad789b" ;;
+    "config/templates/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
     "config/templates/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
     "config/templates/personas/persona-creator/persona.yaml") echo "5f1a4fc340f403940370561c039e708a2fd2e47c3350361f8ec0a4492f913dec" ;;
     "config/templates/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/templates/personas/sdmx-expert/persona.yaml") echo "b71b6a0afee67076926f6ad530bc99081e5cb091a4bf5abf2cba2d4214a10ac6" ;;
     "config/templates/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
     "config/templates/personas/security-auditor/persona.yaml") echo "6a44bbdbc47dcaa87b0596ee78d2251c4115831ff4c3208e9991027140607bbd" ;;
+    "config/templates/personas/stats-engineer/SKILL.md") echo "8462c97cbb4a04bb9895e15a799e51af5f513de848b7e0b5e9a864eb9d52d523" ;;
+    "config/templates/personas/stats-engineer/persona.yaml") echo "9bef06f20d8bd6fb68d6255e08ccd9c9fa6f0f1c1a91493bfb02506f4d38ffa4" ;;
     *) echo "" ;;
   esac
 }
@@ -610,8 +614,12 @@ fetch_or_copy_file "config/templates/personas/devops-sre/persona.yaml"
 fetch_or_copy_file "config/templates/personas/devops-sre/SKILL.md"
 fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/templates/personas/mlops-engineer/persona.yaml"
+fetch_or_copy_file "config/templates/personas/mlops-engineer/SKILL.md"
 fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/templates/personas/security-auditor/SKILL.md"
+fetch_or_copy_file "config/templates/personas/stats-engineer/persona.yaml"
+fetch_or_copy_file "config/templates/personas/stats-engineer/SKILL.md"
 
 # Verify staged assets before promoting atomically (FR-016)
 verify_and_promote_staged() {
@@ -731,7 +739,7 @@ cat << 'EOF' > "$DSH_INSTALL/config/cordis.patch.yml"
     persistent_terminal: true
 - id: model-sync
   config:
-    auto_poll_on_startup: true
+    auto_poll_on_startup: !!js process.env.DSH_AUTO_POLL_MODELS === 'true'
     sync_interval_hours: 12
     enable_quota_ui_widget: true
 - id: mnemon

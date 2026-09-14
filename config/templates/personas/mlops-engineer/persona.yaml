@@ -1,0 +1,86 @@
+version: "1.0"
+name: mlops-engineer
+title: "Mlops Engineer"
+description: "Distilled specialist persona for Mlops Engineer derived from interactive sessions."
+
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "General Mlops Engineer task drafting and conversational execution"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Deep architectural reasoning and complex problem decomposition"
+  audit:
+    provider: openrouter
+    model: anthropic/claude-3.5-sonnet
+    temperature: 0.1
+    useCase: "High-accuracy code inspection and precision verification"
+  fast:
+    provider: gemini
+    model: gemini-3.7-flash
+    temperature: 0.2
+    useCase: "Rapid large file parsing and repository indexing"
+
+plugins:
+  - "@liustack/modsearch"
+  - "dsh-mnemon"
+  - "dsh-find-plugin"
+
+mcpServers:
+  fetch:
+    command: "mcp-server-webresearch"
+    args: []
+
+rbac:
+  role: "mlops_engineer"
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/models.cache.json"
+        - "/root/.dsh/personas/mlops-engineer"
+      write:
+        - "/artifacts"
+        - "/workspaces/cases"
+        - "/root/.dsh/sessions"
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+    mcp:
+      allowed:
+        - "fetch"
+
+workflows:
+  calibrate_models:
+    modelTier: reasoning
+    description: "Multi-step automated LLM evaluation, routing matrix validation, and latency benchmarking"
+    steps:
+      - name: "Inspect Active Catalog"
+        action: "read_catalog"
+        scope: "/root/.dsh/models.cache.json"
+      - name: "Evaluate Token Costs & Latency"
+        action: "run_llm_query"
+        prompt: "Calibrate cost-performance frontier across active OpenRouter and Gemini models."
+      - name: "Export Routing Matrix"
+        action: "write_report"
+        destination: "/root/.dsh/sessions/model_routing_calibration.json"
+  default-task:
+    modelTier: default
+    command: "Using the mlops-engineer skill, execute the core Mlops Engineer workflow."
+  deep-analysis:
+    modelTier: reasoning
+    command: "Using the mlops-engineer skill, perform deep multi-step reasoning on the active workspace."

@@ -20,7 +20,7 @@
     persistent_terminal: true
 - id: model-sync
   config:
-    auto_poll_on_startup: true
+    auto_poll_on_startup: !!js process.env.DSH_AUTO_POLL_MODELS === 'true'
     sync_interval_hours: 12
     enable_quota_ui_widget: true
 - id: mnemon
