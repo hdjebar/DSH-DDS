@@ -399,6 +399,8 @@ get_manifest_sha256() {
     "config/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
     "config/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
     "config/personas/persona-creator/persona.yaml") echo "a8c78ed1ecb14a944de5ebf6b4aa7ea545825aff636b7bb029e0971ef0f87603" ;;
+    "config/personas/playground/SKILL.md") echo "1d29e8d517cc4bd803a6b391944f8fd01c339fc10ced5a53a7e1fbe99075959a" ;;
+    "config/personas/playground/persona.yaml") echo "1744f173d47b8af16c4ed133c04debfb19dc5843b328a681cea2ff62ddd88df1" ;;
     "config/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/personas/sdmx-expert/persona.yaml") echo "1fcbdcee4ce1ea997381229e57b3cbc01963be3ac26c71d7d5d147b18ec0c7c2" ;;
     "config/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
@@ -409,6 +411,7 @@ get_manifest_sha256() {
     "config/skills/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
     "config/skills/mlops-engineer/SKILL.md") echo "ed67c2e65767eee5872504b6063f82b73f1a41bf90b2acf4f09e1b4d24ad789b" ;;
     "config/skills/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
+    "config/skills/playground/SKILL.md") echo "1d29e8d517cc4bd803a6b391944f8fd01c339fc10ced5a53a7e1fbe99075959a" ;;
     "config/skills/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/skills/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
     "config/skills/stats-engineer/SKILL.md") echo "8462c97cbb4a04bb9895e15a799e51af5f513de848b7e0b5e9a864eb9d52d523" ;;
@@ -422,6 +425,8 @@ get_manifest_sha256() {
     "config/templates/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
     "config/templates/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
     "config/templates/personas/persona-creator/persona.yaml") echo "5f1a4fc340f403940370561c039e708a2fd2e47c3350361f8ec0a4492f913dec" ;;
+    "config/templates/personas/playground/SKILL.md") echo "1d29e8d517cc4bd803a6b391944f8fd01c339fc10ced5a53a7e1fbe99075959a" ;;
+    "config/templates/personas/playground/persona.yaml") echo "1744f173d47b8af16c4ed133c04debfb19dc5843b328a681cea2ff62ddd88df1" ;;
     "config/templates/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/templates/personas/sdmx-expert/persona.yaml") echo "b71b6a0afee67076926f6ad530bc99081e5cb091a4bf5abf2cba2d4214a10ac6" ;;
     "config/templates/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
@@ -578,7 +583,7 @@ fetch_or_copy_file "config/profiles/headless/cordis.yml"
 fetch_or_copy_file "config/profiles/headless/cordis.patch.yml"
 fetch_or_copy_file "config/profiles/headless/pnpm-workspace.yaml"
 
-# Personas (all 7 domain packages - 100% Declarative Architecture)
+# Personas (all 8 domain packages - 100% Declarative Architecture)
 fetch_or_copy_file "config/personas/sdmx-expert/persona.yaml"
 fetch_or_copy_file "config/personas/sdmx-expert/SKILL.md"
 fetch_or_copy_file "config/personas/data-analyst/persona.yaml"
@@ -589,17 +594,20 @@ fetch_or_copy_file "config/personas/mlops-engineer/persona.yaml"
 fetch_or_copy_file "config/personas/mlops-engineer/SKILL.md"
 fetch_or_copy_file "config/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/personas/playground/persona.yaml"
+fetch_or_copy_file "config/personas/playground/SKILL.md"
 fetch_or_copy_file "config/personas/security-auditor/persona.yaml"
 fetch_or_copy_file "config/personas/security-auditor/SKILL.md"
 fetch_or_copy_file "config/personas/stats-engineer/persona.yaml"
 fetch_or_copy_file "config/personas/stats-engineer/SKILL.md"
 
-# Skills (all 7 domain skills)
+# Skills (all 8 domain skills)
 fetch_or_copy_file "config/skills/sdmx-expert/SKILL.md"
 fetch_or_copy_file "config/skills/data-analyst/SKILL.md"
 fetch_or_copy_file "config/skills/devops-sre/SKILL.md"
 fetch_or_copy_file "config/skills/mlops-engineer/SKILL.md"
 fetch_or_copy_file "config/skills/persona-creator/SKILL.md"
+fetch_or_copy_file "config/skills/playground/SKILL.md"
 fetch_or_copy_file "config/skills/security-auditor/SKILL.md"
 fetch_or_copy_file "config/skills/stats-engineer/SKILL.md"
 
@@ -614,6 +622,8 @@ fetch_or_copy_file "config/templates/personas/devops-sre/persona.yaml"
 fetch_or_copy_file "config/templates/personas/devops-sre/SKILL.md"
 fetch_or_copy_file "config/templates/personas/persona-creator/persona.yaml"
 fetch_or_copy_file "config/templates/personas/persona-creator/SKILL.md"
+fetch_or_copy_file "config/templates/personas/playground/persona.yaml"
+fetch_or_copy_file "config/templates/personas/playground/SKILL.md"
 fetch_or_copy_file "config/templates/personas/mlops-engineer/persona.yaml"
 fetch_or_copy_file "config/templates/personas/mlops-engineer/SKILL.md"
 fetch_or_copy_file "config/templates/personas/security-auditor/persona.yaml"

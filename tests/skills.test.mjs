@@ -9,12 +9,13 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const SKILLS_DIR = path.join(ROOT, 'config', 'skills');
 
-test('Skill Catalog Verification: all 7 domain skills contain valid instructions and operational guidelines', () => {
+test('Skill Catalog Verification: all 8 domain skills contain valid instructions and operational guidelines', () => {
   const skills = [
     'data-analyst',
     'devops-sre',
     'mlops-engineer',
     'persona-creator',
+    'playground',
     'sdmx-expert',
     'security-auditor',
     'stats-engineer'

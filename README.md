@@ -222,7 +222,7 @@ node --test tests/*.test.mjs
 **Coverage:**
 
 1. **CLI argument parser** — validates `--option=value`, short flags, mixed ordering, prompts with quotes and spaces; rejects malformed options.
-2. **YAML & persona schema validation** — asserts patch validity across all 7 shipped personas.
+2. **YAML & persona schema validation** — asserts patch validity across all 8 shipped personas.
 3. **Secret scrubber** — asserts redaction of Google AI Studio keys, GitHub fine-grained PATs and Bearer tokens.
 4. **Installer parity assertion** — dynamically asserts structural and cryptographic synchronization (100% SHA-256 manifest hash and heredoc parity) between `install_dsh.sh` and canonical repository files.
 5. **CI & supply-chain hardening** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds images with `--no-cache`, validates ShellCheck and Hadolint, verifies entrypoint syntax, runs `npm audit`, and conducts `--network none` offline MCP smoke tests on every commit.

@@ -32,12 +32,13 @@ test('Security Sandbox Invariant: no executable scripts exist in persona package
   checkDirForExecutables(TEMPLATES_DIR);
 });
 
-test('Persona Architecture: all 7 domain personas have valid declarative manifests', () => {
+test('Persona Architecture: all 8 domain personas have valid declarative manifests', () => {
   const expectedPersonas = [
     'data-analyst',
     'devops-sre',
     'mlops-engineer',
     'persona-creator',
+    'playground',
     'sdmx-expert',
     'security-auditor',
     'stats-engineer'

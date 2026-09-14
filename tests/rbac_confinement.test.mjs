@@ -11,12 +11,13 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 const PERSONAS_DIR = path.join(ROOT, 'config', 'personas');
 
-test('Zero Trust RBAC: all 7 domain personas declare explicit RBAC matrices', () => {
+test('Zero Trust RBAC: all 8 domain personas declare explicit RBAC matrices', () => {
   const personas = [
     'data-analyst',
     'devops-sre',
     'mlops-engineer',
     'persona-creator',
+    'playground',
     'sdmx-expert',
     'security-auditor',
     'stats-engineer'

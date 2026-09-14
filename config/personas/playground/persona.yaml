@@ -1,0 +1,103 @@
+version: "1.0"
+name: playground
+title: "Playground & Skill Authoring Engineer"
+description: "Specialized in rapid experimentation, multi-model evaluation, workflow testing, MCP tool exploration, and dynamic skill authoring."
+
+# 🌐 Supported Execution Context Profiles
+profiles:
+  - web       # Interactive Web Workbench (visual canvas, widgets, memory)
+  - headless  # Autonomous batch execution (CI/CD, scripts, crons)
+  - cli       # Interactive terminal matrix (TUI)
+  - sandbox   # Hardened kernel isolation overlay
+
+# 🎯 Multi-Model Task Routing Matrix
+models:
+  default:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.1
+    useCase: "Rapid experimentation, prompt drafting, and interactive queries"
+  reasoning:
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    temperature: 0.0
+    useCase: "Complex multi-step workflow logic, evaluation benchmarks, and synthesis"
+  fast:
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    temperature: 0.2
+    useCase: "High-speed syntax triage, JSON parsing, and rapid prototyping"
+  multimodal:
+    provider: gemini
+    model: gemini-2.5-flash
+    temperature: 0.2
+    useCase: "Multimodal documentation inspection, architecture diagrams, and screenshot evaluation"
+
+plugins:
+  - "dsh-better-sidebar"
+  - "dsh-find-plugin"
+
+mcpServers:
+  fetch:
+    command: "mcp-server-webresearch"
+    args: []
+  context7:
+    command: "context7-mcp"
+    args: []
+  github:
+    command: "github-mcp-server"
+    args: []
+  sqlite-db:
+    command: "mcp-server-sqlite"
+    args: ["--db-path", "/var/lib/dsh/storages/data.db"]
+
+rbac:
+  role: "playground_engineer"
+  permissions:
+    filesystem:
+      read:
+        - "/workspaces"
+        - "/root/.dsh/personas/playground"
+        - "/artifacts"
+      write:
+        - "/workspaces/playground"
+        - "/workspaces/cases"
+        - "/artifacts"
+        - "/root/.dsh/sessions"
+      deny:
+        - "/etc"
+        - "/root/.ssh"
+        - "config/personas/*"
+        - "reset.sh"
+        - "install_dsh.sh"
+        - "config/profiles/*"
+    mcp:
+      allowed:
+        - "fetch"
+        - "github"
+        - "context7"
+        - "sqlite-db"
+
+workflows:
+  author_skill:
+    modelTier: reasoning
+    description: "Draft, validate YAML frontmatter, and save a new agent skill"
+    steps:
+      - name: "Fetch Skill Requirements"
+        action: "fetch_sources"
+        target: "/workspaces/cases"
+      - name: "Synthesize Skill Guidelines"
+        action: "run_llm_query"
+        target: "/artifacts/skills"
+      - name: "Export Active Skill"
+        action: "write_report"
+        destination: "/artifacts/skills/draft_skill.md"
+  diagnose_environment:
+    modelTier: default
+    command: "Using the playground skill, diagnose container health, active model catalog, and verify reachability of all 4 MCP servers."
+  prototype_and_evaluate:
+    modelTier: default
+    command: "Using the playground skill, prototype a solution in /workspaces/playground and evaluate test results."
+  benchmark_routing:
+    modelTier: reasoning
+    command: "Using the playground skill, benchmark response quality across default, reasoning, and multimodal model tiers."
