@@ -300,6 +300,57 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml down -v
 
 ---
 
+### 16. Persona Space Isolation vs. Sandbox Runtime Isolation
+
+DSH-DDS enforces a strict architectural boundary between **Application-Layer Persona Isolation (Layer 7)** and **Kernel-Layer Sandbox Isolation (Layers 1–4)**:
+
+```mermaid
+flowchart TD
+    subgraph L1_4 ["🛡️ Infrastructure & Kernel Layer (Sandbox Mode)"]
+        K1["Docker Engine & Namespaces"]
+        K2["cap_drop: ALL & no-new-privileges"]
+        K3["read_only: true rootfs & tmpfs scratch"]
+        K4["Envoy Proxy Egress (SSRF filtering)"]
+        K5["Landlock LSM workdir containment"]
+    end
+
+    subgraph L7 ["⚖️ Application & Policy Layer (Persona PEP)"]
+        P1["In-line Policy Enforcement Point (PEP)"]
+        P2["Symlink Canonicalization (realpath check)"]
+        P3["Persona RBAC Matrix (read/write/deny)"]
+        P4["Container Volume Immutability (:ro mounts)"]
+    end
+
+    subgraph Personas ["🎭 Agent Personas & Workspaces"]
+        A1["playground (Broad Tooling & Authoring)"]
+        A2["security-auditor (Read-Only Codebase Audit)"]
+        A3["data-analyst (Isolated ACM Cases)"]
+    end
+
+    L1_4 --> L7
+    L7 --> Personas
+```
+
+#### Comparison Matrix: Persona Isolation vs. Sandbox Runtime
+
+| Dimension | 🎭 Persona Isolation (Layer 7) | 🛡️ Sandbox Runtime (Layers 1–4) |
+| :--- | :--- | :--- |
+| **Enforcement Primitive** | In-line JavaScript PEP (`config/rbac-policy.mjs`). | Linux kernel cgroups, namespaces, Landlock LSM, and Docker engine. |
+| **Enforcement Scope** | Granular per-request, per-tool, and per-persona policies. | System-wide container process boundaries. |
+| **Filesystem Boundaries** | Evaluates target paths against `filesystem.read`, `filesystem.write`, and `filesystem.deny`. | Enforces `read_only: true` on container root; writable state is restricted to RAM (`tmpfs`). |
+| **Cross-Persona Protection** | Canonical personas are mounted `:ro` (Security Finding 2); new drafts quarantine to `/artifacts` or `/workspaces/cases`. | Container filesystem cannot be modified across invocations. |
+| **Network & Egress** | Restricts which MCP servers can be called (`mcp.allowed`). | Envoy sidecar proxies all outbound HTTP/HTTPS; direct raw TCP egress is blocked. |
+| **Transient Execution** | `TransactionalWorktree` creates temporary Git branches (`.git/worktrees/<taskId>`) discarded on failure. | Ephemeral named volume (`sandbox-session-state`) cleared with `docker compose down -v`. |
+
+#### Cross-Persona Protection Guarantees
+Even when a persona is granted broad development or authoring privileges (such as the `playground` persona authoring new skills or testing all 4 MCP servers):
+1. **Zero Mutation of Shipped Personas**: The Docker Compose topology mounts `./config/personas` and `./config/skills` as **Read-Only (`:ro`)**. Any agent attempt to alter or delete existing persona manifests (`/var/lib/dsh/personas/*`) fails at the Linux VFS layer with `EROFS: read-only file system`.
+2. **Quarantined Dynamic Authoring**: Dynamically authored skills and persona drafts write exclusively to `/artifacts/skills/` or `/workspaces/cases/`. They are never activated into core system configuration without host operator promotion.
+3. **Strict Session Context Independence**: Every execution turn generates a distinct, non-shared `session_id`. Tool execution state, prompt memory, and Arize Phoenix trace spans remain strictly segregated across personas.
+4. **Zero Tool Privilege Escalation**: One persona enabling all 4 MCP servers (`fetch`, `github`, `context7`, `sqlite-db`) does not grant those tools to any other persona. The PEP strictly checks the active persona's own manifest before dispatching any tool call.
+
+---
+
 ## ⚠️ Mandatory Plugin & Supply Chain Auditing Policy
 
 Plugins and MCP tool servers in DeepSeek Harness execute directly within the Node.js container runtime with full access to mounted workspaces, environment variables, and system tools.

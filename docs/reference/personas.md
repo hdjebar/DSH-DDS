@@ -493,6 +493,14 @@ flowchart TD
 * **Truthful Capabilities**: All capability adapters perform real operations (e.g., real SHA-256 cryptographic hashing in `forensic_investigation`, active HTTP reachability checks in `verify_endpoint`, and isolated persistent containment ledgers in `contain_threat`).
 * **Tamper-Evident GRC Logging**: Every decision (`GRANTED`, `DENIED`, `GATED`) is recorded by the external audit-writer in `config/audit/audit_grc.jsonl` with cryptographic OpenTelemetry 128-bit trace and span correlation IDs.
 
+### 5. Persona Space & Cross-Persona Isolation
+DSH-DDS protects personas from corrupting each other through defense-in-depth:
+* **Docker Mount Immutability (`:ro`)**: The Docker topology mounts `./config/personas` and `./config/skills` as **Read-Only (`:ro`)** (`/var/lib/dsh/personas:ro`). Even personas with authoring capabilities (such as `playground`) cannot overwrite, delete, or tamper with shipped personas (`EROFS` at OS VFS level).
+* **Workspace Scoping & Quarantine**: Personas like `security-auditor` and `data-analyst` have write permissions scoped strictly to `/workspaces/cases/`, keeping original codebase files untouched.
+* **Dynamic Authoring Isolation**: When authoring new skills or personas dynamically, drafts write to staging paths (`/artifacts/skills/` or `/workspaces/cases/`). They do not affect production configurations until promoted by a human operator.
+* **Independent Execution Sessions**: Each chat session, CLI run, or headless task receives an isolated `session_id`. Tools, prompt context, and memory do not leak across personas.
+* **Synergy with Hardened Sandbox Mode**: For untrusted workflows, personas can run inside the hardened sandbox overlay (`docker-compose.sandbox.yml`), adding kernel-level capability drops (`cap_drop: ALL`), read-only root filesystems (`read_only: true`), tmpfs RAM-only scratch space, and Envoy proxy egress filtering.
+
 ---
 
 ## 🧪 Interactive Session Recording & Persona Distillation

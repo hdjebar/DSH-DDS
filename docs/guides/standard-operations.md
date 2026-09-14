@@ -85,6 +85,17 @@ You can execute any shipped persona against any target profile on demand:
 ./dsh.sh persona run data-analyst "Synthesize quarterly data" --profile cli --tier reasoning
 ```
 
+### 4. Running Personas in the Hardened Sandbox Overlay
+When analyzing untrusted code or running open-ended workflows, boot the stack with kernel isolation and execute any persona inside it:
+```bash
+# 1. Start stack with hardened sandbox overlay:
+docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d
+
+# 2. Run the desired persona (e.g. playground, security-auditor) in sandbox isolation:
+./dsh.sh persona run playground "Evaluate untrusted dependency" --profile headless
+```
+Inside the sandbox, root filesystem is read-only, all capabilities are dropped (`cap_drop: ALL`), and network traffic routes strictly through the Envoy proxy.
+
 ---
 
 ## 🤖 Headless Automations & Scripting
