@@ -202,9 +202,9 @@ flowchart LR
 #### Task B.1: Telemetry Cold-Storage Export & Sync
 * [x] **Objective**: Archive production agent traces for long-term compliance, auditability, and fine-tuning.
 * [x] **Implementation Steps**:
-  1. Implement scheduled exporter (`scripts/export_telemetry.sh`) syncing Parquet trace partitions and SQLite snapshots to tamper-evident tarballs.
+  1. Implement archive exporter (`scripts/export_telemetry.sh`) packaging trace logs and database snapshots into tamper-evident tarballs.
   2. Generate SHA-256 cryptographic checksum manifests (`manifest.sha256`) for immutable compliance auditing.
-  3. Support automated sync to remote object storage endpoints (AWS S3, MinIO, GCS).
+  3. Support optional remote object storage synchronization (AWS S3, MinIO via `aws-cli`).
 * [x] **Acceptance Criteria**:
   - Partitions are packaged into timestamped archives with cryptographic checksums and verified via `tests/telemetry_export.test.mjs`.
 

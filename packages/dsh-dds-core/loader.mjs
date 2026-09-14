@@ -96,7 +96,7 @@ function applyPrototypeAugmentations() {
   // LocalBashExecutor.prototype.spawnSpec safe workdir
   try {
     import('@deepseek-ai/dsh-bash-local').then(({ LocalBashExecutor }) => {
-      if (LocalBashExecutor?.prototype && !LocalBashExecutor.prototype.__ddsShimApplied) {
+      if (LocalBashExecutor?.prototype && !LocalBashExecutor.prototype.__ddsShimApplied && !LocalBashExecutor.prototype.__workdirShimApplied) {
         const origSpawnSpec = LocalBashExecutor.prototype.spawnSpec;
         if (typeof origSpawnSpec === 'function') {
           LocalBashExecutor.prototype.spawnSpec = function(spec, argv, stdoutMaxBytes, signal) {
@@ -112,6 +112,7 @@ function applyPrototypeAugmentations() {
             return origSpawnSpec.call(this, spec, argv, stdoutMaxBytes, signal);
           };
           LocalBashExecutor.prototype.__ddsShimApplied = true;
+          LocalBashExecutor.prototype.__workdirShimApplied = true;
         }
       }
     }).catch(() => {});

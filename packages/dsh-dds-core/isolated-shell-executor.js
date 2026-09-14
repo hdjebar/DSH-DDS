@@ -48,6 +48,8 @@ function postToExecutor(socketPath, payload, signal) {
         }
         resolve(parsed);
       });
+      response.on('error', reject);
+      response.on('aborted', () => reject(new Error('Isolated executor connection was aborted')));
     });
     request.on('error', reject);
     request.end(body);

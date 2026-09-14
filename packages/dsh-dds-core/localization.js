@@ -59,10 +59,11 @@ export function registerLocalizationTap(ctx) {
 <script id="dsh-dds-i18n-tap">
 (() => {
   const dict = ${JSON.stringify(TRANSLATION_DICTIONARY)};
+  const sortedEntries = Object.entries(dict).sort((a, b) => b[0].length - a[0].length);
   function translateText(text) {
     if (!text) return text;
     let out = text;
-    for (const [zh, en] of Object.entries(dict)) {
+    for (const [zh, en] of sortedEntries) {
       if (out.includes(zh)) out = out.replaceAll(zh, en);
     }
     return out;

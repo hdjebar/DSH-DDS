@@ -71,6 +71,7 @@ export function fetchSearchUrl(targetUrl, maxResults = 5, timeoutMs = 15000, red
           return fetchSearchUrl(nextParsed.toString(), maxResults, timeoutMs, redirectCount + 1).then(resolve, reject);
         }
         if (res.statusCode && res.statusCode >= 400) {
+          res.resume();
           return reject(new Error(`DuckDuckGo returned HTTP ${res.statusCode}`));
         }
         let data = '';

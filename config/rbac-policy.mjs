@@ -430,13 +430,27 @@ export function enforceRbacPolicy(personaMeta, step) {
       if (pattern.endsWith('*')) {
         const prefix = pattern.slice(0, -1);
         const normPrefix = path.resolve(prefix);
-        if (
-          isContainedWithin(resolvedTarget, prefix) ||
-          isContainedWithin(canonicalTarget, prefix) ||
-          isContainedWithin(resolvedTarget, normPrefix) ||
-          isContainedWithin(target, prefix) ||
-          target.startsWith(prefix)
-        ) {
+        const prefixesToCheck = [prefix, normPrefix];
+        if (prefix.startsWith('config/')) {
+          const sub = prefix.slice('config/'.length);
+          prefixesToCheck.push(path.join('/opt/dsh-config', sub));
+          prefixesToCheck.push(path.join('/var/lib/dsh', sub));
+          prefixesToCheck.push(path.join('/etc/dsh', sub));
+        }
+        let matched = false;
+        for (const p of prefixesToCheck) {
+          if (
+            isContainedWithin(resolvedTarget, p) ||
+            isContainedWithin(canonicalTarget, p) ||
+            isContainedWithin(resolvedTarget, path.resolve(p)) ||
+            isContainedWithin(target, p) ||
+            target.startsWith(p)
+          ) {
+            matched = true;
+            break;
+          }
+        }
+        if (matched) {
           return {
             allowed: false,
             role,
@@ -450,19 +464,21 @@ export function enforceRbacPolicy(personaMeta, step) {
         if (fs.existsSync(normPattern)) {
           try { realPattern = fs.realpathSync(normPattern); } catch {}
         }
+        const patternsToCheck = [pattern, normPattern, realPattern];
+        if (pattern.startsWith('config/')) {
+          const sub = pattern.slice('config/'.length);
+          patternsToCheck.push(path.join('/opt/dsh-config', sub));
+          patternsToCheck.push(path.join('/var/lib/dsh', sub));
+          patternsToCheck.push(path.join('/etc/dsh', sub));
+        } else if (pattern === 'reset.sh' || pattern === 'install_dsh.sh') {
+          patternsToCheck.push(path.join('/app', pattern));
+          patternsToCheck.push(path.join('/etc/dsh', pattern));
+        }
         if (
-          resolvedTarget === pattern ||
-          resolvedTarget === normPattern ||
-          resolvedTarget === realPattern ||
-          canonicalTarget === pattern ||
-          canonicalTarget === normPattern ||
-          canonicalTarget === realPattern ||
-          target === pattern ||
-          isContainedWithin(resolvedTarget, pattern) ||
-          isContainedWithin(canonicalTarget, pattern) ||
-          isContainedWithin(resolvedTarget, realPattern) ||
-          isContainedWithin(canonicalTarget, realPattern) ||
-          isContainedWithin(target, pattern)
+          patternsToCheck.includes(resolvedTarget) ||
+          patternsToCheck.includes(canonicalTarget) ||
+          patternsToCheck.includes(target) ||
+          patternsToCheck.some(p => isContainedWithin(resolvedTarget, p) || isContainedWithin(canonicalTarget, p) || isContainedWithin(target, p))
         ) {
           return {
             allowed: false,

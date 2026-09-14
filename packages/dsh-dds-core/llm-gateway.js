@@ -65,8 +65,17 @@ export class LlmSemanticGateway {
             const failure = chunk.reason.failure;
             if (failure && failure.code === 'CONTEXT_WINDOW_EXCEEDED') {
               const errMsg = String(failure.message || '');
-              // If it's a 400 (no body) or protocol error rather than a genuine token overflow
-              if (errMsg.includes('400') && (errMsg.includes('no body') || !errMsg.toLowerCase().includes('token'))) {
+              const lowerMsg = errMsg.toLowerCase();
+              const isGenuineOverflow = (
+                lowerMsg.includes('token') ||
+                lowerMsg.includes('context_length') ||
+                lowerMsg.includes('context_window') ||
+                lowerMsg.includes('max_context') ||
+                lowerMsg.includes('maximum context') ||
+                lowerMsg.includes('prompt is too long')
+              );
+              // If it's a 400 (no body) or protocol error rather than a genuine token/context overflow
+              if (errMsg.includes('400') && !isGenuineOverflow) {
                 // Determine approximate prompt length
                 const approxChars = JSON.stringify(normalizedOptions.messages || []).length;
                 if (approxChars < 200000) { // Well under modern 1M context limits

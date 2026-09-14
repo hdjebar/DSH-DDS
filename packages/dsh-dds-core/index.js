@@ -133,7 +133,7 @@ export function registerSessionEventsShim(targetClass) {
 export function registerBashWorkdirShim(targetClass) {
   try {
     const Executor = targetClass || (typeof globalThis !== 'undefined' && globalThis.__DSH_BASH_EXECUTOR_CLASS__);
-    if (Executor?.prototype && !Executor.prototype.__workdirShimApplied) {
+    if (Executor?.prototype && !Executor.prototype.__workdirShimApplied && !Executor.prototype.__ddsShimApplied) {
       const origSpawnSpec = Executor.prototype.spawnSpec;
       if (typeof origSpawnSpec === 'function') {
         Executor.prototype.spawnSpec = function(spec, argv, stdoutMaxBytes, signal) {
@@ -161,6 +161,7 @@ export function registerBashWorkdirShim(targetClass) {
           return origSpawnSpec.call(this, spec, argv, stdoutMaxBytes, signal);
         };
         Executor.prototype.__workdirShimApplied = true;
+        Executor.prototype.__ddsShimApplied = true;
       }
     }
   } catch {}

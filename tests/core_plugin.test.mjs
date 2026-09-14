@@ -170,7 +170,7 @@ test('Core Localization: registerLocalizationTap transforms index HTML cleanly',
 
   assert.ok(transformed.includes('id="dsh-dds-i18n-tap"'), 'Must inject translation script');
   assert.ok(transformed.includes('Plugin Market'), 'Must include translation dictionary');
-  assert.ok(transformed.includes('Memory Spaces'), 'Must include memory translations');
+  assert.ok(transformed.includes('sortedEntries'), 'Must sort dictionary entries by key length descending');
   assert.ok(transformed.endsWith('</body></html>'), 'Must place script before </body>');
 
   // Test idempotency
