@@ -44,6 +44,49 @@ To resolve this and authenticate your browser session:
 
 Once opened with `?token=...`, the server sets an HTTP-only session cookie (`dsh-auth-...`) valid for 30 days. All subsequent requests in that browser session will remain authenticated without needing the query parameter again.
 
+---
+
+## 🎭 Operating Profiles & Personas
+
+DSH-DDS separates **Execution Profiles** (the container/runtime environment) from **AI Personas** (domain specializations, model matrices, and declarative workflow recipes).
+
+### 1. Execution Profiles Overview
+
+| Profile | Command / Mode | Operational Role |
+| :--- | :--- | :--- |
+| **`web`** (Default) | `./dsh.sh up` | Launches the interactive browser workbench UI at `http://localhost:3080`. |
+| **`cli`** | `./dsh.sh cli` | Launches an interactive Terminal UI (TUI) inside the running container (`dsh --profile cli`). |
+| **`headless`** | `./dsh.sh run "<prompt>"` | Executes a prompt autonomously in batch mode (`dsh --profile headless`) and prints results to stdout. |
+| **`sandbox`** (Overlay) | `docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up -d` | Boots the stack with hardened kernel isolation (`read_only: true`, `cap_drop: ALL`, `tmpfs` mounts, Envoy proxy egress, Ed25519-only approvals). |
+
+### 2. Setting the Default Persona for Web UI (`apply`)
+When running in `web` mode, you can configure which persona and model routing tier the Web UI uses by default:
+```bash
+# Set security-auditor as default in settings.yaml:
+./dsh.sh persona apply security-auditor
+
+# Set data-analyst with reasoning tier (e.g. DeepSeek-R1):
+./dsh.sh persona apply data-analyst --tier reasoning
+```
+Then start or restart the stack:
+```bash
+./dsh.sh up
+# or
+./dsh.sh restart
+```
+
+### 3. Running Any Persona with Any Profile on Demand (`run`)
+You can execute any shipped persona against any target profile on demand:
+```bash
+# Execute security-auditor in headless profile:
+./dsh.sh persona run security-auditor "Audit the auth controller in /workspaces" --profile headless
+
+# Execute data-analyst in CLI profile with reasoning tier:
+./dsh.sh persona run data-analyst "Synthesize quarterly data" --profile cli --tier reasoning
+```
+
+---
+
 ## 🤖 Headless Automations & Scripting
 
 The headless runner executes a single task autonomously and prints the result to `stdout`.

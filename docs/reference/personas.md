@@ -600,14 +600,9 @@ git commit -m "feat(persona): add sdmx-engineer distilled from ESTAT/LUSTAT inte
 | :--- | :--- |
 | **`./dsh.sh sessions`** | Lists all recorded interactive Web UI and CLI sessions with timestamps. |
 | **`./dsh.sh persona list`** | Lists all personas with their full **Task-to-Model Matrix**, execution profiles, and starter templates. |
-| **`./dsh.sh persona create <name> [--template <tmpl>]`** | Generates a new 6-layer persona package in `config/personas/<name>/`. |
-| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills an interactive web/CLI session into a permanent 6-layer persona package. |
-| **`./dsh.sh persona run <name> [--tier <tier>] [--profile <profile>] "<prompt>"`** | Executes persona in target profile with calibrated model tier. |
-| **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a declared automation workflow recipe. |
-| **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets persona default model and active skill as default in Web UI. |
-| **`./dsh.sh persona create <name> --template <template>`** | Scaffolds a complete persona package from a pre-built template. |
-| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
-| **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets the persona's specified model tier as the active workspace default. |
-| **`./dsh.sh persona run <name> [--tier <tier>] "<prompt>"`** | Executes a one-shot task using the persona's designated model tier (e.g. `reasoning`, `coding`, `fast`). |
-| **`./dsh.sh persona workflow <name> <workflow-key>`** | Runs a pre-configured automation recipe using its calibrated model tier. |
 | **`./dsh.sh persona show <name>`** | Displays the complete persona manifest and skill instructions. |
+| **`./dsh.sh persona create <name> [--template <template>]`** | Scaffolds a complete persona package in `config/personas/<name>/` from a template. |
+| **`./dsh.sh persona distill <name> [--session <id>]`** | Distills recent interactive chat sessions and learned memories into a persona package. |
+| **`./dsh.sh persona apply <name> [--tier <tier>]`** | Sets the persona's specified model tier as the active default in `settings.yaml` for the Web UI. |
+| **`./dsh.sh persona run <name> [--tier <tier>] [--profile <web\|headless\|cli>] "<prompt>"`** | Executes a one-shot task using the persona's designated model tier and execution profile. |
+| **`./dsh.sh persona workflow <name> <workflow-key> [--allow-standard-container]`** | Runs a declared automation workflow recipe (enforces hardened sandbox by default). |

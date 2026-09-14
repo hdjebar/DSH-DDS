@@ -146,11 +146,14 @@ workflows:
 Execute personas through the unified CLI wrapper:
 
 ```bash
-# Run with calibrated default tier
+# Apply persona as the default for the interactive Web UI (./dsh.sh up)
+./dsh.sh persona apply sdmx-expert
+
+# Run with calibrated default tier (headless batch mode)
 ./dsh.sh persona run sdmx-expert "Analyze inflation metrics for Luxembourg"
 
-# Force reasoning model tier (DeepSeek-R1)
-./dsh.sh persona run sdmx-expert --tier reasoning "Prove statistical correlation formula"
+# Run with designated profile (cli / headless / web) and model tier (DeepSeek-R1)
+./dsh.sh persona run sdmx-expert --tier reasoning --profile cli "Prove statistical correlation formula"
 ```
 
 ---

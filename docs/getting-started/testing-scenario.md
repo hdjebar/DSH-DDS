@@ -85,6 +85,15 @@ Test the newly distilled persona using both its **fast default model** and its *
 
 *(DeepSeek R1 activates with thorough mathematical and econometric derivation).*
 
+### Test C: Profile Selection & Default Web UI Application
+```bash
+# Execute within interactive CLI Terminal profile:
+./dsh.sh persona run stats-engineer "list key dimensions" --profile cli
+
+# Set stats-engineer as active default for the Web UI:
+./dsh.sh persona apply stats-engineer
+```
+
 ---
 
 ## 📍 Step 6: Verify in the Visual Studio Sidebar
