@@ -1,7 +1,7 @@
 version: "1.0"
 name: playground
-title: "Playground & Skill Authoring Engineer"
-description: "Specialized in rapid experimentation, multi-model evaluation, workflow testing, MCP tool exploration, and dynamic skill authoring."
+title: "Playground & Harness Engineering Specialist"
+description: "Specialized in rapid experimentation, multi-model evaluation, plugin lifecycles, MCP tool exploration, workflow orchestration, and dynamic skill authoring in a contained playground workspace sandbox."
 
 # 🌐 Supported Execution Context Profiles
 profiles:
@@ -34,8 +34,17 @@ models:
     useCase: "Multimodal documentation inspection, architecture diagrams, and screenshot evaluation"
 
 plugins:
-  - "dsh-better-sidebar"
+  - "dshmarket"
   - "dsh-find-plugin"
+  - "dsh-mcp-market"
+  - "dsh-mcp-panel"
+  - "dsh-mnemon"
+  - "dsh-model-sync"
+  - "dsh-provider-model-configurator"
+  - "dsh-session-reader"
+  - "deepseek-flow"
+  - "dsh-better-sidebar"
+  - "@liustack/modsearch"
 
 mcpServers:
   fetch:
@@ -59,20 +68,28 @@ rbac:
     filesystem:
       read:
         - "/workspaces"
-        - "/root/.dsh/personas/playground"
+        - "/var/lib/dsh"
+        - "/var/lib/dsh-state"
+        - "/root/.dsh"
         - "/artifacts"
       write:
         - "/workspaces/playground"
         - "/workspaces/cases"
         - "/artifacts"
+        - "/var/lib/dsh/profiles"
+        - "/var/lib/dsh/sessions"
+        - "/var/lib/dsh/storages"
+        - "/var/lib/dsh-state/sessions"
+        - "/var/lib/dsh-state/storages"
+        - "/root/.dsh/profiles"
         - "/root/.dsh/sessions"
+        - "/root/.dsh/storages"
       deny:
         - "/etc"
         - "/root/.ssh"
         - "config/personas/*"
         - "reset.sh"
         - "install_dsh.sh"
-        - "config/profiles/*"
     mcp:
       allowed:
         - "fetch"
@@ -95,6 +112,32 @@ workflows:
       - name: "Export Active Skill"
         action: "write_report"
         destination: "/artifacts/skills/draft_skill.md"
+  manage_plugin_lifecycle:
+    modelTier: default
+    description: "Discover, audit, test, and manage plugin lifecycles within playground profile"
+    steps:
+      - name: "Inspect Active Plugins"
+        action: "fetch_sources"
+        target: "/var/lib/dsh/profiles/web/package.json"
+      - name: "Audit Plugin Manifest"
+        action: "parse_intent"
+        target: "/artifacts/plugins/audit_report.json"
+      - name: "Generate Plugin Inventory Report"
+        action: "write_report"
+        destination: "/artifacts/plugins/inventory.md"
+  evaluate_mcp_pipeline:
+    modelTier: reasoning
+    description: "Execute and benchmark multi-tool MCP pipeline across research, code intelligence, and structured data"
+    steps:
+      - name: "Research Remote Ecosystem"
+        action: "fetch_sources"
+        target: "/workspaces/playground"
+      - name: "Query Structured Database"
+        action: "inspect_sqlite"
+        scope: "/var/lib/dsh/storages/data.db"
+      - name: "Synthesize Benchmark Artifact"
+        action: "write_report"
+        destination: "/artifacts/mcp_benchmark.md"
   diagnose_environment:
     modelTier: default
     command: "Using the playground skill, diagnose container health, active model catalog, and verify reachability of all 5 MCP servers (including AgentKey)."

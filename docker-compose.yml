@@ -29,6 +29,7 @@ services:
       - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/playground:/workspaces/playground:rw
       - ./workspaces/artifacts:/artifacts:rw
       - executor-socket:/run/dsh-executor:rw
     tmpfs:

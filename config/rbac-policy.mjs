@@ -126,6 +126,10 @@ export function resolvePath(candidatePath) {
     return path.resolve(process.env.DSH_WORKSPACE_ROOT, rel);
   }
 
+  if (fs.existsSync(clean)) {
+    return path.resolve(clean);
+  }
+
   if (process.env.DSH_RUNTIME_DIR && (clean === '/root/.dsh' || clean.startsWith('/root/.dsh/'))) {
     const rel = clean === '/root/.dsh' ? '' : clean.slice('/root/.dsh/'.length);
     return path.resolve(process.env.DSH_RUNTIME_DIR, rel);
@@ -203,6 +207,8 @@ export function checkSymlinkEscape(targetPath, allowRoot) {
   const normTarget = resolvePath(targetPath);
   const normRoot = resolvePath(allowRoot);
   const canonicalRoot = canonicalizeWithAncestorRealpath(normRoot);
+  const stateDir = process.env.DSH_SESSION_STATE_DIR || '/var/lib/dsh-state';
+  const normStateDir = resolvePath(stateDir);
 
   let current = normTarget;
 
@@ -217,7 +223,16 @@ export function checkSymlinkEscape(targetPath, allowRoot) {
         if (lstat.isSymbolicLink()) {
           const real = fs.realpathSync(current);
           if (!isContainedWithin(real, normRoot) && !isContainedWithin(real, canonicalRoot)) {
-            return true;
+            // Container state directories: /var/lib/dsh/sessions and /var/lib/dsh/storages
+            // are legitimately symlinked to DSH_SESSION_STATE_DIR (/var/lib/dsh-state).
+            const isStateBridge = (
+              (isContainedWithin(normRoot, '/var/lib/dsh') || isContainedWithin(canonicalRoot, '/var/lib/dsh') ||
+               isContainedWithin(normRoot, '/root/.dsh') || isContainedWithin(canonicalRoot, '/root/.dsh')) &&
+              isContainedWithin(real, normStateDir)
+            );
+            if (!isStateBridge) {
+              return true;
+            }
           }
         }
       } catch {}
@@ -503,10 +518,20 @@ export function enforceRbacPolicy(personaMeta, step) {
         }
       }
 
-      const permitted = allowedWrites.some(allowedRoot =>
-        isContainedWithin(resolvedTarget, allowedRoot) &&
-        isContainedWithin(canonicalTarget, allowedRoot)
-      );
+      const stateDir = process.env.DSH_SESSION_STATE_DIR || '/var/lib/dsh-state';
+      const normStateDir = resolvePath(stateDir);
+
+      const permitted = allowedWrites.some(allowedRoot => {
+        const canonicalRoot = canonicalizeWithAncestorRealpath(allowedRoot);
+        const inAllowed = isContainedWithin(resolvedTarget, allowedRoot);
+        const inCanonical = isContainedWithin(canonicalTarget, allowedRoot) ||
+                            isContainedWithin(canonicalTarget, canonicalRoot);
+        const inStateBridge = (
+          (isContainedWithin(allowedRoot, '/var/lib/dsh') || isContainedWithin(allowedRoot, '/root/.dsh')) &&
+          isContainedWithin(canonicalTarget, normStateDir)
+        );
+        return inAllowed && (inCanonical || inStateBridge);
+      });
       if (!permitted) {
         return {
           allowed: false,
@@ -532,10 +557,20 @@ export function enforceRbacPolicy(personaMeta, step) {
         }
       }
 
-      const permitted = allowedReads.some(allowedRoot =>
-        isContainedWithin(resolvedTarget, allowedRoot) &&
-        isContainedWithin(canonicalTarget, allowedRoot)
-      );
+      const stateDir = process.env.DSH_SESSION_STATE_DIR || '/var/lib/dsh-state';
+      const normStateDir = resolvePath(stateDir);
+
+      const permitted = allowedReads.some(allowedRoot => {
+        const canonicalRoot = canonicalizeWithAncestorRealpath(allowedRoot);
+        const inAllowed = isContainedWithin(resolvedTarget, allowedRoot);
+        const inCanonical = isContainedWithin(canonicalTarget, allowedRoot) ||
+                            isContainedWithin(canonicalTarget, canonicalRoot);
+        const inStateBridge = (
+          (isContainedWithin(allowedRoot, '/var/lib/dsh') || isContainedWithin(allowedRoot, '/root/.dsh')) &&
+          isContainedWithin(canonicalTarget, normStateDir)
+        );
+        return inAllowed && (inCanonical || inStateBridge);
+      });
       if (!permitted) {
         return {
           allowed: false,

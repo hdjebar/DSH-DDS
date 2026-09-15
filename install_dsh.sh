@@ -353,7 +353,7 @@ get_manifest_sha256() {
     "config/audit-writer.mjs") echo "8a417a4c14f2471e1444856c7861587b14b120a3caec0774db9cfd9de97977f3" ;;
     "config/telemetry-gateway.mjs") echo "517a0f9a210fcf0fc3319e422a9d4e4616e44a58aca46d2ba12797afe9b98143" ;;
     "config/audit-checkpoints/.gitkeep") echo "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b" ;;
-    "config/rbac-policy.mjs") echo "0316e36dbd440af8aefcb81ba5572dc2a094c50665e77c4f5e369b83752c9940" ;;
+    "config/rbac-policy.mjs") echo "d05e73656e14f7abb47b711237664d274c58055cab13fd7454d061ffeae38863" ;;
     "config/policy-manifest.mjs") echo "44e47cf95541dcf58d93ff9f39e88e3922f4e5490d0bb264eafe14dad3c85ba1" ;;
     "config/settings.default.yaml") echo "1c7e2691e04edd13344314dc1449a5b8498e49ccb0fc13ea7386db7f72954769" ;;
     "config/phoenix-evals.mjs") echo "3100a09d9df8b0c5ddbdc42266e407decff53dbbf4792077da5a58d82d5057ca" ;;
@@ -377,7 +377,7 @@ get_manifest_sha256() {
     "packages/dsh-dds-core/model-catalog.js") echo "4f37cc98d3007755887ac886e950bc8442a934cda81b656a93a1f6ed6f9491a5" ;;
     "packages/dsh-dds-core/net-trust.js") echo "32f92f2bef5ac57b02f682421a16e21f9e6c75ec2be7fa490b7e7ef8529ed4c4" ;;
     "packages/dsh-dds-core/package.json") echo "ad3994b9eb985ee10c411b19d2cd91f3eb2932e74e809b80179c99509110ccbd" ;;
-    "packages/dsh-dds-core/rbac-interceptor.js") echo "a57e1e8bdf5daa085d0710e431c95f22afd52976730ae6e3c2d58a2bd4b80669" ;;
+    "packages/dsh-dds-core/rbac-interceptor.js") echo "acbc8f328c3f3845062e84f4a569fc64acbc694aefda7e1e40347a0b20d338c0" ;;
     "packages/dsh-dds-core/user-partition.js") echo "3121583f75fbf5c78503e076207ecc8a0bac11c09730fe8f2ca699f99f35315f" ;;
     "packages/dsh-dds-core/web-search.js") echo "ba94644f29cc3c1bfce63471b2643e7d26f81dfcd833fcec886efbc8b43a89ed" ;;
     "config/profiles/cli/cordis.patch.yml") echo "476a93da63556f9b7edf3c049a12abaa00934a4e4a1e58be079f7422258b6e26" ;;
@@ -399,8 +399,8 @@ get_manifest_sha256() {
     "config/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
     "config/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
     "config/personas/persona-creator/persona.yaml") echo "a8c78ed1ecb14a944de5ebf6b4aa7ea545825aff636b7bb029e0971ef0f87603" ;;
-    "config/personas/playground/SKILL.md") echo "60ff6d38bddfbe7cd1e8edafde57fdd4563396cf06366271c56dbd9d5df5f129" ;;
-    "config/personas/playground/persona.yaml") echo "6e0e14eabfa4456d458255b035feda488cc30dd922c20bf5ccf2e78a6eb91f71" ;;
+    "config/personas/playground/SKILL.md") echo "7553d0ff8ba1356c8c4410f2fa8f85cad35d9ade8d30f3f77d85d6de19ee18ae" ;;
+    "config/personas/playground/persona.yaml") echo "aa4470f265f3445e722015258f6cee91024ba75ac55410009470017bd4c58466" ;;
     "config/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/personas/sdmx-expert/persona.yaml") echo "1fcbdcee4ce1ea997381229e57b3cbc01963be3ac26c71d7d5d147b18ec0c7c2" ;;
     "config/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
@@ -412,7 +412,7 @@ get_manifest_sha256() {
     "config/skills/devops-sre/SKILL.md") echo "1fd256e8887664c5e5a59e104364655718b87ddfb2c246d74150174023720c50" ;;
     "config/skills/mlops-engineer/SKILL.md") echo "ed67c2e65767eee5872504b6063f82b73f1a41bf90b2acf4f09e1b4d24ad789b" ;;
     "config/skills/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
-    "config/skills/playground/SKILL.md") echo "60ff6d38bddfbe7cd1e8edafde57fdd4563396cf06366271c56dbd9d5df5f129" ;;
+    "config/skills/playground/SKILL.md") echo "7553d0ff8ba1356c8c4410f2fa8f85cad35d9ade8d30f3f77d85d6de19ee18ae" ;;
     "config/skills/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/skills/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
     "config/skills/stats-engineer/SKILL.md") echo "8462c97cbb4a04bb9895e15a799e51af5f513de848b7e0b5e9a864eb9d52d523" ;;
@@ -426,8 +426,8 @@ get_manifest_sha256() {
     "config/templates/personas/mlops-engineer/persona.yaml") echo "6db2a87a418c01cbebbfda726d554a8820a27f0f7cc0137427b574d190807ad1" ;;
     "config/templates/personas/persona-creator/SKILL.md") echo "bc4a7adaa58958601fcc80dc4ddc3289f5aa67b535783fae9027499e33d3b638" ;;
     "config/templates/personas/persona-creator/persona.yaml") echo "5f1a4fc340f403940370561c039e708a2fd2e47c3350361f8ec0a4492f913dec" ;;
-    "config/templates/personas/playground/SKILL.md") echo "60ff6d38bddfbe7cd1e8edafde57fdd4563396cf06366271c56dbd9d5df5f129" ;;
-    "config/templates/personas/playground/persona.yaml") echo "6e0e14eabfa4456d458255b035feda488cc30dd922c20bf5ccf2e78a6eb91f71" ;;
+    "config/templates/personas/playground/SKILL.md") echo "7553d0ff8ba1356c8c4410f2fa8f85cad35d9ade8d30f3f77d85d6de19ee18ae" ;;
+    "config/templates/personas/playground/persona.yaml") echo "aa4470f265f3445e722015258f6cee91024ba75ac55410009470017bd4c58466" ;;
     "config/templates/personas/sdmx-expert/SKILL.md") echo "326df5161114bb644997f1949fa927e26c4f3cce15f86b76d8478fa793f6127c" ;;
     "config/templates/personas/sdmx-expert/persona.yaml") echo "b71b6a0afee67076926f6ad530bc99081e5cb091a4bf5abf2cba2d4214a10ac6" ;;
     "config/templates/personas/security-auditor/SKILL.md") echo "7bbd483e9cddc87085bcb92c83abe872dfe342c189daa219594312410625986d" ;;
@@ -1216,6 +1216,7 @@ services:
       - ./config/cache:/var/lib/dsh/cache:rw
       - ./workspaces:/workspaces:ro
       - ./workspaces/cases:/workspaces/cases:rw
+      - ./workspaces/playground:/workspaces/playground:rw
       - ./workspaces/artifacts:/artifacts:rw
       - executor-socket:/run/dsh-executor:rw
     tmpfs:
