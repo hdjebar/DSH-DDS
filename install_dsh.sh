@@ -332,7 +332,7 @@ verify_archive_checksum() {
 # --- BEGIN PROVISIONING MANIFEST ---
 get_manifest_sha256() {
   case "$1" in
-    "dsh.sh") echo "14cbbeb98ed7f2a4961e229e693647c46174e2616ab59b708541aba0121e97e7" ;;
+    "dsh.sh") echo "f646004f1a3e6da37702eaea2022f542e8e3cb6903997b3fd37a12adcf998022" ;;
     "reset.sh") echo "875f9470347db8c329e90a4f31195d78356388e30583504cb1baf34f5c5f7a7f" ;;
     "docker-compose.sandbox.yml") echo "0c3c72618e4db6167a18dffd847722a1e18287821c00208373d18a029d5be1b6" ;;
     "docker-compose.dev.yml") echo "9a1e07866cdb852cd282997cdf89c81e5193c49a5a36ef5f9dce0abf06783f9e" ;;

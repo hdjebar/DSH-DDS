@@ -150,12 +150,12 @@ case "$COMMAND" in
         HOST_ENV_MODE="$(stat -c "%a" "$SCRIPT_DIR/.env")"
       fi
     fi
-    docker compose exec -T -e DSH_HOST_ENV_STATUS="$HOST_ENV_STATUS" -e DSH_HOST_ENV_MODE="$HOST_ENV_MODE" dsh node /etc/dsh/doctor.mjs
+    docker compose exec -T -e DSH_HOST_ENV_STATUS="$HOST_ENV_STATUS" -e DSH_HOST_ENV_MODE="$HOST_ENV_MODE" dsh sh -c '[ -f /etc/dsh/doctor.mjs ] && exec node /etc/dsh/doctor.mjs "$@" || exec node /opt/dsh-config/doctor.mjs "$@"' -- "$@"
     ;;
 
   sync-models)
     echo "🔄 Running Dynamic Model Synchronizer..."
-    docker compose exec -T dsh node /etc/dsh/sync_models.mjs
+    docker compose exec -T dsh sh -c '[ -f /etc/dsh/sync_models.mjs ] && exec node /etc/dsh/sync_models.mjs "$@" || exec node /opt/dsh-config/sync_models.mjs "$@"' -- "$@"
     ;;
 
   models)
