@@ -38,6 +38,7 @@ RUN usermod -l dsh -d /home/dsh -m node \
 
 # Install official DeepSeek Harness engine and minimal runtime dependencies (no build compilers, no GUI bloat)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     curl \
     ca-certificates \
     python3 \

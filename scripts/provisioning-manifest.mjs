@@ -119,6 +119,7 @@ export const PROVISIONED_ASSETS = [
   { path: 'config/personas/stats-engineer/persona.yaml', required: true, delivery: 'fetch' },
 
   // 7. Domain Skills
+  { path: 'config/skills/agentkey/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/skills/data-analyst/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/skills/devops-sre/SKILL.md', required: true, delivery: 'fetch' },
   { path: 'config/skills/mlops-engineer/SKILL.md', required: true, delivery: 'fetch' },

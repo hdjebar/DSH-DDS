@@ -18,20 +18,29 @@ prepare_sandbox_home() {
       -not -path './sessions*' \
       -not -path './storages*' \
       -not -path './phoenix*' \
-      -not -path './audit*' | tar -cf - -T -) | tar --no-same-owner --no-same-permissions -C "$DSH_HOME" -xf -
+      -not -path './audit' \
+      -not -path './audit/*' \
+      -not -path './audit-checkpoints*' | tar -cf - -T -) | tar --no-same-owner --no-same-permissions -C "$DSH_HOME" -xf -
   fi
 
   mkdir -p "$DSH_HOME/profiles/web" "$DSH_HOME/profiles/node_modules" "$DSH_HOME/patch"
   mkdir -p "$RUNTIME_DIR/profiles/web"
   if [ -f "$config_source/profiles/web/cordis.patch.yml" ]; then
     cp "$config_source/profiles/web/cordis.patch.yml" "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
-  elif [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ]; then
+  elif [ -f "$DSH_HOME/profiles/web/cordis.patch.yml" ] && [ "$DSH_HOME/profiles/web/cordis.patch.yml" != "$RUNTIME_DIR/profiles/web/cordis.patch.yml" ]; then
     cp "$DSH_HOME/profiles/web/cordis.patch.yml" "$RUNTIME_DIR/profiles/web/cordis.patch.yml"
   fi
-  rm -rf "$DSH_HOME/sessions" "$DSH_HOME/storages" "$DSH_HOME/profiles/web/node_modules"
+  rm -rf "$DSH_HOME/sessions" "$DSH_HOME/storages"
   ln -s "$state_dir/sessions" "$DSH_HOME/sessions"
   ln -s "$state_dir/storages" "$DSH_HOME/storages"
-  ln -s "$PREBUILT_WEB/node_modules" "$DSH_HOME/profiles/web/node_modules"
+
+  # Ensure web profile node_modules is a writable directory seeded from prebuilt image
+  if [ -L "$DSH_HOME/profiles/web/node_modules" ]; then
+    rm -f "$DSH_HOME/profiles/web/node_modules"
+  fi
+  if [ ! -d "$DSH_HOME/profiles/web/node_modules" ] && [ -d "$PREBUILT_WEB" ]; then
+    cp -a "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true
+  fi
 
   # Fill missing image-owned profile files without replacing operator configuration.
   cp -an "$PREBUILT_WEB/." "$DSH_HOME/profiles/web/" 2>/dev/null || true

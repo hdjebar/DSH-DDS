@@ -66,4 +66,14 @@
         args:
           - --db-path
           - /var/lib/dsh/storages/data.db
+- insert:
+    - id: mcp-agentkey
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: agentkey
+        transport: streamable-http
+        url: https://api.agentkey.app/v1/mcp
+        headers: {}
+        failOnStartupError: false
 # --- end dsh-mcp-market managed ---
+

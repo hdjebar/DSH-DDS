@@ -31,6 +31,8 @@ services:
       - ./config:/opt/dsh-config:ro
       - ${DSH_WORKSPACE_ROOT:-./workspaces}:/workspaces:ro
       - sandbox-session-state:/var/lib/dsh-state:rw
+      - sandbox-pnpm-store:/home/dsh/.local/share/pnpm:rw
+      - sandbox-profiles:/var/lib/dsh/profiles:rw
       - executor-socket:/run/dsh-executor:rw
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
@@ -124,6 +126,10 @@ services:
 
 volumes:
   sandbox-session-state:
+    driver: local
+  sandbox-pnpm-store:
+    driver: local
+  sandbox-profiles:
     driver: local
 
 networks:

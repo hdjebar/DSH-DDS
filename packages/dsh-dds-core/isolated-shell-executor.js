@@ -70,7 +70,7 @@ export class IsolatedShellExecutor extends ShellExecutor {
 
   resolve(request) {
     const workdir = path.resolve(request.workdir || this.defaultWorkdir);
-    const capability = getCurrentExecutionCapability();
+    const capability = getCurrentExecutionCapability() || request.executionCapability || request.capability;
     if (!capability) throw new Error('Isolated shell execution requires a PEP-issued capability');
     verifyExecutionCapability(capability, { workdir });
     return {

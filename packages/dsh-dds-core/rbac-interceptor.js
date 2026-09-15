@@ -18,9 +18,9 @@ async function getRbacEngine() {
   if (rbacEngine) return rbacEngine;
   const candidates = [
     '../../config/rbac-policy.mjs',
+    '/opt/dsh-config/rbac-policy.mjs',
     '/etc/dsh/rbac-policy.mjs',
-    '/var/lib/dsh/rbac-policy.mjs',
-    '/opt/dsh-config/rbac-policy.mjs'
+    '/var/lib/dsh/rbac-policy.mjs'
   ];
   for (const candidate of candidates) {
     try {
@@ -57,13 +57,53 @@ export const TOOL_ACTION_MAP = Object.assign(Object.create(null), {
   save_artifact: 'save_artifact',
   fetch: 'fetch_sources',
   fetch_sources: 'fetch_sources',
+  web_fetch: 'fetch_sources',
+  read_page: 'fetch_sources',
   mcp_fetch: 'fetch_sources',
   web_search: 'fetch_sources',
+  find_tools: 'fetch_sources',
+  describe_tool: 'fetch_sources',
+  execute_tool: 'fetch_sources',
+  agentkey_account: 'fetch_sources',
+  agentkey_skill_meta: 'fetch_sources',
   sqlite: 'inspect_sqlite',
   sqlite_query: 'inspect_sqlite',
   inspect_sqlite: 'inspect_sqlite',
   tabular: 'inspect_tabular',
-  inspect_tabular: 'inspect_tabular'
+  inspect_tabular: 'inspect_tabular',
+  session_list: 'parse_intent',
+  session_read: 'parse_intent',
+  session_history: 'parse_intent',
+  session_fork: 'parse_intent',
+  mnemon_status: 'parse_intent',
+  mnemon_recall: 'parse_intent',
+  mnemon_runtime_memory: 'parse_intent',
+  mnemon_document_search: 'parse_intent',
+  mnemon_memory_bodies: 'parse_intent',
+  mnemon_document_manage: 'parse_intent',
+  mnemon_remember: 'parse_intent',
+  mnemon_memory_body_create: 'parse_intent',
+  mnemon_memory_body_update: 'parse_intent',
+  mnemon_memory_body_merge: 'parse_intent',
+  ask_user_question: 'parse_intent',
+  create_goal: 'parse_intent',
+  get_goal: 'parse_intent',
+  update_goal: 'parse_intent',
+  list_agents: 'parse_intent',
+  interrupt_agent: 'parse_intent',
+  send_message: 'parse_intent',
+  job_list: 'parse_intent',
+  job_output: 'parse_intent',
+  job_kill: 'parse_intent',
+  find_dsh_plugin: 'parse_intent',
+  exit_plan_mode: 'parse_intent',
+  flow_create: 'parse_intent',
+  flow_read: 'parse_intent',
+  flow_list: 'parse_intent',
+  flow_evaluate: 'parse_intent',
+  flow_delete: 'parse_intent',
+  flow_put: 'parse_intent',
+  flow_finalize_canvas: 'parse_intent'
 });
 
 export const KNOWN_POLICY_VERBS = new Set([
@@ -138,7 +178,10 @@ export function registerRbacInterceptor(ctx, config = {}) {
       ?? (KNOWN_POLICY_VERBS.has(actionContext.action) ? actionContext.action : null);
 
     if (!resolvedAction && actionContext.toolName) {
-      if (actionContext.toolName.startsWith('mcp:')) {
+      if (actionContext.toolName.startsWith('mcp__')) {
+        const parts = actionContext.toolName.split('__');
+        resolvedAction = 'mcp:' + parts[1];
+      } else if (actionContext.toolName.startsWith('mcp:')) {
         resolvedAction = actionContext.toolName;
       } else if (actionContext.toolName.startsWith('mcp_')) {
         resolvedAction = 'mcp:' + actionContext.toolName.slice(4);
@@ -183,7 +226,8 @@ export function registerRbacInterceptor(ctx, config = {}) {
       || crypto.randomBytes(16).toString('hex');
 
     // Multi-tenant scoped workspace boundary evaluation
-    if (step.target && typeof step.target === 'string') {
+    const isUrl = (p) => typeof p === 'string' && (p.startsWith('http://') || p.startsWith('https://'));
+    if (step.target && typeof step.target === 'string' && !isUrl(step.target)) {
       const tenantCheck = partitionManager.validatePathAccess(step.target, user);
       if (!tenantCheck.allowed) {
         try {
@@ -232,6 +276,9 @@ export function registerRbacInterceptor(ctx, config = {}) {
             read: readRoots,
             write: writeRoots,
             deny: ['/etc', '/root/.ssh', 'reset.sh', 'install_dsh.sh']
+          },
+          mcp: {
+            allowed: ['fetch', 'context7', 'github', 'sqlite-db', 'sdmx', 'orchestrator']
           }
         }
       }
@@ -301,13 +348,13 @@ export function registerRbacInterceptor(ctx, config = {}) {
 
       const rawArgs = exec.arguments || {};
       const isShell = exec.name === 'bash' || exec.name === 'sh' || exec.name === 'terminal' || exec.name === 'exec';
-      const targetPath = rawArgs.file_path || rawArgs.path || rawArgs.target || rawArgs.target_path || rawArgs.filePath
+      const targetPath = rawArgs.file_path || rawArgs.path || rawArgs.target || rawArgs.target_path || rawArgs.filePath || rawArgs.url
         || (isShell ? (rawArgs.workdir || rawArgs.cwd || (process.env.DSH_WORKSPACE_ROOT ? path.join(process.env.DSH_WORKSPACE_ROOT, 'cases') : '/workspaces/cases')) : null);
 
       const actionContext = {
         toolName: exec.name,
         action: TOOL_ACTION_MAP[exec.name] || exec.name,
-        target: targetPath,
+        target: targetPath || null,
         command: rawArgs.command || rawArgs.cmd,
         workdir: rawArgs.workdir || rawArgs.cwd,
         user: resolveUser(exec.user),
@@ -316,6 +363,9 @@ export function registerRbacInterceptor(ctx, config = {}) {
       };
 
       const decision = await handler(actionContext);
+      if (decision.executionCapability && exec && typeof exec === 'object') {
+        exec.__dds_capability = decision.executionCapability;
+      }
       if (typeof next !== 'function') return { kind: 'allow' };
       if (decision.executionCapability) {
         return await runWithExecutionCapability(decision.executionCapability, next);
@@ -332,6 +382,13 @@ export function registerRbacInterceptor(ctx, config = {}) {
   // Intercept tool executions in real time
   if (typeof ctx.on === 'function') {
     ctx.on('tools/pre-execute', preExecuteWaterfall);
+    ctx.on('tools/execute', async (exec, next) => {
+      const cap = exec?.__dds_capability || exec?.executionCapability || exec?.arguments?.executionCapability;
+      if (cap && typeof next === 'function') {
+        return await runWithExecutionCapability(cap, next);
+      }
+      return typeof next === 'function' ? await next() : undefined;
+    });
     ctx.on('before/tool-execute', (ctxOrExec) => preExecuteWaterfall(ctxOrExec));
     ctx.on('tool-execute', (ctxOrExec) => preExecuteWaterfall(ctxOrExec));
   }

@@ -126,6 +126,51 @@ test('PEP exposes a signed execution capability only while the authorized tool r
   }
 });
 
+test('PEP propagates execution capability to tools/execute waterfall for dispatch', async () => {
+  const previousMode = process.env.DSH_EXECUTOR_MODE;
+  const previousKey = process.env.DSH_EXECUTOR_CAPABILITY_KEY;
+  process.env.DSH_EXECUTOR_MODE = 'isolated';
+  process.env.DSH_EXECUTOR_CAPABILITY_KEY = CAPABILITY_KEY;
+  const handlers = new Map();
+  const partition = deriveUserPartitionId('alice', 'idp');
+  const workdir = `/workspaces/users/${partition}`;
+  const user = { id: 'alice', issuer: 'idp', roles: ['user'] };
+  const engine = {
+    enforceRbacPolicy: () => ({ allowed: true, role: 'user' }),
+    logGrcAuditEvent: () => {}
+  };
+  const ctx = { on: (name, handler) => handlers.set(name, handler) };
+  registerRbacInterceptor(ctx, { enableToolRbac: true, authEnabled: true, rbacEngine: engine });
+  try {
+    const exec = {
+      name: 'bash',
+      arguments: { command: 'pwd', workdir },
+      user
+    };
+    // 1. tools/pre-execute gate
+    const preResult = await handlers.get('tools/pre-execute')(exec, async () => ({ kind: 'allow' }));
+    assert.deepEqual(preResult, { kind: 'allow' });
+    assert.ok(exec.__dds_capability);
+
+    // 2. tools/execute around-dispatch wrapper
+    assert.equal(getCurrentExecutionCapability(), null);
+    const executeResult = await handlers.get('tools/execute')(exec, async () => {
+      const token = getCurrentExecutionCapability();
+      assert.ok(token);
+      assert.equal(token, exec.__dds_capability);
+      assert.equal(verifyExecutionCapability(token, { workdir }).sub, 'alice');
+      return { output: 'success' };
+    });
+    assert.deepEqual(executeResult, { output: 'success' });
+    assert.equal(getCurrentExecutionCapability(), null);
+  } finally {
+    if (previousMode === undefined) delete process.env.DSH_EXECUTOR_MODE;
+    else process.env.DSH_EXECUTOR_MODE = previousMode;
+    if (previousKey === undefined) delete process.env.DSH_EXECUTOR_CAPABILITY_KEY;
+    else process.env.DSH_EXECUTOR_CAPABILITY_KEY = previousKey;
+  }
+});
+
 test('Compose isolates the executor network and excludes application state mounts', () => {
   const compose = yaml.parse(fs.readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8'));
   const executor = compose.services['isolated-executor'];

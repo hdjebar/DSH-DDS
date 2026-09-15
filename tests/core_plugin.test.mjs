@@ -578,7 +578,78 @@ test('Core RBAC Interceptor: TOOL_ACTION_MAP precedence and prototype isolation'
       }
     });
   });
+
+  // 4. web_fetch and interactive tools in TOOL_ACTION_MAP
+  assert.equal(TOOL_ACTION_MAP['web_fetch'], 'fetch_sources');
+  assert.equal(TOOL_ACTION_MAP['read_page'], 'fetch_sources');
+  assert.equal(TOOL_ACTION_MAP['session_list'], 'parse_intent');
+  assert.equal(TOOL_ACTION_MAP['mnemon_status'], 'parse_intent');
+
+  // 5. mcp__ namespace extraction and URL target validation
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'mcp__sqlite-db__read_query',
+      persona: {
+        name: 'test-playground',
+        rbac: {
+          role: 'playground_engineer',
+          permissions: {
+            filesystem: { read: ['/workspaces'], write: [], deny: [] },
+            mcp: { allowed: ['sqlite-db'] }
+          }
+        }
+      }
+    });
+  });
+
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'web_fetch',
+      target: 'http://worldtimeapi.org/api/timezone/Etc/UTC.txt',
+      persona: {
+        name: 'test-playground',
+        rbac: {
+          role: 'playground_engineer',
+          permissions: {
+            filesystem: { read: ['/workspaces'], write: [], deny: [] }
+          }
+        }
+      }
+    });
+  });
+
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'mcp__agentkey__find_tools',
+      persona: {
+        name: 'test-playground',
+        rbac: {
+          role: 'playground_engineer',
+          permissions: {
+            filesystem: { read: ['/workspaces'], write: [], deny: [] },
+            mcp: { allowed: ['agentkey'] }
+          }
+        }
+      }
+    });
+  });
+
+  await assert.doesNotReject(async () => {
+    await beforeHook({
+      toolName: 'find_tools',
+      persona: {
+        name: 'test-playground',
+        rbac: {
+          role: 'playground_engineer',
+          permissions: {
+            filesystem: { read: ['/workspaces'], write: [], deny: [] }
+          }
+        }
+      }
+    });
+  });
 });
+
 
 test('Core RBAC Interceptor: shell command is separated from target path and checked against deny rules', async () => {
   let beforeHook = null;

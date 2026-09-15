@@ -416,6 +416,9 @@ export function enforceRbacPolicy(personaMeta, step) {
   }
 
   for (const target of targetsToCheck) {
+    if (typeof target === 'string' && (target.startsWith('http://') || target.startsWith('https://'))) {
+      continue;
+    }
     let resolvedTarget = resolvePath(target);
     const canonicalTarget = canonicalizeWithAncestorRealpath(resolvedTarget);
 
@@ -573,7 +576,7 @@ export function enforceRbacPolicy(personaMeta, step) {
     role,
     reason: 'RBAC policy validated',
     targets: targetsToCheck,
-    resolvedTarget: targetsToCheck[0] ? resolvePath(targetsToCheck[0]) : null
+    resolvedTarget: targetsToCheck[0] ? ((typeof targetsToCheck[0] === 'string' && (targetsToCheck[0].startsWith('http://') || targetsToCheck[0].startsWith('https://'))) ? targetsToCheck[0] : resolvePath(targetsToCheck[0])) : null
   };
 }
 
@@ -849,7 +852,20 @@ export function logGrcAuditEvent(event, traceId = null) {
   // exclusively owns both the ledger and its HMAC key. Keep this call synchronous:
   // callers rely on a successful append before a GRANTED operation may execute.
   if (process.env.DSH_AUDIT_WRITER_URL) {
-    const clientPath = fileURLToPath(new URL('./audit-client.mjs', import.meta.url));
+    let clientPath = fileURLToPath(new URL('./audit-client.mjs', import.meta.url));
+    if (!fs.existsSync(clientPath)) {
+      const candidates = [
+        '/opt/dsh-config/audit-client.mjs',
+        '/etc/dsh/audit-client.mjs',
+        '/var/lib/dsh/audit-client.mjs'
+      ];
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          clientPath = cand;
+          break;
+        }
+      }
+    }
     const remoteEvent = { ...event, trace_id: traceId || event.trace_id || null };
     let serialized;
     try {

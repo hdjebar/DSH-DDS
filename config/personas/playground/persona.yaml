@@ -50,6 +50,8 @@ mcpServers:
   sqlite-db:
     command: "mcp-server-sqlite"
     args: ["--db-path", "/var/lib/dsh/storages/data.db"]
+  agentkey:
+    url: "https://api.agentkey.app/v1/mcp"
 
 rbac:
   role: "playground_engineer"
@@ -77,6 +79,7 @@ rbac:
         - "github"
         - "context7"
         - "sqlite-db"
+        - "agentkey"
 
 workflows:
   author_skill:
@@ -94,7 +97,7 @@ workflows:
         destination: "/artifacts/skills/draft_skill.md"
   diagnose_environment:
     modelTier: default
-    command: "Using the playground skill, diagnose container health, active model catalog, and verify reachability of all 4 MCP servers."
+    command: "Using the playground skill, diagnose container health, active model catalog, and verify reachability of all 5 MCP servers (including AgentKey)."
   prototype_and_evaluate:
     modelTier: default
     command: "Using the playground skill, prototype a solution in /workspaces/playground and evaluate test results."

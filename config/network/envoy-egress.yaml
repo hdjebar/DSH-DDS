@@ -37,7 +37,16 @@ static_resources:
               - "api.github.com:443"
               - "github.com"
               - "github.com:443"
+              - "codeload.github.com"
+              - "codeload.github.com:443"
+              - "objects.githubusercontent.com"
               - "objects.githubusercontent.com:443"
+              - "raw.githubusercontent.com"
+              - "raw.githubusercontent.com:443"
+              - "avatars.githubusercontent.com"
+              - "avatars.githubusercontent.com:443"
+              - "awesome-dsh-plugin.com"
+              - "awesome-dsh-plugin.com:443"
               - "registry.npmjs.org"
               - "registry.npmjs.org:443"
               - "pypi.org"
@@ -46,6 +55,11 @@ static_resources:
               # Declarative SDMX adapter (application allowlist remains authoritative).
               - "lustat.statec.lu"
               - "lustat.statec.lu:443"
+              - "ec.europa.eu"
+              - "ec.europa.eu:443"
+              # AgentKey MCP provider endpoint
+              - "api.agentkey.app"
+              - "api.agentkey.app:443"
               routes:
               # HTTPS proxying requires CONNECT. Keep tunnelling limited to this exact
               # domain allowlist because methods inside TLS cannot be inspected here.
