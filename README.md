@@ -231,7 +231,7 @@ node --test tests/*.test.mjs
 
 ## 📦 Pre-Packaged Plugins & MCP Servers
 
-### Active plugins (1 core + 10 pre-packaged)
+### Active plugins (1 core + 11 pre-packaged)
 
 | Plugin | Service ID | Category | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -246,8 +246,9 @@ node --test tests/*.test.mjs
 | **`dsh-model-sync`** | `model-sync` | Telemetry | Automated model sync and quota monitor |
 | **`dsh-mnemon`** | `mnemon` | Memory | Multi-workspace unified memory engine |
 | **`dsh-session-reader`** | `dsh-session-reader` | Inspection | Cross-session transcript and tool call reader |
+| **`dsh-better-sidebar`** | `dsh-better-sidebar` | Navigation | Collapsible sidebar, layout toggles, and workspace navigation |
 
-### Pre-configured MCP tool servers (4 built-in)
+### Pre-configured MCP tool servers (5 built-in)
 
 | MCP Server | Runner Executable | Capabilities |
 | :--- | :--- | :--- |
@@ -255,6 +256,7 @@ node --test tests/*.test.mjs
 | **`context7`** | `context7-mcp` (`@upstash/context7-mcp@1.0.14`) | Real-time SDK documentation and library context |
 | **`github`** | `github-mcp-server` (`v1.11.0`) | Repository operations, PRs, issue tracking |
 | **`sqlite-db`** | `mcp-server-sqlite` (`mcp-server-sqlite@2025.4.25`) | Relational SQL querying, schema inspection, tabular analysis |
+| **`agentkey`** | `https://api.agentkey.app/v1/mcp` (`chainbase-labs/Agentkey@v1.14.0`) | On-demand external tool discovery, description, and execution |
 
 Full specification: [Plugins & MCP Reference](docs/reference/plugins.md).
 

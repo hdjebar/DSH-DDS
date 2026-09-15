@@ -343,11 +343,12 @@ flowchart TD
 | **Transient Execution** | `TransactionalWorktree` creates temporary Git branches (`.git/worktrees/<taskId>`) discarded on failure. | Ephemeral named volume (`sandbox-session-state`) cleared with `docker compose down -v`. |
 
 #### Cross-Persona Protection Guarantees
-Even when a persona is granted broad development or authoring privileges (such as the `playground` persona authoring new skills or testing all 4 MCP servers):
+Even when a persona is granted broad development or authoring privileges (such as the `playground` persona authoring new skills, testing all 5 MCP servers, or managing plugin lifecycles):
 1. **Zero Mutation of Shipped Personas**: The Docker Compose topology mounts `./config/personas` and `./config/skills` as **Read-Only (`:ro`)**. Any agent attempt to alter or delete existing persona manifests (`/var/lib/dsh/personas/*`) fails at the Linux VFS layer with `EROFS: read-only file system`.
-2. **Quarantined Dynamic Authoring**: Dynamically authored skills and persona drafts write exclusively to `/artifacts/skills/` or `/workspaces/cases/`. They are never activated into core system configuration without host operator promotion.
-3. **Strict Session Context Independence**: Every execution turn generates a distinct, non-shared `session_id`. Tool execution state, prompt memory, and Arize Phoenix trace spans remain strictly segregated across personas.
-4. **Zero Tool Privilege Escalation**: One persona enabling all 4 MCP servers (`fetch`, `github`, `context7`, `sqlite-db`) does not grant those tools to any other persona. The PEP strictly checks the active persona's own manifest before dispatching any tool call.
+2. **Dedicated Workspace Sandbox Isolation**: The `playground` persona operates within an isolated, dedicated workspace directory (`/workspaces/playground`), preventing collision with active investigative cases (`/workspaces/cases`) or production datasets.
+3. **Quarantined Dynamic Authoring**: Dynamically authored skills and persona drafts write exclusively to `/artifacts/skills/` or `/workspaces/cases/`. They are never activated into core system configuration without host operator promotion.
+4. **Strict Session Context Independence**: Every execution turn generates a distinct, non-shared `session_id`. Tool execution state, prompt memory, and Arize Phoenix trace spans remain strictly segregated across personas.
+5. **Zero Tool Privilege Escalation**: One persona enabling all 5 MCP servers (`fetch`, `github`, `context7`, `sqlite-db`, `agentkey`) does not grant those tools to any other persona. The PEP strictly checks the active persona's own manifest before dispatching any tool call.
 
 ---
 

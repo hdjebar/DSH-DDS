@@ -1,6 +1,6 @@
 # 🧩 DSH Plugins & Model Context Protocol (MCP) Guide
 
-This repository comes pre-packaged with **1 native core system plugin (`@dsh-dds/core`)**, **10 essential community plugins**, and **4 pre-configured MCP servers** baked directly into the container image.
+This repository comes pre-packaged with **1 native core system plugin (`@dsh-dds/core`)**, **11 essential community plugins**, and **5 pre-configured MCP servers** baked directly into the container image.
 
 > [!WARNING]
 > **Mandatory Security Audit for Additional Plugins**: Any new plugin or MCP server added to this stack **must be strictly audited** before installation. Plugins execute in-process with the Node.js runtime and have access to container memory, mounted workspaces, and environment API credentials. Never install unvetted or untrusted plugins without reviewing their source code and dependencies.
@@ -27,8 +27,8 @@ This repository comes pre-packaged with **1 native core system plugin (`@dsh-dds
      - Injects English localization transforms without mutating on-disk minified bundles.
   4. **In-Line Zero-Trust Tool Interceptor PEP** ([rbac-interceptor.js](../packages/dsh-dds-core/rbac-interceptor.js)):
      - Intercepts `tool-execute` events in real time as an authoritative Policy Enforcement Point.
-     - Validates tool calls and target files against the active persona's RBAC matrix.
-     - Auto-provisions required workspace working directories (`/workspaces/cases`).
+     - Validates tool calls, plugin lifecycle tools (`dsh_plugin`, `dshmarket`, `plugin_add`, `plugin_remove`), and target files against the active persona's RBAC matrix.
+     - Auto-provisions required workspace working directories (`/workspaces/cases`, `/workspaces/playground`).
      - Sends authenticated decision receipts to the external `audit-writer`; only that service appends the protected HMAC ledger.
 
 ---
@@ -75,29 +75,55 @@ This repository comes pre-packaged with **1 native core system plugin (`@dsh-dds
 * **ID**: `deepseek-flow`
 * **Purpose**: Interactive visual drag-and-drop workflow canvas for Web UI with Boolean condition gates, DAG execution, and bi-directional `WORKFLOW.md` / `STEP.md` synchronization.
 
+### 11. `dsh-better-sidebar` (Collapsible Sidebar & Navigation Controls)
+* **ID**: `dsh-better-sidebar`
+* **Purpose**: Enhances the workbench navigation layout with collapsible sidebar sections, customizable workspace shortcuts, and quick-toggle tool panels.
+
+---
+
+## 🛠️ Plugin Lifecycle Management
+
+Plugins within DSH execution profiles can be managed directly via CLI or through personas with granted lifecycle permissions:
+
+```bash
+# List all active plugins in the web profile:
+docker exec dshdds-imp-dsh-1 dsh plugin --profile web list
+
+# Add a community plugin from npm or GitHub:
+docker exec dshdds-imp-dsh-1 dsh plugin --profile web add github:chainbase-labs/Agentkey
+
+# Remove a plugin from the profile:
+docker exec dshdds-imp-dsh-1 dsh plugin --profile web remove <package-name>
+```
+
 ---
 
 ## 🔌 Pre-Configured Model Context Protocol (MCP) Servers
 
-All Model Context Protocol (MCP) servers are pre-installed directly into the container image to guarantee zero-network runtime execution, predictable cold-starts, and supply-chain integrity (no `npx -y` dynamic fetching):
+All Model Context Protocol (MCP) servers are pre-installed directly into the container image or configured with isolated network egress to guarantee zero-network cold starts, predictable execution, and supply-chain integrity:
 
-### 1. `mcp-fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
+### 1. `fetch` (`@mzxrai/mcp-webresearch@0.1.7`)
 * **Transport**: `stdio` (`mcp-server-webresearch`)
 * **Capabilities**: `fetch(url)` — Extracts clean markdown and structured summaries from any public web page or technical documentation site.
 
-### 2. `mcp-context7` (`@upstash/context7-mcp@1.0.14`)
+### 2. `context7` (`@upstash/context7-mcp@1.0.14`)
 * **Transport**: `stdio` (`context7-mcp`)
 * **Capabilities**: Up-to-date SDK and library documentation retrieval for developer frameworks.
 
-### 3. `mcp-github` (`github-mcp-server:v1.11.0`)
+### 3. `github` (`github-mcp-server:v1.11.0`)
 * **Transport**: `stdio` (`github-mcp-server stdio`)
 * **Source**: Official maintained GitHub MCP Server (`github/github-mcp-server:v1.11.0`) embedded as a native binary.
 * **Capabilities**: Full GitHub REST API operations (repositories, branches, pull requests, issues, file updates).
 * **Authentication**: Environment variable indirection via `${GITHUB_PERSONAL_ACCESS_TOKEN}`.
 
 ### 4. `sqlite-db` (`mcp-server-sqlite@2025.4.25`)
-* **Transport**: `stdio` (`mcp-server-sqlite --db-path /workspaces/data.db`)
+* **Transport**: `stdio` (`mcp-server-sqlite --db-path /var/lib/dsh/storages/data.db`)
 * **Capabilities**: Relational SQL querying, schema inspection, and metric aggregations across tabular datasets.
+
+### 5. `agentkey` (`chainbase-labs/Agentkey@v1.14.0`)
+* **Transport**: `streamable-http` (`https://api.agentkey.app/v1/mcp`)
+* **Capabilities**: Remote on-demand tool ecosystem (`find_tools`, `describe_tool`, `execute_tool`, `agentkey_account`).
+* **Security & Network**: Egress strictly governed by Envoy proxy (`api.agentkey.app:443` in Tier 1 allowlist). Built-in fallback prevents initialization failure when offline (`failOnStartupError: false`).
 
 ---
 

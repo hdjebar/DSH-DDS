@@ -247,6 +247,54 @@ workflows:
 * **Plugins**: `dsh-mcp-panel`, `dsh-provider-model-configurator`, `dsh-mnemon`
 * **Workflows**: `./dsh.sh doctor` ecosystem diagnostics and container log inspection.
 
+### 6. 🧠 `mlops-engineer` (MLOps & Model Lifecycle Engineer)
+* **Model Matrix**:
+  * `default`: `openrouter/deepseek/deepseek-chat` (task drafting & conversational execution)
+  * `reasoning`: `openrouter/deepseek/deepseek-r1` (deep architectural reasoning & problem decomposition)
+  * `audit`: `openrouter/anthropic/claude-3.5-sonnet` (high-accuracy code inspection & verification)
+  * `fast`: `gemini/gemini-3.7-flash` (rapid file parsing & model registry indexing)
+* **MCP Tools**: `fetch`
+* **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
+* **Workflows**: Pipeline verification, model evaluation harnesses, and inference benchmarking.
+
+### 7. 📈 `stats-engineer` (Statistical Data & Metric Specialist)
+* **Model Matrix**:
+  * `default`: `openrouter/deepseek/deepseek-chat` (statistical querying & data synthesis)
+  * `reasoning`: `openrouter/deepseek/deepseek-r1` (complex numerical analysis & mathematical reconciliation)
+  * `audit`: `openrouter/anthropic/claude-3.5-sonnet` (validation of statistical methodology)
+  * `fast`: `gemini/gemini-3.7-flash` (large-scale dataset parsing)
+* **MCP Tools**: `fetch`
+* **Plugins**: `@liustack/modsearch`, `dsh-mnemon`, `dsh-find-plugin`
+* **Workflows**: Statistical breakdowns, tabular data aggregation, and anomaly reporting.
+
+### 8. 🛝 `playground` (Playground & Rapid Prototyping Engineer — Full Harness Access)
+* **Overview**: The ultimate developer sandbox persona, equipped with **complete access to all harness capabilities**: plugin lifecycles, MCP tool coordination, multi-model routing, and isolated workspace prototyping.
+* **Model Matrix**:
+  * `default`: `openrouter/deepseek/deepseek-chat` (rapid interactive prototyping & code drafting)
+  * `reasoning`: `openrouter/deepseek/deepseek-r1` (deep algorithmic synthesis & formal verification)
+  * `fast`: `openrouter/deepseek/deepseek-chat` (high-speed linting & tool execution)
+  * `multimodal`: `gemini/gemini-2.5-flash` (architecture diagram inspection & UI evaluation)
+* **Complete MCP Server Suite (5 servers)**:
+  * `fetch`: Web research & live technical documentation
+  * `context7`: Up-to-date SDK & symbol context
+  * `github`: Repository introspection & PR management
+  * `sqlite-db`: Relational SQL querying on `/var/lib/dsh/storages/data.db`
+  * `agentkey`: External Streamable-HTTP tool ecosystem (`api.agentkey.app`)
+* **Full Plugin Suite (11 plugins)**:
+  * Marketplace & Discovery: `dshmarket`, `dsh-find-plugin`, `dsh-mcp-market`, `dsh-mcp-panel`
+  * Memory & Inspection: `dsh-mnemon`, `dsh-session-reader`
+  * Model Management: `dsh-model-sync`, `dsh-provider-model-configurator`
+  * UI & Workflows: `deepseek-flow`, `dsh-better-sidebar`, `@liustack/modsearch`
+* **Zero-Trust Workspace Sandbox Confinement**:
+  * Dedicated read/write workspace: `/workspaces/playground`
+  * Case output paths: `/workspaces/cases`, `/artifacts`
+  * Persistent state: `/var/lib/dsh/profiles`, `/var/lib/dsh/sessions`, `/var/lib/dsh/storages` (bridged to `sandbox-session-state`)
+  * Strict denial: `/etc`, `/root/.ssh`, `config/personas/*`, `reset.sh`, `install_dsh.sh`
+* **Declarative Workflows**:
+  * `manage_plugin_lifecycle`: Automated discovery, manifest auditing, and inventory reporting (`/artifacts/plugins/inventory.md`).
+  * `evaluate_mcp_pipeline`: Cross-tool pipeline benchmarking web research, SQLite querying, and artifact synthesis (`/artifacts/mcp_benchmark.md`).
+  * `author_skill`: Dynamic skill generation with YAML frontmatter verification.
+
 ---
 
 ## 📜 Normative `persona.yaml` Manifest Specification
