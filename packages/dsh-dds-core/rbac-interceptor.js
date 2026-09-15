@@ -204,7 +204,11 @@ export function registerRbacInterceptor(ctx, config = {}) {
     }
 
     if (!resolvedAction) {
-      throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || actionContext.action || 'unknown'}' is an unmapped or unauthorized tool`);
+      if (actionContext.persona?.rbac?.permissions?.tools?.includes('*') || actionContext.persona?.rbac?.permissions?.tools?.includes(actionContext.toolName || actionContext.action)) {
+        resolvedAction = actionContext.toolName || actionContext.action;
+      } else {
+        throw new Error(`[Zero-Trust RBAC Violation] Action '${actionContext.toolName || actionContext.action || 'unknown'}' is an unmapped or unauthorized tool`);
+      }
     }
 
     const isShellAction = resolvedAction === 'run_shell';

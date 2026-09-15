@@ -203,3 +203,43 @@ test('Security Audit Finding 2: compose topology mounts personas and skills as r
   );
 });
 
+test('Playground persona: unrestricted all-access across filesystem, MCP, and custom tools', async () => {
+  const { parsePersonaYaml } = await import('../config/persona.mjs');
+  const playgroundMeta = parsePersonaYaml(path.join(PERSONAS_DIR, 'playground', 'persona.yaml'));
+
+  // 1. Filesystem Write to arbitrary path
+  const writeRes = enforceRbacPolicy(playgroundMeta, {
+    action: 'modify_file',
+    target: '/etc/custom.conf'
+  });
+  assert.equal(writeRes.allowed, true, 'Playground must have filesystem write access to /');
+
+  // 2. Filesystem Read from arbitrary path
+  const readRes = enforceRbacPolicy(playgroundMeta, {
+    action: 'read_file',
+    target: '/root/.ssh/config'
+  });
+  assert.equal(readRes.allowed, true, 'Playground must have filesystem read access to /');
+
+  // 3. Unrestricted MCP access
+  const mcpRes = enforceRbacPolicy(playgroundMeta, {
+    action: 'mcp:any-unlisted-mcp'
+  });
+  assert.equal(mcpRes.allowed, true, 'Playground must have access to all MCP servers via *');
+
+  // 4. Custom tools access via tools: ["*"]
+  const customToolRes = enforceRbacPolicy(playgroundMeta, {
+    action: 'custom_experiment_tool',
+    target: '/workspaces/playground/test.py'
+  });
+  assert.equal(customToolRes.allowed, true, 'Playground must have access to all tools via *');
+
+  // 5. Explicit tripwires (reset.sh, install_dsh.sh) remain protected
+  const tripwireRes = enforceRbacPolicy(playgroundMeta, {
+    action: 'modify_file',
+    target: '/app/reset.sh'
+  });
+  assert.equal(tripwireRes.allowed, false, 'tripwire reset.sh must remain denied');
+});
+
+

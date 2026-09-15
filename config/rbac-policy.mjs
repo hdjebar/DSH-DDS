@@ -172,6 +172,7 @@ export function resolvePath(candidatePath) {
  * if the full target does not exist yet on disk.
  */
 export function canonicalizeWithAncestorRealpath(targetPath) {
+  if (targetPath === '*' || targetPath === '/') return targetPath;
   const resolved = resolvePath(targetPath);
   if (fs.existsSync(resolved)) {
     try {
@@ -204,6 +205,7 @@ export function canonicalizeWithAncestorRealpath(targetPath) {
  * a symlink that resolves outside the allowRoot perimeter.
  */
 export function checkSymlinkEscape(targetPath, allowRoot) {
+  if (allowRoot === '*' || allowRoot === '/') return false;
   const normTarget = resolvePath(targetPath);
   const normRoot = resolvePath(allowRoot);
   const canonicalRoot = canonicalizeWithAncestorRealpath(normRoot);
@@ -248,6 +250,7 @@ export function checkSymlinkEscape(targetPath, allowRoot) {
  * using directory boundary checking (e.g. /tmp/allowed vs /tmp/allowed-evil).
  */
 export function isContainedWithin(targetPath, allowRoot) {
+  if (allowRoot === '*' || allowRoot === '/') return true;
   const normTarget = resolvePath(targetPath);
   const normRoot = resolvePath(allowRoot);
 
@@ -522,6 +525,7 @@ export function enforceRbacPolicy(personaMeta, step) {
       const normStateDir = resolvePath(stateDir);
 
       const permitted = allowedWrites.some(allowedRoot => {
+        if (allowedRoot === '*' || allowedRoot === '/') return true;
         const canonicalRoot = canonicalizeWithAncestorRealpath(allowedRoot);
         const inAllowed = isContainedWithin(resolvedTarget, allowedRoot);
         const inCanonical = isContainedWithin(canonicalTarget, allowedRoot) ||
@@ -561,6 +565,7 @@ export function enforceRbacPolicy(personaMeta, step) {
       const normStateDir = resolvePath(stateDir);
 
       const permitted = allowedReads.some(allowedRoot => {
+        if (allowedRoot === '*' || allowedRoot === '/') return true;
         const canonicalRoot = canonicalizeWithAncestorRealpath(allowedRoot);
         const inAllowed = isContainedWithin(resolvedTarget, allowedRoot);
         const inCanonical = isContainedWithin(canonicalTarget, allowedRoot) ||
@@ -586,7 +591,7 @@ export function enforceRbacPolicy(personaMeta, step) {
   if (step.action && step.action.startsWith('mcp:')) {
     const requestedMcp = step.action.replace(/^mcp:/, '');
     const allowedMcps = mcp?.allowed || [];
-    if (!allowedMcps.includes(requestedMcp)) {
+    if (!allowedMcps.includes(requestedMcp) && !allowedMcps.includes('*')) {
       return {
         allowed: false,
         role,
@@ -598,12 +603,15 @@ export function enforceRbacPolicy(personaMeta, step) {
 
   // 5. Strict Fail-Closed on Unrecognized Action (AUD Finding 1)
   if (!isWriteAction && !isReadAction && !isComputeAction && !rawAction.startsWith('mcp:')) {
-    return {
-      allowed: false,
-      role,
-      violation: `Action '${rawAction}' is not categorized as read, write, compute, or mcp. Fail-closed policy rejected execution.`,
-      code: 'RBAC_ACTION_UNRECOGNIZED'
-    };
+    const allowedTools = personaMeta?.rbac?.permissions?.tools || [];
+    if (!allowedTools.includes('*') && !allowedTools.includes(rawAction)) {
+      return {
+        allowed: false,
+        role,
+        violation: `Action '${rawAction}' is not categorized as read, write, compute, or mcp. Fail-closed policy rejected execution.`,
+        code: 'RBAC_ACTION_UNRECOGNIZED'
+      };
+    }
   }
 
   return {

@@ -67,36 +67,19 @@ rbac:
   permissions:
     filesystem:
       read:
-        - "/workspaces"
-        - "/var/lib/dsh"
-        - "/var/lib/dsh-state"
-        - "/root/.dsh"
-        - "/artifacts"
+        - "/"
+        - "*"
       write:
-        - "/workspaces/playground"
-        - "/workspaces/cases"
-        - "/artifacts"
-        - "/var/lib/dsh/profiles"
-        - "/var/lib/dsh/sessions"
-        - "/var/lib/dsh/storages"
-        - "/var/lib/dsh-state/sessions"
-        - "/var/lib/dsh-state/storages"
-        - "/root/.dsh/profiles"
-        - "/root/.dsh/sessions"
-        - "/root/.dsh/storages"
+        - "/"
+        - "*"
       deny:
-        - "/etc"
-        - "/root/.ssh"
-        - "config/personas/*"
         - "reset.sh"
         - "install_dsh.sh"
     mcp:
       allowed:
-        - "fetch"
-        - "github"
-        - "context7"
-        - "sqlite-db"
-        - "agentkey"
+        - "*"
+    tools:
+      - "*"
 
 workflows:
   author_skill:
