@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@liustack/modsearch':
-        specifier: ^5.10.1
-        version: 5.10.1
+        specifier: ^5.10.3
+        version: 5.10.3
       dsh-find-plugin:
         specifier: ^0.3.7
         version: 0.3.7(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-tools@0.1.0-rc.8(ac9081d1e007de8a90a707560a8ae1c3))
@@ -169,8 +169,8 @@ packages:
   '@deepseek-ai/schemastery@3.18.2':
     resolution: {integrity: sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ==}
 
-  '@liustack/modsearch@5.10.1':
-    resolution: {integrity: sha512-9u2BmoHxXl3/lCYnFUuFjUAS7XBfFClUxFRSBB1pT+nkRz5JZava+jTMhndf67WyF/zTZPeOEKDv3hu/GGmo4Q==}
+  '@liustack/modsearch@5.10.3':
+    resolution: {integrity: sha512-Ki+GaO1OINVT6SIjzKJ6EKE282I/Y5Qkqa7TUF8BOrG3Kp8keeb4jOyVypV8ngbp9qYsyO9zHF4bguj01ndtOA==}
     engines: {node: '>=22.13'}
     hasBin: true
 
@@ -837,7 +837,7 @@ snapshots:
       '@deepseek-ai/cosmokit': 1.8.3
       '@standard-schema/spec': 1.1.0
 
-  '@liustack/modsearch@5.10.1':
+  '@liustack/modsearch@5.10.3':
     dependencies:
       commander: 13.1.0
       undici: 7.29.1
