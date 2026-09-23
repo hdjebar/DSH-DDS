@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@liustack/modsearch':
-        specifier: ^5.10.1
-        version: 5.10.1
+        specifier: ^5.10.3
+        version: 5.10.3
       deepseek-flow:
         specifier: ^0.4.0
         version: 0.4.0
@@ -187,8 +187,8 @@ packages:
   '@lezer/yaml@1.0.4':
     resolution: {integrity: sha512-2lrrHqxalACEbxIbsjhqGpSW8kWpUKuY6RHgnSAFZa6qK62wvnPxA8hGOwOoDbwHcOFs5M4o27mjGu+P7TvBmw==}
 
-  '@liustack/modsearch@5.10.1':
-    resolution: {integrity: sha512-9u2BmoHxXl3/lCYnFUuFjUAS7XBfFClUxFRSBB1pT+nkRz5JZava+jTMhndf67WyF/zTZPeOEKDv3hu/GGmo4Q==}
+  '@liustack/modsearch@5.10.3':
+    resolution: {integrity: sha512-Ki+GaO1OINVT6SIjzKJ6EKE282I/Y5Qkqa7TUF8BOrG3Kp8keeb4jOyVypV8ngbp9qYsyO9zHF4bguj01ndtOA==}
     engines: {node: '>=22.13'}
     hasBin: true
 
@@ -1689,7 +1689,7 @@ snapshots:
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.10
 
-  '@liustack/modsearch@5.10.1':
+  '@liustack/modsearch@5.10.3':
     dependencies:
       commander: 13.1.0
       undici: 7.29.0
