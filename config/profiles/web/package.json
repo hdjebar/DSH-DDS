@@ -12,7 +12,7 @@
     "dsh-model-sync": "^0.1.6",
     "dsh-provider-model-configurator": "github:LiangYin233/dsh-provider-model-configurator#70f88112c7d92fadeb93e46f5dcb8b1f3ae6eba3",
     "dsh-session-reader": "^0.1.0",
-    "dshmarket": "^1.44.0"
+    "dshmarket": "^1.66.2"
   },
   "dsh": {
     "profile": {
