@@ -5,7 +5,7 @@
     "@liustack/modsearch": "^5.10.1",
     "deepseek-flow": "^0.4.0",
     "dsh-better-sidebar": "^0.18.0",
-    "dsh-find-plugin": "^0.3.7",
+    "dsh-find-plugin": "^0.4.0",
     "dsh-mcp-market": "^0.1.2",
     "dsh-mcp-panel": "^0.6.7",
     "dsh-mnemon": "^0.5.4",
