@@ -2,7 +2,7 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "@liustack/modsearch": "^5.10.1",
+    "@liustack/modsearch": "^5.10.6",
     "deepseek-flow": "^0.4.0",
     "dsh-better-sidebar": "^0.18.0",
     "dsh-find-plugin": "^0.3.7",
