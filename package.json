@@ -17,6 +17,6 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@tt-a1i/archify-dsh": "^0.1.0"
+    "@tt-a1i/archify-dsh": "^1.0.0"
   }
 }
